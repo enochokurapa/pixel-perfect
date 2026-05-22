@@ -8,7 +8,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/hooks/use-session";
 
-export const Route = createFileRoute("/_authenticated/badges")({
+export const Route = createFileRoute("/_authenticated/app/badges")({
   head: () => ({ meta: [{ title: "Badges — Sentinel VMS" }] }),
   component: BadgesPage,
 });

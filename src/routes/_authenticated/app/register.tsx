@@ -12,7 +12,7 @@ import { useCurrentUser } from "@/hooks/use-session";
 import { toast } from "sonner";
 import { z } from "zod";
 
-export const Route = createFileRoute("/_authenticated/register")({
+export const Route = createFileRoute("/_authenticated/app/register")({
   head: () => ({ meta: [{ title: "Register visitor — Sentinel VMS" }] }),
   component: RegisterPage,
 });
