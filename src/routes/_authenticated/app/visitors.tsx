@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,7 +86,9 @@ function VisitorsPage() {
                 {filtered?.map((v) => (
                   <tr key={v.id} className="hover:bg-muted/30">
                     <td className="px-5 py-3">
-                      <div className="font-medium">{v.visitor?.full_name}</div>
+                      <Link to="/app/visits/$id" params={{ id: v.id }} className="font-medium hover:underline">
+                        {v.visitor?.full_name}
+                      </Link>
                       <div className="text-xs text-muted-foreground">{v.visitor?.company ?? v.visitor?.phone}</div>
                     </td>
                     <td className="px-5 py-3">{v.host?.full_name ?? "—"}</td>

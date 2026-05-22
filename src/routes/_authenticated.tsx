@@ -2,12 +2,13 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import { useEffect } from "react";
 import {
   LayoutDashboard, Users, UserPlus, BadgeCheck, ShieldAlert, BarChart3,
-  Settings as SettingsIcon, LogOut, ShieldCheck,
+  Settings as SettingsIcon, LogOut, ShieldCheck, CalendarPlus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser, useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { NotificationsBell } from "@/components/notifications-bell";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthLayout,
@@ -42,6 +43,7 @@ function Shell() {
     { to: "/app", label: "Dashboard", icon: LayoutDashboard, show: true },
     { to: "/app/visitors", label: "Visitors", icon: Users, show: true },
     { to: "/app/register", label: "Register visitor", icon: UserPlus, show: me.canRegister },
+    { to: "/app/pre-register", label: "Pre-register", icon: CalendarPlus, show: true },
     { to: "/app/badges", label: "Badges", icon: BadgeCheck, show: me.isAdmin || me.isReceptionist },
     { to: "/app/blacklist", label: "Blacklist", icon: ShieldAlert, show: true },
     { to: "/app/reports", label: "Reports", icon: BarChart3, show: true },
@@ -110,6 +112,9 @@ function Shell() {
       </aside>
 
       <main className="overflow-auto">
+        <div className="sticky top-0 z-10 flex justify-end border-b border-border/60 bg-background/80 px-6 py-2 backdrop-blur">
+          <NotificationsBell />
+        </div>
         <Outlet />
       </main>
     </div>
