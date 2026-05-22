@@ -54,7 +54,7 @@ function VisitDetail() {
   });
 
   const update = useMutation({
-    mutationFn: async (patch: Record<string, any>) => {
+    mutationFn: async (patch: VisitUpdate) => {
       const { error } = await supabase.from("visits").update(patch).eq("id", id);
       if (error) throw error;
     },
