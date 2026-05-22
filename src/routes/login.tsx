@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,16 +55,8 @@ function LoginPage() {
     }
   };
 
-  const google = async () => {
-    setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      toast.error(result.error.message || "Google sign-in failed");
-      setLoading(false);
-    }
-  };
+
+
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
@@ -98,14 +90,6 @@ function LoginPage() {
                 ? "Enter your credentials to access the dashboard."
                 : "New users start with Host access; an admin can elevate roles."}
             </p>
-          </div>
-
-          <Button variant="outline" className="w-full" onClick={google} disabled={loading}>
-            Continue with Google
-          </Button>
-
-          <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
-            <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
           </div>
 
           <form onSubmit={submit} className="space-y-4">
