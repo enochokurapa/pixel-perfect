@@ -163,8 +163,39 @@ function RegisterPage() {
       <Card>
         <CardHeader><CardTitle>2. Visitor details</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Phone number <span className="text-destructive">*</span></Label>
+            <Input
+              value={form.phone}
+              onChange={(e) => set("phone", e.target.value)}
+              onBlur={async (e) => {
+                const phone = e.target.value.trim();
+                if (!phone) return;
+                const { data: existing } = await supabase
+                  .from("visitors")
+                  .select("full_name, email, company")
+                  .eq("phone", phone)
+                  .maybeSingle();
+                if (existing) {
+                  setForm((f) => ({
+                    ...f,
+                    full_name: f.full_name || existing.full_name,
+                    email: f.email || existing.email || "",
+                    company: f.company || existing.company || "",
+                  }));
+                  toast.info(`Returning visitor: ${existing.full_name}`);
+                }
+                const { data: bl } = await supabase
+                  .from("blacklist")
+                  .select("reason, visitor_id, visitors!inner(phone)")
+                  .eq("active", true)
+                  .eq("visitors.phone", phone)
+                  .maybeSingle();
+                if (bl) toast.error(`⚠ Blacklisted: ${bl.reason}`);
+              }}
+            />
+          </div>
           <Field label="Full name" required value={form.full_name} onChange={(v) => set("full_name", v)} />
-          <Field label="Phone number" required value={form.phone} onChange={(v) => set("phone", v)} />
           <Field label="Email" required type="email" value={form.email} onChange={(v) => set("email", v)} />
           <Field label="Company / Origin" value={form.company} onChange={(v) => set("company", v)} />
           <Field label="Purpose of visit" required value={form.purpose} onChange={(v) => set("purpose", v)} className="md:col-span-2" />
