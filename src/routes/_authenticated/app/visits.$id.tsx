@@ -261,8 +261,7 @@ function AssetsCard({ visitId, items, canEdit, onChange }: { visitId: string; it
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="device">Device</SelectItem>
-                  <SelectItem value="vehicle">Vehicle</SelectItem>
-                  <SelectItem value="tool">Tool</SelectItem>
+                  <SelectItem value="laptop">Laptop</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
