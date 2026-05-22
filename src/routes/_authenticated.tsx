@@ -43,6 +43,7 @@ function Shell() {
     { to: "/app", label: "Dashboard", icon: LayoutDashboard, show: true },
     { to: "/app/visitors", label: "Visitors", icon: Users, show: true },
     { to: "/app/register", label: "Register visitor", icon: UserPlus, show: me.canRegister },
+    { to: "/app/pre-register", label: "Pre-register", icon: CalendarPlus, show: true },
     { to: "/app/badges", label: "Badges", icon: BadgeCheck, show: me.isAdmin || me.isReceptionist },
     { to: "/app/blacklist", label: "Blacklist", icon: ShieldAlert, show: true },
     { to: "/app/reports", label: "Reports", icon: BarChart3, show: true },
