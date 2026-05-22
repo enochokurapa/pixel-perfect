@@ -217,7 +217,7 @@ function RejectButton({ onReject, disabled }: { onReject: (reason: string) => vo
 }
 
 function AssetsCard({ visitId, items, canEdit, onChange }: { visitId: string; items: any[]; canEdit: boolean; onChange: () => void }) {
-  const [kind, setKind] = useState<"device" | "vehicle" | "tool" | "other">("device");
+  const [kind, setKind] = useState<"laptop" | "device" | "other">("device");
   const [brand, setBrand] = useState("");
   const [serial, setSerial] = useState("");
   const [description, setDescription] = useState("");
