@@ -14,16 +14,307 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      badges: {
+        Row: {
+          badge_number: string
+          created_at: string
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["badge_status"]
+        }
+        Insert: {
+          badge_number: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["badge_status"]
+        }
+        Update: {
+          badge_number?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["badge_status"]
+        }
+        Relationships: []
+      }
+      blacklist: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string
+          visitor_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason: string
+          visitor_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string
+          visitor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blacklist_visitor_id_fkey"
+            columns: ["visitor_id"]
+            isOneToOne: false
+            referencedRelation: "visitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          department: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          position: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          email: string
+          full_name: string
+          id: string
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      visit_assets: {
+        Row: {
+          brand: string | null
+          created_at: string
+          description: string | null
+          id: string
+          kind: Database["public"]["Enums"]["asset_kind"]
+          serial: string | null
+          visit_id: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["asset_kind"]
+          serial?: string | null
+          visit_id: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["asset_kind"]
+          serial?: string | null
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_assets_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visitors: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          id_number: string | null
+          id_type: string | null
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      visits: {
+        Row: {
+          approval: Database["public"]["Enums"]["approval_status"]
+          badge_number: string | null
+          check_in_at: string | null
+          check_out_at: string | null
+          company: string | null
+          created_at: string
+          created_by: string | null
+          expected_duration_minutes: number
+          feedback: string | null
+          host_id: string | null
+          id: string
+          pre_registered: boolean
+          purpose: string
+          status: Database["public"]["Enums"]["visit_status"]
+          updated_at: string
+          vehicle_plate: string | null
+          vehicle_type: string | null
+          visit_mode: Database["public"]["Enums"]["visit_mode"]
+          visit_type: Database["public"]["Enums"]["visit_type"]
+          visitor_id: string
+          work_description: string | null
+        }
+        Insert: {
+          approval?: Database["public"]["Enums"]["approval_status"]
+          badge_number?: string | null
+          check_in_at?: string | null
+          check_out_at?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          expected_duration_minutes?: number
+          feedback?: string | null
+          host_id?: string | null
+          id?: string
+          pre_registered?: boolean
+          purpose: string
+          status?: Database["public"]["Enums"]["visit_status"]
+          updated_at?: string
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+          visit_mode?: Database["public"]["Enums"]["visit_mode"]
+          visit_type?: Database["public"]["Enums"]["visit_type"]
+          visitor_id: string
+          work_description?: string | null
+        }
+        Update: {
+          approval?: Database["public"]["Enums"]["approval_status"]
+          badge_number?: string | null
+          check_in_at?: string | null
+          check_out_at?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          expected_duration_minutes?: number
+          feedback?: string | null
+          host_id?: string | null
+          id?: string
+          pre_registered?: boolean
+          purpose?: string
+          status?: Database["public"]["Enums"]["visit_status"]
+          updated_at?: string
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+          visit_mode?: Database["public"]["Enums"]["visit_mode"]
+          visit_type?: Database["public"]["Enums"]["visit_type"]
+          visitor_id?: string
+          work_description?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visits_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visits_visitor_id_fkey"
+            columns: ["visitor_id"]
+            isOneToOne: false
+            referencedRelation: "visitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "receptionist" | "host"
+      approval_status:
+        | "not_required"
+        | "pending"
+        | "approved"
+        | "not_approved"
+        | "confirmed"
+      asset_kind: "laptop" | "device" | "other"
+      badge_status: "available" | "issued" | "unreturned" | "retired"
+      visit_mode: "walk_in" | "drive_in"
+      visit_status: "pending" | "checked_in" | "checked_out" | "overstayed"
+      visit_type: "supplier" | "contractor" | "guest"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +441,20 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "receptionist", "host"],
+      approval_status: [
+        "not_required",
+        "pending",
+        "approved",
+        "not_approved",
+        "confirmed",
+      ],
+      asset_kind: ["laptop", "device", "other"],
+      badge_status: ["available", "issued", "unreturned", "retired"],
+      visit_mode: ["walk_in", "drive_in"],
+      visit_status: ["pending", "checked_in", "checked_out", "overstayed"],
+      visit_type: ["supplier", "contractor", "guest"],
+    },
   },
 } as const
