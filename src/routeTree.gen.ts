@@ -20,6 +20,7 @@ import { Route as AuthenticatedAppRegisterRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppPreRegisterRouteImport } from './routes/_authenticated/app/pre-register'
 import { Route as AuthenticatedAppBlacklistRouteImport } from './routes/_authenticated/app/blacklist'
 import { Route as AuthenticatedAppBadgesRouteImport } from './routes/_authenticated/app/badges'
+import { Route as AuthenticatedAppVisitsIdRouteImport } from './routes/_authenticated/app/visits.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -80,6 +81,12 @@ const AuthenticatedAppBadgesRoute = AuthenticatedAppBadgesRouteImport.update({
   path: '/app/badges',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAppVisitsIdRoute =
+  AuthenticatedAppVisitsIdRouteImport.update({
+    id: '/app/visits/$id',
+    path: '/app/visits/$id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/visitors': typeof AuthenticatedAppVisitorsRoute
   '/app/': typeof AuthenticatedAppIndexRoute
+  '/app/visits/$id': typeof AuthenticatedAppVisitsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -104,6 +112,7 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/visitors': typeof AuthenticatedAppVisitorsRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/app/visits/$id': typeof AuthenticatedAppVisitsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -118,6 +127,7 @@ export interface FileRoutesById {
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/app/visitors': typeof AuthenticatedAppVisitorsRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/_authenticated/app/visits/$id': typeof AuthenticatedAppVisitsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/visitors'
     | '/app/'
+    | '/app/visits/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/visitors'
     | '/app'
+    | '/app/visits/$id'
   id:
     | '__root__'
     | '/'
@@ -157,6 +169,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/settings'
     | '/_authenticated/app/visitors'
     | '/_authenticated/app/'
+    | '/_authenticated/app/visits/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -244,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppBadgesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/app/visits/$id': {
+      id: '/_authenticated/app/visits/$id'
+      path: '/app/visits/$id'
+      fullPath: '/app/visits/$id'
+      preLoaderRoute: typeof AuthenticatedAppVisitsIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -256,6 +276,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
   AuthenticatedAppVisitorsRoute: typeof AuthenticatedAppVisitorsRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+  AuthenticatedAppVisitsIdRoute: typeof AuthenticatedAppVisitsIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -267,6 +288,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
   AuthenticatedAppVisitorsRoute: AuthenticatedAppVisitorsRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+  AuthenticatedAppVisitsIdRoute: AuthenticatedAppVisitsIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
