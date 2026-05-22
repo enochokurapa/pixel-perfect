@@ -73,6 +73,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          recipient_id: string
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          visit_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          recipient_id: string
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          visit_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          recipient_id?: string
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          visit_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -216,6 +249,7 @@ export type Database = {
           id: string
           pre_registered: boolean
           purpose: string
+          rejection_reason: string | null
           status: Database["public"]["Enums"]["visit_status"]
           updated_at: string
           vehicle_plate: string | null
@@ -239,6 +273,7 @@ export type Database = {
           id?: string
           pre_registered?: boolean
           purpose: string
+          rejection_reason?: string | null
           status?: Database["public"]["Enums"]["visit_status"]
           updated_at?: string
           vehicle_plate?: string | null
@@ -262,6 +297,7 @@ export type Database = {
           id?: string
           pre_registered?: boolean
           purpose?: string
+          rejection_reason?: string | null
           status?: Database["public"]["Enums"]["visit_status"]
           updated_at?: string
           vehicle_plate?: string | null
@@ -312,6 +348,13 @@ export type Database = {
         | "confirmed"
       asset_kind: "laptop" | "device" | "other"
       badge_status: "available" | "issued" | "unreturned" | "retired"
+      notification_type:
+        | "visit_arrived"
+        | "visit_pre_registered"
+        | "visit_checked_out"
+        | "visit_approved"
+        | "visit_rejected"
+        | "overstay"
       visit_mode: "walk_in" | "drive_in"
       visit_status: "pending" | "checked_in" | "checked_out" | "overstayed"
       visit_type: "supplier" | "contractor" | "guest"
@@ -452,6 +495,14 @@ export const Constants = {
       ],
       asset_kind: ["laptop", "device", "other"],
       badge_status: ["available", "issued", "unreturned", "retired"],
+      notification_type: [
+        "visit_arrived",
+        "visit_pre_registered",
+        "visit_checked_out",
+        "visit_approved",
+        "visit_rejected",
+        "overstay",
+      ],
       visit_mode: ["walk_in", "drive_in"],
       visit_status: ["pending", "checked_in", "checked_out", "overstayed"],
       visit_type: ["supplier", "contractor", "guest"],
