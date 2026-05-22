@@ -57,12 +57,19 @@ function VisitorsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-8 py-8">
-      <header className="flex items-end justify-between">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-semibold">Visitors</h1>
           <p className="text-sm text-muted-foreground">All visits, most recent first.</p>
         </div>
-        <Input placeholder="Search name, company, badge…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
+        <div className="flex items-center gap-3">
+          <Input placeholder="Search name, company, badge…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
+          {me.canRegister && (
+            <Button asChild>
+              <Link to="/app/register">Register visitor</Link>
+            </Button>
+          )}
+        </div>
       </header>
 
       <Card>

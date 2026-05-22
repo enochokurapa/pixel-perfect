@@ -21,9 +21,10 @@ const schema = z.object({
   full_name: z.string().trim().min(2).max(120),
   phone: z.string().trim().min(5).max(40),
   email: z.string().trim().email().max(255),
-  company: z.string().trim().max(120).optional().or(z.literal("")),
+  company: z.string().trim().min(1, "Company / Origin is required").max(120),
   purpose: z.string().trim().min(2).max(500),
-  badge_number: z.string().trim().min(1).max(40),
+  badge_number: z.string().trim().min(1, "Badge is required").max(40),
+  host_id: z.string().uuid({ message: "Host is required" }),
 });
 
 function RegisterPage() {
@@ -34,10 +35,13 @@ function RegisterPage() {
   const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor">("guest");
   const [visitMode, setVisitMode] = useState<"walk_in" | "drive_in">("walk_in");
   const [hostId, setHostId] = useState<string>("");
+  const [idScanFile, setIdScanFile] = useState<File | null>(null);
+  const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
   const [form, setForm] = useState({
     full_name: "", phone: "", email: "", company: "",
     purpose: "", work_description: "", badge_number: "",
     vehicle_plate: "", vehicle_type: "",
+    id_type: "", id_number: "",
   });
 
   const hosts = useQuery({
@@ -64,37 +68,51 @@ function RegisterPage() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const parsed = schema.parse(form);
+      const parsed = schema.parse({ ...form, host_id: hostId });
 
-      // Check blacklist
-      const { data: existing } = await supabase.from("visitors").select("id").eq("phone", parsed.phone).maybeSingle();
+      // Find or create visitor (duplicate detection by phone)
+      const { data: existing } = await supabase
+        .from("visitors").select("id").eq("phone", parsed.phone).maybeSingle();
       let visitorId = existing?.id;
+      const visitorPayload = {
+        full_name: parsed.full_name,
+        email: parsed.email,
+        company: parsed.company,
+        id_type: form.id_type || null,
+        id_number: form.id_number || null,
+      };
       if (!visitorId) {
-        const { data: v, error: vErr } = await supabase.from("visitors").insert({
-          full_name: parsed.full_name,
-          phone: parsed.phone,
-          email: parsed.email,
-          company: form.company || null,
-        }).select("id").single();
+        const { data: v, error: vErr } = await supabase.from("visitors")
+          .insert({ ...visitorPayload, phone: parsed.phone })
+          .select("id").single();
         if (vErr) throw vErr;
         visitorId = v.id;
       } else {
-        // refresh basic info
-        await supabase.from("visitors").update({
-          full_name: parsed.full_name, email: parsed.email, company: form.company || null,
-        }).eq("id", visitorId);
+        await supabase.from("visitors").update(visitorPayload).eq("id", visitorId);
       }
 
-      const { data: bl } = await supabase.from("blacklist").select("reason").eq("visitor_id", visitorId).eq("active", true).maybeSingle();
+      // Blacklist check
+      const { data: bl } = await supabase.from("blacklist")
+        .select("reason").eq("visitor_id", visitorId).eq("active", true).maybeSingle();
       if (bl) throw new Error(`Visitor is blacklisted: ${bl.reason}`);
+
+      // Optional ID scan upload
+      if (idScanFile) {
+        const ext = idScanFile.name.split(".").pop() || "jpg";
+        const path = `${visitorId}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("id-scans")
+          .upload(path, idScanFile, { upsert: true, contentType: idScanFile.type });
+        if (upErr) throw upErr;
+        await supabase.from("visitors").update({ id_scan_url: path }).eq("id", visitorId);
+      }
 
       const { data: visit, error: visitErr } = await supabase.from("visits").insert({
         visitor_id: visitorId,
-        host_id: hostId || null,
+        host_id: parsed.host_id,
         visit_type: visitType,
         visit_mode: visitMode,
         purpose: parsed.purpose,
-        company: form.company || null,
+        company: parsed.company,
         work_description: visitType !== "guest" ? form.work_description || null : null,
         badge_number: parsed.badge_number,
         vehicle_plate: visitMode === "drive_in" ? form.vehicle_plate || null : null,
@@ -105,13 +123,11 @@ function RegisterPage() {
       }).select("id").single();
       if (visitErr) throw visitErr;
 
-      // Mark badge issued
       await supabase.from("badges").update({ status: "issued" }).eq("badge_number", parsed.badge_number);
-
       return visit.id;
     },
     onSuccess: () => {
-      toast.success("Visitor registered and checked in");
+      toast.success("Visitor registered, checked in & confirmation logged");
       qc.invalidateQueries();
       navigate({ to: "/app/visitors" });
     },
@@ -183,7 +199,10 @@ function RegisterPage() {
                     email: f.email || existing.email || "",
                     company: f.company || existing.company || "",
                   }));
+                  setDuplicateNotice(`Returning visitor — details auto-filled from previous visit (${existing.full_name}).`);
                   toast.info(`Returning visitor: ${existing.full_name}`);
+                } else {
+                  setDuplicateNotice(null);
                 }
                 const { data: bl } = await supabase
                   .from("blacklist")
@@ -194,14 +213,17 @@ function RegisterPage() {
                 if (bl) toast.error(`⚠ Blacklisted: ${bl.reason}`);
               }}
             />
+            {duplicateNotice && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">{duplicateNotice}</p>
+            )}
           </div>
           <Field label="Full name" required value={form.full_name} onChange={(v) => set("full_name", v)} />
           <Field label="Email" required type="email" value={form.email} onChange={(v) => set("email", v)} />
-          <Field label="Company / Origin" value={form.company} onChange={(v) => set("company", v)} />
+          <Field label="Company / Origin" required value={form.company} onChange={(v) => set("company", v)} />
           <Field label="Purpose of visit" required value={form.purpose} onChange={(v) => set("purpose", v)} className="md:col-span-2" />
 
           <div className="space-y-2">
-            <Label>Host</Label>
+            <Label>Host <span className="text-destructive">*</span></Label>
             <Select value={hostId} onValueChange={setHostId}>
               <SelectTrigger><SelectValue placeholder="Select host" /></SelectTrigger>
               <SelectContent>
@@ -213,7 +235,7 @@ function RegisterPage() {
           </div>
 
           <div className="space-y-2">
-            <Label>Badge number</Label>
+            <Label>Badge number <span className="text-destructive">*</span></Label>
             <Select value={form.badge_number} onValueChange={(v) => set("badge_number", v)}>
               <SelectTrigger><SelectValue placeholder="Assign an available badge" /></SelectTrigger>
               <SelectContent>
@@ -231,6 +253,38 @@ function RegisterPage() {
               <Field label="Vehicle type" value={form.vehicle_type} onChange={(v) => set("vehicle_type", v)} />
             </>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>3. Identification (optional)</CardTitle>
+          <CardDescription>Capture ID details and an optional scan for audit.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>ID Type</Label>
+            <Select value={form.id_type} onValueChange={(v) => set("id_type", v)}>
+              <SelectTrigger><SelectValue placeholder="Select ID type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="national_id">National ID</SelectItem>
+                <SelectItem value="passport">Passport</SelectItem>
+                <SelectItem value="drivers_license">Driver's License</SelectItem>
+                <SelectItem value="work_id">Work ID</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Field label="ID Number" value={form.id_number} onChange={(v) => set("id_number", v)} />
+          <div className="space-y-2 md:col-span-2">
+            <Label>ID Scan (image)</Label>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setIdScanFile(e.target.files?.[0] ?? null)}
+            />
+            {idScanFile && <p className="text-xs text-muted-foreground">Selected: {idScanFile.name}</p>}
+          </div>
         </CardContent>
       </Card>
 

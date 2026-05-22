@@ -206,6 +206,7 @@ export type Database = {
           full_name: string
           id: string
           id_number: string | null
+          id_scan_url: string | null
           id_type: string | null
           phone: string
           updated_at: string
@@ -217,6 +218,7 @@ export type Database = {
           full_name: string
           id?: string
           id_number?: string | null
+          id_scan_url?: string | null
           id_type?: string | null
           phone: string
           updated_at?: string
@@ -228,6 +230,7 @@ export type Database = {
           full_name?: string
           id?: string
           id_number?: string | null
+          id_scan_url?: string | null
           id_type?: string | null
           phone?: string
           updated_at?: string
