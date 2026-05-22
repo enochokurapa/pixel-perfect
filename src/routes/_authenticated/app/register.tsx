@@ -74,7 +74,7 @@ function RegisterPage() {
       const { data: existing } = await supabase
         .from("visitors").select("id").eq("phone", parsed.phone).maybeSingle();
       let visitorId = existing?.id;
-      const visitorPayload: Record<string, unknown> = {
+      const visitorPayload = {
         full_name: parsed.full_name,
         email: parsed.email,
         company: parsed.company,
