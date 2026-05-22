@@ -68,37 +68,51 @@ function RegisterPage() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const parsed = schema.parse(form);
+      const parsed = schema.parse({ ...form, host_id: hostId });
 
-      // Check blacklist
-      const { data: existing } = await supabase.from("visitors").select("id").eq("phone", parsed.phone).maybeSingle();
+      // Find or create visitor (duplicate detection by phone)
+      const { data: existing } = await supabase
+        .from("visitors").select("id").eq("phone", parsed.phone).maybeSingle();
       let visitorId = existing?.id;
+      const visitorPayload: Record<string, unknown> = {
+        full_name: parsed.full_name,
+        email: parsed.email,
+        company: parsed.company,
+        id_type: form.id_type || null,
+        id_number: form.id_number || null,
+      };
       if (!visitorId) {
-        const { data: v, error: vErr } = await supabase.from("visitors").insert({
-          full_name: parsed.full_name,
-          phone: parsed.phone,
-          email: parsed.email,
-          company: form.company || null,
-        }).select("id").single();
+        const { data: v, error: vErr } = await supabase.from("visitors")
+          .insert({ ...visitorPayload, phone: parsed.phone })
+          .select("id").single();
         if (vErr) throw vErr;
         visitorId = v.id;
       } else {
-        // refresh basic info
-        await supabase.from("visitors").update({
-          full_name: parsed.full_name, email: parsed.email, company: form.company || null,
-        }).eq("id", visitorId);
+        await supabase.from("visitors").update(visitorPayload).eq("id", visitorId);
       }
 
-      const { data: bl } = await supabase.from("blacklist").select("reason").eq("visitor_id", visitorId).eq("active", true).maybeSingle();
+      // Blacklist check
+      const { data: bl } = await supabase.from("blacklist")
+        .select("reason").eq("visitor_id", visitorId).eq("active", true).maybeSingle();
       if (bl) throw new Error(`Visitor is blacklisted: ${bl.reason}`);
+
+      // Optional ID scan upload
+      if (idScanFile) {
+        const ext = idScanFile.name.split(".").pop() || "jpg";
+        const path = `${visitorId}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("id-scans")
+          .upload(path, idScanFile, { upsert: true, contentType: idScanFile.type });
+        if (upErr) throw upErr;
+        await supabase.from("visitors").update({ id_scan_url: path }).eq("id", visitorId);
+      }
 
       const { data: visit, error: visitErr } = await supabase.from("visits").insert({
         visitor_id: visitorId,
-        host_id: hostId || null,
+        host_id: parsed.host_id,
         visit_type: visitType,
         visit_mode: visitMode,
         purpose: parsed.purpose,
-        company: form.company || null,
+        company: parsed.company,
         work_description: visitType !== "guest" ? form.work_description || null : null,
         badge_number: parsed.badge_number,
         vehicle_plate: visitMode === "drive_in" ? form.vehicle_plate || null : null,
@@ -109,13 +123,11 @@ function RegisterPage() {
       }).select("id").single();
       if (visitErr) throw visitErr;
 
-      // Mark badge issued
       await supabase.from("badges").update({ status: "issued" }).eq("badge_number", parsed.badge_number);
-
       return visit.id;
     },
     onSuccess: () => {
-      toast.success("Visitor registered and checked in");
+      toast.success("Visitor registered, checked in & confirmation logged");
       qc.invalidateQueries();
       navigate({ to: "/app/visitors" });
     },
