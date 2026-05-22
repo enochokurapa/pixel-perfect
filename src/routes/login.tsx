@@ -20,6 +20,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -27,25 +28,45 @@ function LoginPage() {
     });
   }, [navigate]);
 
+  const resendVerification = async (target: string) => {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: target,
+      options: { emailRedirectTo: `${window.location.origin}/app` },
+    });
+    if (error) toast.error(error.message);
+    else toast.success("Verification email resent. Check your inbox.");
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/app`,
           },
         });
         if (error) throw error;
-        toast.success("Account created — you can sign in now.");
-        setMode("signin");
+        // If email confirmation is required, no session is returned
+        if (!data.session) {
+          setPendingVerification(email);
+          toast.success("Account created — check your email to verify.");
+        } else {
+          navigate({ to: "/app" });
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          if (/confirm|verif/i.test(error.message)) {
+            setPendingVerification(email);
+          }
+          throw error;
+        }
         navigate({ to: "/app" });
       }
     } catch (err) {
