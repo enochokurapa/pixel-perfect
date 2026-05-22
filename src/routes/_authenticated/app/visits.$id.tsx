@@ -115,7 +115,7 @@ function VisitDetail() {
                 </Button>
               </>
             )}
-            {canStaffEdit && v.status === "pending" && v.approval !== "rejected" && (
+            {canStaffEdit && v.status === "pending" && v.approval !== "not_approved" && (
               <Button onClick={checkIn} disabled={update.isPending}>
                 <LogIn className="mr-1 h-4 w-4" /> Check in
               </Button>
