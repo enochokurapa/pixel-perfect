@@ -20,6 +20,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -27,25 +28,45 @@ function LoginPage() {
     });
   }, [navigate]);
 
+  const resendVerification = async (target: string) => {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: target,
+      options: { emailRedirectTo: `${window.location.origin}/app` },
+    });
+    if (error) toast.error(error.message);
+    else toast.success("Verification email resent. Check your inbox.");
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/app`,
           },
         });
         if (error) throw error;
-        toast.success("Account created — you can sign in now.");
-        setMode("signin");
+        // If email confirmation is required, no session is returned
+        if (!data.session) {
+          setPendingVerification(email);
+          toast.success("Account created — check your email to verify.");
+        } else {
+          navigate({ to: "/app" });
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          if (/confirm|verif/i.test(error.message)) {
+            setPendingVerification(email);
+          }
+          throw error;
+        }
         navigate({ to: "/app" });
       }
     } catch (err) {
@@ -91,6 +112,22 @@ function LoginPage() {
                 : "New users start with Host access; an admin can elevate roles."}
             </p>
           </div>
+
+          {pendingVerification && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-200">Verify your email to continue</p>
+              <p className="mt-1 text-amber-800/80 dark:text-amber-200/80">
+                We sent a verification link to <span className="font-medium">{pendingVerification}</span>. Click the link, then sign in.
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-xs font-medium text-amber-900 underline dark:text-amber-200"
+                onClick={() => resendVerification(pendingVerification)}
+              >
+                Resend verification email
+              </button>
+            </div>
+          )}
 
           <form onSubmit={submit} className="space-y-4">
             {mode === "signup" && (
