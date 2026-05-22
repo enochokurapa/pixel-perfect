@@ -75,7 +75,7 @@ function VisitDetail() {
   const canStaffEdit = me.isAdmin || me.isReceptionist;
 
   const approve = () => update.mutate({ approval: "approved" });
-  const reject = (reason: string) => update.mutate({ approval: "rejected", rejection_reason: reason, status: "cancelled" });
+  const reject = (reason: string) => update.mutate({ approval: "not_approved", rejection_reason: reason });
   const checkIn = () => update.mutate({ status: "checked_in", check_in_at: new Date().toISOString() });
   const checkOut = async () => {
     await update.mutateAsync({ status: "checked_out", check_out_at: new Date().toISOString() });
