@@ -2,12 +2,13 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import { useEffect } from "react";
 import {
   LayoutDashboard, Users, UserPlus, BadgeCheck, ShieldAlert, BarChart3,
-  Settings as SettingsIcon, LogOut, ShieldCheck,
+  Settings as SettingsIcon, LogOut, ShieldCheck, CalendarPlus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser, useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { NotificationsBell } from "@/components/notifications-bell";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthLayout,
