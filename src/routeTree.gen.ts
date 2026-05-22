@@ -17,6 +17,7 @@ import { Route as AuthenticatedAppVisitorsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app/settings'
 import { Route as AuthenticatedAppReportsRouteImport } from './routes/_authenticated/app/reports'
 import { Route as AuthenticatedAppRegisterRouteImport } from './routes/_authenticated/app/register'
+import { Route as AuthenticatedAppPreRegisterRouteImport } from './routes/_authenticated/app/pre-register'
 import { Route as AuthenticatedAppBlacklistRouteImport } from './routes/_authenticated/app/blacklist'
 import { Route as AuthenticatedAppBadgesRouteImport } from './routes/_authenticated/app/badges'
 
@@ -62,6 +63,12 @@ const AuthenticatedAppRegisterRoute =
     path: '/app/register',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAppPreRegisterRoute =
+  AuthenticatedAppPreRegisterRouteImport.update({
+    id: '/app/pre-register',
+    path: '/app/pre-register',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAppBlacklistRoute =
   AuthenticatedAppBlacklistRouteImport.update({
     id: '/app/blacklist',
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/app/badges': typeof AuthenticatedAppBadgesRoute
   '/app/blacklist': typeof AuthenticatedAppBlacklistRoute
+  '/app/pre-register': typeof AuthenticatedAppPreRegisterRoute
   '/app/register': typeof AuthenticatedAppRegisterRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/app/badges': typeof AuthenticatedAppBadgesRoute
   '/app/blacklist': typeof AuthenticatedAppBlacklistRoute
+  '/app/pre-register': typeof AuthenticatedAppPreRegisterRoute
   '/app/register': typeof AuthenticatedAppRegisterRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
@@ -103,6 +112,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/app/badges': typeof AuthenticatedAppBadgesRoute
   '/_authenticated/app/blacklist': typeof AuthenticatedAppBlacklistRoute
+  '/_authenticated/app/pre-register': typeof AuthenticatedAppPreRegisterRoute
   '/_authenticated/app/register': typeof AuthenticatedAppRegisterRoute
   '/_authenticated/app/reports': typeof AuthenticatedAppReportsRoute
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/app/badges'
     | '/app/blacklist'
+    | '/app/pre-register'
     | '/app/register'
     | '/app/reports'
     | '/app/settings'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/app/badges'
     | '/app/blacklist'
+    | '/app/pre-register'
     | '/app/register'
     | '/app/reports'
     | '/app/settings'
@@ -139,6 +151,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/app/badges'
     | '/_authenticated/app/blacklist'
+    | '/_authenticated/app/pre-register'
     | '/_authenticated/app/register'
     | '/_authenticated/app/reports'
     | '/_authenticated/app/settings'
@@ -210,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppRegisterRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/app/pre-register': {
+      id: '/_authenticated/app/pre-register'
+      path: '/app/pre-register'
+      fullPath: '/app/pre-register'
+      preLoaderRoute: typeof AuthenticatedAppPreRegisterRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/app/blacklist': {
       id: '/_authenticated/app/blacklist'
       path: '/app/blacklist'
@@ -230,6 +250,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedAppBadgesRoute: typeof AuthenticatedAppBadgesRoute
   AuthenticatedAppBlacklistRoute: typeof AuthenticatedAppBlacklistRoute
+  AuthenticatedAppPreRegisterRoute: typeof AuthenticatedAppPreRegisterRoute
   AuthenticatedAppRegisterRoute: typeof AuthenticatedAppRegisterRoute
   AuthenticatedAppReportsRoute: typeof AuthenticatedAppReportsRoute
   AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
@@ -240,6 +261,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAppBadgesRoute: AuthenticatedAppBadgesRoute,
   AuthenticatedAppBlacklistRoute: AuthenticatedAppBlacklistRoute,
+  AuthenticatedAppPreRegisterRoute: AuthenticatedAppPreRegisterRoute,
   AuthenticatedAppRegisterRoute: AuthenticatedAppRegisterRoute,
   AuthenticatedAppReportsRoute: AuthenticatedAppReportsRoute,
   AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
@@ -259,3 +281,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
