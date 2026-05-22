@@ -113,6 +113,22 @@ function LoginPage() {
             </p>
           </div>
 
+          {pendingVerification && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-200">Verify your email to continue</p>
+              <p className="mt-1 text-amber-800/80 dark:text-amber-200/80">
+                We sent a verification link to <span className="font-medium">{pendingVerification}</span>. Click the link, then sign in.
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-xs font-medium text-amber-900 underline dark:text-amber-200"
+                onClick={() => resendVerification(pendingVerification)}
+              >
+                Resend verification email
+              </button>
+            </div>
+          )}
+
           <form onSubmit={submit} className="space-y-4">
             {mode === "signup" && (
               <div className="space-y-2">
