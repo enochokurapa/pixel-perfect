@@ -18,21 +18,28 @@ function Dashboard() {
   const stats = useQuery({
     queryKey: ["dashboard", "stats"],
     queryFn: async () => {
-      const [inside, today, overstay, badges, withAssets] = await Promise.all([
-        supabase.from("visits").select("id", { count: "exact", head: true }).eq("status", "checked_in"),
+      const now = new Date();
+      const [insideRows, today, badges, withAssets] = await Promise.all([
+        supabase.from("visits").select("id, check_in_at, expected_duration_minutes").eq("status", "checked_in"),
         supabase.from("visits").select("id", { count: "exact", head: true }).gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
-        supabase.from("visits").select("id", { count: "exact", head: true }).eq("status", "overstayed"),
         supabase.from("badges").select("id", { count: "exact", head: true }).eq("status", "issued"),
         supabase.from("visit_assets").select("visit_id", { count: "exact", head: true }),
       ]);
+      const inside = insideRows.data ?? [];
+      const overstay = inside.filter((v) => {
+        if (!v.check_in_at) return false;
+        const due = new Date(v.check_in_at).getTime() + (v.expected_duration_minutes ?? 180) * 60_000;
+        return due < now.getTime();
+      }).length;
       return {
-        inside: inside.count ?? 0,
+        inside: inside.length,
         today: today.count ?? 0,
-        overstay: overstay.count ?? 0,
+        overstay,
         badgesIssued: badges.count ?? 0,
         withAssets: withAssets.count ?? 0,
       };
     },
+    refetchInterval: 60_000,
   });
 
   const recent = useQuery({
