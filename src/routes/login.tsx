@@ -100,14 +100,6 @@ function LoginPage() {
             </p>
           </div>
 
-          <Button variant="outline" className="w-full" onClick={google} disabled={loading}>
-            Continue with Google
-          </Button>
-
-          <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
-            <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
-          </div>
-
           <form onSubmit={submit} className="space-y-4">
             {mode === "signup" && (
               <div className="space-y-2">
