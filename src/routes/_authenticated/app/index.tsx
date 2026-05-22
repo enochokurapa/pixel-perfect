@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Users, LogIn, LogOut, AlertTriangle, Laptop, BadgeCheck, UserPlus } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
 
-export const Route = createFileRoute("/_authenticated/")({
+export const Route = createFileRoute("/_authenticated/app/")({
   head: () => ({ meta: [{ title: "Dashboard — Sentinel VMS" }] }),
   component: Dashboard,
 });

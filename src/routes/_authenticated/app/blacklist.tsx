@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useCurrentUser } from "@/hooks/use-session";
 import { ShieldAlert } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/blacklist")({
+export const Route = createFileRoute("/_authenticated/app/blacklist")({
   head: () => ({ meta: [{ title: "Blacklist — Sentinel VMS" }] }),
   component: BlacklistPage,
 });

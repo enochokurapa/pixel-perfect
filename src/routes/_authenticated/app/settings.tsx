@@ -8,7 +8,7 @@ import { useCurrentUser } from "@/hooks/use-session";
 import { useState } from "react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/settings")({
+export const Route = createFileRoute("/_authenticated/app/settings")({
   head: () => ({ meta: [{ title: "Settings — Sentinel VMS" }] }),
   component: Settings,
 });

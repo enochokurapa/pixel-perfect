@@ -9,38 +9,165 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
+import { Route as AuthenticatedAppVisitorsRouteImport } from './routes/_authenticated/app/visitors'
+import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app/settings'
+import { Route as AuthenticatedAppReportsRouteImport } from './routes/_authenticated/app/reports'
+import { Route as AuthenticatedAppRegisterRouteImport } from './routes/_authenticated/app/register'
+import { Route as AuthenticatedAppBlacklistRouteImport } from './routes/_authenticated/app/blacklist'
+import { Route as AuthenticatedAppBadgesRouteImport } from './routes/_authenticated/app/badges'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
+  id: '/app/',
+  path: '/app/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAppVisitorsRoute =
+  AuthenticatedAppVisitorsRouteImport.update({
+    id: '/app/visitors',
+    path: '/app/visitors',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAppSettingsRoute =
+  AuthenticatedAppSettingsRouteImport.update({
+    id: '/app/settings',
+    path: '/app/settings',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAppReportsRoute = AuthenticatedAppReportsRouteImport.update({
+  id: '/app/reports',
+  path: '/app/reports',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAppRegisterRoute =
+  AuthenticatedAppRegisterRouteImport.update({
+    id: '/app/register',
+    path: '/app/register',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAppBlacklistRoute =
+  AuthenticatedAppBlacklistRouteImport.update({
+    id: '/app/blacklist',
+    path: '/app/blacklist',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAppBadgesRoute = AuthenticatedAppBadgesRouteImport.update({
+  id: '/app/badges',
+  path: '/app/badges',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/app/badges': typeof AuthenticatedAppBadgesRoute
+  '/app/blacklist': typeof AuthenticatedAppBlacklistRoute
+  '/app/register': typeof AuthenticatedAppRegisterRoute
+  '/app/reports': typeof AuthenticatedAppReportsRoute
+  '/app/settings': typeof AuthenticatedAppSettingsRoute
+  '/app/visitors': typeof AuthenticatedAppVisitorsRoute
+  '/app/': typeof AuthenticatedAppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/app/badges': typeof AuthenticatedAppBadgesRoute
+  '/app/blacklist': typeof AuthenticatedAppBlacklistRoute
+  '/app/register': typeof AuthenticatedAppRegisterRoute
+  '/app/reports': typeof AuthenticatedAppReportsRoute
+  '/app/settings': typeof AuthenticatedAppSettingsRoute
+  '/app/visitors': typeof AuthenticatedAppVisitorsRoute
+  '/app': typeof AuthenticatedAppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_authenticated/app/badges': typeof AuthenticatedAppBadgesRoute
+  '/_authenticated/app/blacklist': typeof AuthenticatedAppBlacklistRoute
+  '/_authenticated/app/register': typeof AuthenticatedAppRegisterRoute
+  '/_authenticated/app/reports': typeof AuthenticatedAppReportsRoute
+  '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
+  '/_authenticated/app/visitors': typeof AuthenticatedAppVisitorsRoute
+  '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/app/badges'
+    | '/app/blacklist'
+    | '/app/register'
+    | '/app/reports'
+    | '/app/settings'
+    | '/app/visitors'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/app/badges'
+    | '/app/blacklist'
+    | '/app/register'
+    | '/app/reports'
+    | '/app/settings'
+    | '/app/visitors'
+    | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/login'
+    | '/_authenticated/app/badges'
+    | '/_authenticated/app/blacklist'
+    | '/_authenticated/app/register'
+    | '/_authenticated/app/reports'
+    | '/_authenticated/app/settings'
+    | '/_authenticated/app/visitors'
+    | '/_authenticated/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,12 +175,97 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/app/': {
+      id: '/_authenticated/app/'
+      path: '/app'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/app/visitors': {
+      id: '/_authenticated/app/visitors'
+      path: '/app/visitors'
+      fullPath: '/app/visitors'
+      preLoaderRoute: typeof AuthenticatedAppVisitorsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/app/settings': {
+      id: '/_authenticated/app/settings'
+      path: '/app/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AuthenticatedAppSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/app/reports': {
+      id: '/_authenticated/app/reports'
+      path: '/app/reports'
+      fullPath: '/app/reports'
+      preLoaderRoute: typeof AuthenticatedAppReportsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/app/register': {
+      id: '/_authenticated/app/register'
+      path: '/app/register'
+      fullPath: '/app/register'
+      preLoaderRoute: typeof AuthenticatedAppRegisterRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/app/blacklist': {
+      id: '/_authenticated/app/blacklist'
+      path: '/app/blacklist'
+      fullPath: '/app/blacklist'
+      preLoaderRoute: typeof AuthenticatedAppBlacklistRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/app/badges': {
+      id: '/_authenticated/app/badges'
+      path: '/app/badges'
+      fullPath: '/app/badges'
+      preLoaderRoute: typeof AuthenticatedAppBadgesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
+interface AuthenticatedRouteChildren {
+  AuthenticatedAppBadgesRoute: typeof AuthenticatedAppBadgesRoute
+  AuthenticatedAppBlacklistRoute: typeof AuthenticatedAppBlacklistRoute
+  AuthenticatedAppRegisterRoute: typeof AuthenticatedAppRegisterRoute
+  AuthenticatedAppReportsRoute: typeof AuthenticatedAppReportsRoute
+  AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
+  AuthenticatedAppVisitorsRoute: typeof AuthenticatedAppVisitorsRoute
+  AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAppBadgesRoute: AuthenticatedAppBadgesRoute,
+  AuthenticatedAppBlacklistRoute: AuthenticatedAppBlacklistRoute,
+  AuthenticatedAppRegisterRoute: AuthenticatedAppRegisterRoute,
+  AuthenticatedAppReportsRoute: AuthenticatedAppReportsRoute,
+  AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
+  AuthenticatedAppVisitorsRoute: AuthenticatedAppVisitorsRoute,
+  AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
