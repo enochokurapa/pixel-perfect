@@ -112,6 +112,9 @@ function Shell() {
       </aside>
 
       <main className="overflow-auto">
+        <div className="sticky top-0 z-10 flex justify-end border-b border-border/60 bg-background/80 px-6 py-2 backdrop-blur">
+          <NotificationsBell />
+        </div>
         <Outlet />
       </main>
     </div>
