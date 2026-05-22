@@ -199,7 +199,10 @@ function RegisterPage() {
                     email: f.email || existing.email || "",
                     company: f.company || existing.company || "",
                   }));
+                  setDuplicateNotice(`Returning visitor — details auto-filled from previous visit (${existing.full_name}).`);
                   toast.info(`Returning visitor: ${existing.full_name}`);
+                } else {
+                  setDuplicateNotice(null);
                 }
                 const { data: bl } = await supabase
                   .from("blacklist")
@@ -210,14 +213,17 @@ function RegisterPage() {
                 if (bl) toast.error(`⚠ Blacklisted: ${bl.reason}`);
               }}
             />
+            {duplicateNotice && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">{duplicateNotice}</p>
+            )}
           </div>
           <Field label="Full name" required value={form.full_name} onChange={(v) => set("full_name", v)} />
           <Field label="Email" required type="email" value={form.email} onChange={(v) => set("email", v)} />
-          <Field label="Company / Origin" value={form.company} onChange={(v) => set("company", v)} />
+          <Field label="Company / Origin" required value={form.company} onChange={(v) => set("company", v)} />
           <Field label="Purpose of visit" required value={form.purpose} onChange={(v) => set("purpose", v)} className="md:col-span-2" />
 
           <div className="space-y-2">
-            <Label>Host</Label>
+            <Label>Host <span className="text-destructive">*</span></Label>
             <Select value={hostId} onValueChange={setHostId}>
               <SelectTrigger><SelectValue placeholder="Select host" /></SelectTrigger>
               <SelectContent>
@@ -229,7 +235,7 @@ function RegisterPage() {
           </div>
 
           <div className="space-y-2">
-            <Label>Badge number</Label>
+            <Label>Badge number <span className="text-destructive">*</span></Label>
             <Select value={form.badge_number} onValueChange={(v) => set("badge_number", v)}>
               <SelectTrigger><SelectValue placeholder="Assign an available badge" /></SelectTrigger>
               <SelectContent>
@@ -247,6 +253,38 @@ function RegisterPage() {
               <Field label="Vehicle type" value={form.vehicle_type} onChange={(v) => set("vehicle_type", v)} />
             </>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>3. Identification (optional)</CardTitle>
+          <CardDescription>Capture ID details and an optional scan for audit.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>ID Type</Label>
+            <Select value={form.id_type} onValueChange={(v) => set("id_type", v)}>
+              <SelectTrigger><SelectValue placeholder="Select ID type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="national_id">National ID</SelectItem>
+                <SelectItem value="passport">Passport</SelectItem>
+                <SelectItem value="drivers_license">Driver's License</SelectItem>
+                <SelectItem value="work_id">Work ID</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Field label="ID Number" value={form.id_number} onChange={(v) => set("id_number", v)} />
+          <div className="space-y-2 md:col-span-2">
+            <Label>ID Scan (image)</Label>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setIdScanFile(e.target.files?.[0] ?? null)}
+            />
+            {idScanFile && <p className="text-xs text-muted-foreground">Selected: {idScanFile.name}</p>}
+          </div>
         </CardContent>
       </Card>
 
