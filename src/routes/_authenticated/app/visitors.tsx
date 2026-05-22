@@ -9,7 +9,7 @@ import { StatusBadge } from "./index";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/hooks/use-session";
 
-export const Route = createFileRoute("/_authenticated/visitors")({
+export const Route = createFileRoute("/_authenticated/app/visitors")({
   head: () => ({ meta: [{ title: "Visitors — Sentinel VMS" }] }),
   component: VisitorsPage,
 });
