@@ -21,9 +21,10 @@ const schema = z.object({
   full_name: z.string().trim().min(2).max(120),
   phone: z.string().trim().min(5).max(40),
   email: z.string().trim().email().max(255),
-  company: z.string().trim().max(120).optional().or(z.literal("")),
+  company: z.string().trim().min(1, "Company / Origin is required").max(120),
   purpose: z.string().trim().min(2).max(500),
-  badge_number: z.string().trim().min(1).max(40),
+  badge_number: z.string().trim().min(1, "Badge is required").max(40),
+  host_id: z.string().uuid({ message: "Host is required" }),
 });
 
 function RegisterPage() {
@@ -34,10 +35,13 @@ function RegisterPage() {
   const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor">("guest");
   const [visitMode, setVisitMode] = useState<"walk_in" | "drive_in">("walk_in");
   const [hostId, setHostId] = useState<string>("");
+  const [idScanFile, setIdScanFile] = useState<File | null>(null);
+  const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
   const [form, setForm] = useState({
     full_name: "", phone: "", email: "", company: "",
     purpose: "", work_description: "", badge_number: "",
     vehicle_plate: "", vehicle_type: "",
+    id_type: "", id_number: "",
   });
 
   const hosts = useQuery({
