@@ -63,7 +63,9 @@ export function useCurrentUser() {
     isLoading: profile.isLoading || roles.isLoading,
     isAdmin: has("admin"),
     isReceptionist: has("receptionist"),
+    isSecurity: has("security"),
     isHost: has("host"),
-    canRegister: has("admin") || has("receptionist"),
+    canRegister: has("admin") || has("receptionist") || has("security"),
+    canManageBadges: has("admin") || has("receptionist") || has("security"),
   };
 }
