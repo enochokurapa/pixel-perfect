@@ -57,16 +57,19 @@ function Dashboard() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-8 py-8">
-      <header className="flex items-end justify-between">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold">Welcome, {me.profile?.full_name?.split(" ")[0] ?? "there"}</h1>
           <p className="text-sm text-muted-foreground">Live overview of visitor activity across the premises.</p>
         </div>
-        {me.canRegister && (
-          <Button asChild>
-            <Link to="/app/register"><UserPlus className="mr-2 h-4 w-4" />Register visitor</Link>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="lg">
+            <Link to="/app/register"><UserPlus className="mr-2 h-4 w-4" />Register new visitor</Link>
           </Button>
-        )}
+          <Button asChild variant="outline" size="lg">
+            <Link to="/app/pre-register">Pre-register</Link>
+          </Button>
+        </div>
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
