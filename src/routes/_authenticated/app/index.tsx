@@ -55,6 +55,21 @@ function Dashboard() {
     },
   });
 
+  const pendingApprovals = useQuery({
+    queryKey: ["dashboard", "pending-approvals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visits")
+        .select("id, purpose, created_at, visitor:visitors(full_name, company), host:profiles(full_name)")
+        .eq("approval", "pending")
+        .eq("pre_registered", true)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-8 py-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
