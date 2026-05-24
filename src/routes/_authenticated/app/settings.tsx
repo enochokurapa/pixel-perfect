@@ -22,8 +22,8 @@ export const Route = createFileRoute("/_authenticated/app/settings")({
   component: Settings,
 });
 
-type Role = "admin" | "receptionist" | "host";
-const ALL_ROLES: Role[] = ["admin", "receptionist", "host"];
+type Role = "admin" | "receptionist" | "security" | "host";
+const ALL_ROLES: Role[] = ["admin", "receptionist", "security", "host"];
 
 function Settings() {
   const me = useCurrentUser();
