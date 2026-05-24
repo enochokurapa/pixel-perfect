@@ -51,8 +51,15 @@ function Settings() {
   });
 
   const createMut = useMutation({
-    mutationFn: (payload: Parameters<typeof createFn>[0]["data"]) =>
-      createFn({ data: payload }),
+    mutationFn: (payload: {
+      full_name: string;
+      email: string;
+      password: string;
+      position?: string | null;
+      phone?: string | null;
+      department?: string | null;
+      roles: Role[];
+    }) => createFn({ data: payload }),
     onSuccess: () => {
       toast.success("Staff member created");
       qc.invalidateQueries({ queryKey: ["staff"] });
