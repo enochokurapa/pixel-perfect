@@ -50,7 +50,7 @@ function BadgesPage() {
         <p className="text-sm text-muted-foreground">Inventory of physical badges and their current status.</p>
       </header>
 
-      {me.isAdmin && (
+      {me.canManageBadges && (
         <Card>
           <CardHeader><CardTitle>Add badge</CardTitle></CardHeader>
           <CardContent className="flex gap-3">
