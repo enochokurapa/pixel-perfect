@@ -22,8 +22,8 @@ export const Route = createFileRoute("/_authenticated/app/settings")({
   component: Settings,
 });
 
-type Role = "admin" | "receptionist" | "host";
-const ALL_ROLES: Role[] = ["admin", "receptionist", "host"];
+type Role = "admin" | "receptionist" | "security" | "host";
+const ALL_ROLES: Role[] = ["admin", "receptionist", "security", "host"];
 
 function Settings() {
   const me = useCurrentUser();
@@ -274,7 +274,7 @@ function CreateStaffCard({
           </div>
           <p className="text-[11px] text-muted-foreground">
             <ShieldCheck className="mr-1 inline h-3 w-3" />
-            Admin = full access · Receptionist = check-in/out, badges · Host = receive & approve own visits
+            Admin = full access · Receptionist = front-desk check-in/out & badges · Security = gate check-in/out, badges & escort · Host = receive & approve own visits
           </p>
         </div>
         <div className="md:col-span-2 flex justify-end">
