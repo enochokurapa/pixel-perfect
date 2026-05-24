@@ -55,6 +55,21 @@ function Dashboard() {
     },
   });
 
+  const pendingApprovals = useQuery({
+    queryKey: ["dashboard", "pending-approvals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visits")
+        .select("id, purpose, created_at, visitor:visitors(full_name, company), host:profiles(full_name)")
+        .eq("approval", "pending")
+        .eq("pre_registered", true)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-8 py-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -79,6 +94,30 @@ function Dashboard() {
         <StatCard label="Badges issued" value={stats.data?.badgesIssued} icon={BadgeCheck} tone="default" />
         <StatCard label="With assets" value={stats.data?.withAssets} icon={Laptop} tone="default" />
       </section>
+
+      {(pendingApprovals.data?.length ?? 0) > 0 && (
+        <Card className="border-warning/40">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              Pending approvals ({pendingApprovals.data?.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="divide-y divide-border">
+              {pendingApprovals.data?.map((v) => (
+                <Link key={v.id} to="/app/visits/$id" params={{ id: v.id }} className="flex items-center justify-between py-3 hover:bg-muted/40 -mx-2 px-2 rounded">
+                  <div>
+                    <div className="font-medium">{v.visitor?.full_name}{v.visitor?.company ? <span className="text-muted-foreground"> · {v.visitor.company}</span> : null}</div>
+                    <div className="text-xs text-muted-foreground">Host: {v.host?.full_name ?? "—"} · {v.purpose}</div>
+                  </div>
+                  <Badge variant="outline" className="border-warning/40 text-warning-foreground">Review</Badge>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

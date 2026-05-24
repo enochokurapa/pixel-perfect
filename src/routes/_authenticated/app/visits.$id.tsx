@@ -107,7 +107,7 @@ function VisitDetail() {
             </p>
           </div>
           <div className="flex gap-2">
-            {isHost && v.approval === "pending" && (
+            {(isHost || me.isAdmin) && v.approval === "pending" && (
               <>
                 <RejectButton onReject={reject} disabled={update.isPending} />
                 <Button onClick={approve} disabled={update.isPending}>
