@@ -62,13 +62,11 @@ function VisitorsPage() {
           <h1 className="font-display text-3xl font-semibold">Visitors</h1>
           <p className="text-sm text-muted-foreground">All visits, most recent first.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Input placeholder="Search name, company, badge…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
-          {me.canRegister && (
-            <Button asChild>
-              <Link to="/app/register">Register visitor</Link>
-            </Button>
-          )}
+          <Button asChild size="lg">
+            <Link to="/app/register">+ Register new visitor</Link>
+          </Button>
         </div>
       </header>
 
