@@ -41,7 +41,7 @@ function Shell() {
 
   const nav = [
     { to: "/app", label: "Dashboard", icon: LayoutDashboard, show: true },
-    { to: "/app/register", label: "Register visitor", icon: UserPlus, show: me.canRegister },
+    { to: "/app/register", label: "Register visitor", icon: UserPlus, show: true },
     { to: "/app/visitors", label: "Visitors", icon: Users, show: true },
     { to: "/app/pre-register", label: "Pre-register", icon: CalendarPlus, show: true },
     { to: "/app/badges", label: "Badges", icon: BadgeCheck, show: me.isAdmin || me.isReceptionist },
