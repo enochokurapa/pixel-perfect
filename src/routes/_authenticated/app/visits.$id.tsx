@@ -158,7 +158,7 @@ function VisitDetail() {
             <Info label="Phone" value={v.visitor?.phone ?? "—"} />
             <Info label="Email" value={v.visitor?.email ?? "—"} />
             <Info label="Company" value={v.visitor?.company ?? "—"} />
-            {(me.isAdmin || me.isReceptionist) && (
+            {me.canRegister && (
               <Button asChild variant="outline" size="sm" className="mt-2 w-full">
                 <Link to="/app/blacklist">
                   <ShieldAlert className="mr-1 h-3.5 w-3.5" /> Manage blacklist
