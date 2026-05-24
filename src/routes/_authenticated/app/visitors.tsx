@@ -105,7 +105,7 @@ function VisitorsPage() {
                     </td>
                     <td className="px-5 py-3"><StatusBadge status={v.status} /></td>
                     <td className="px-5 py-3 text-right">
-                      {v.status === "checked_in" && (me.isAdmin || me.isReceptionist) && (
+                      {v.status === "checked_in" && me.canRegister && (
                         <Button size="sm" variant="outline" onClick={() => checkOut.mutate({ id: v.id, badge_number: v.badge_number })}>
                           Check out
                         </Button>
