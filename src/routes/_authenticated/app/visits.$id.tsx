@@ -72,7 +72,7 @@ function VisitDetail() {
   }
 
   const isHost = v.host_id === me.userId;
-  const canStaffEdit = me.isAdmin || me.isReceptionist;
+  const canStaffEdit = me.canRegister;
 
   const approve = () => update.mutate({ approval: "approved" });
   const reject = (reason: string) => update.mutate({ approval: "not_approved", rejection_reason: reason });
