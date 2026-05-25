@@ -68,16 +68,14 @@ function BlacklistPage() {
         <p className="text-sm text-muted-foreground">Visitors flagged from entering the premises.</p>
       </header>
 
-      {(me.isAdmin || me.isHost) && (
-        <Card>
-          <CardHeader><CardTitle>Add entry</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <Input placeholder="Visitor phone number (must exist)" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <Textarea placeholder="Reason (required)" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
-            <Button onClick={() => add.mutate()} disabled={add.isPending}>Add to blacklist</Button>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader><CardTitle>Add entry</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <Input placeholder="Visitor phone number (must exist)" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Textarea placeholder="Reason (required)" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
+          <Button onClick={() => add.mutate()} disabled={add.isPending}>Add to blacklist</Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>{entries.data?.length ?? 0} entries</CardTitle></CardHeader>
@@ -89,9 +87,7 @@ function BlacklistPage() {
                 <div className="mt-1 text-sm">{b.reason}</div>
                 <div className="mt-1 text-xs text-muted-foreground">{new Date(b.created_at).toLocaleString()}</div>
               </div>
-              {me.isAdmin && (
-                <Button size="sm" variant="ghost" onClick={() => remove.mutate(b.id)}>Remove</Button>
-              )}
+              <Button size="sm" variant="ghost" onClick={() => remove.mutate(b.id)}>Remove</Button>
             </div>
           ))}
           {entries.data?.length === 0 && <div className="p-8 text-center text-sm text-muted-foreground">No entries.</div>}
