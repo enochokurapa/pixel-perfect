@@ -11,14 +11,31 @@ export function useSession() {
   const qc = useQueryClient();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    let cancelled = false;
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) {
+          void supabase.auth.signOut({ scope: "local" });
+        }
+        if (!cancelled) setSession(data.session ?? null);
+      })
+      .catch(() => {
+        void supabase.auth.signOut({ scope: "local" });
+        if (!cancelled) setSession(null);
+      });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       qc.invalidateQueries();
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [qc]);
 
   return session;
