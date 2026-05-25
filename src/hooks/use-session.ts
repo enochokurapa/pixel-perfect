@@ -27,6 +27,7 @@ export function useSession() {
 export function useCurrentUser() {
   const session = useSession();
   const userId = session?.user.id;
+  const sessionLoading = session === undefined;
   const profile = useQuery({
     enabled: !!userId,
     queryKey: ["me", "profile", userId],
@@ -60,7 +61,7 @@ export function useCurrentUser() {
     userId,
     profile: profile.data,
     roles: roles.data ?? [],
-    isLoading: profile.isLoading || roles.isLoading,
+    isLoading: sessionLoading || profile.isLoading || roles.isLoading || roles.isFetching,
     isAdmin: has("admin"),
     isReceptionist: has("receptionist"),
     isSecurity: has("security"),
