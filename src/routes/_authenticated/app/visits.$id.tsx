@@ -312,7 +312,115 @@ function RejectButton({
   );
 }
 
+function CheckOutButton({
+  hasBadge,
+  onConfirm,
+  disabled,
+}: {
+  hasBadge: boolean;
+  onConfirm: (v: { badge_returned: boolean; assets_verified: boolean; checkout_notes: string }) => Promise<void> | void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [badgeReturned, setBadgeReturned] = useState(false);
+  const [assetsVerified, setAssetsVerified] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const confirm = async () => {
+    if (hasBadge && !badgeReturned) {
+      toast.error("Please confirm the badge was returned.");
+      return;
+    }
+    if (!assetsVerified) {
+      toast.error("Please confirm assets were verified (or that none were brought in).");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onConfirm({
+        badge_returned: badgeReturned,
+        assets_verified: assetsVerified,
+        checkout_notes: notes.trim(),
+      });
+      toast.success("Visitor checked out");
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" disabled={disabled}>
+          <LogOut className="mr-1 h-4 w-4" /> Check out
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Check-out verification</DialogTitle>
+          <DialogDescription>
+            Confirm everything is in order before the visitor leaves. Exit time will be captured automatically.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          {hasBadge && (
+            <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer">
+              <Checkbox
+                checked={badgeReturned}
+                onCheckedChange={(c) => setBadgeReturned(c === true)}
+                className="mt-0.5"
+              />
+              <div>
+                <div className="text-sm font-medium">Badge returned</div>
+                <div className="text-xs text-muted-foreground">
+                  Confirm the visitor handed back their badge.
+                </div>
+              </div>
+            </label>
+          )}
+          <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer">
+            <Checkbox
+              checked={assetsVerified}
+              onCheckedChange={(c) => setAssetsVerified(c === true)}
+              className="mt-0.5"
+            />
+            <div>
+              <div className="text-sm font-medium">Assets verified</div>
+              <div className="text-xs text-muted-foreground">
+                Confirm all assets brought in are leaving with the visitor (or none were brought).
+              </div>
+            </div>
+          </label>
+          <div className="space-y-2">
+            <Label className="text-xs">Notes (optional)</Label>
+            <Textarea
+              rows={3}
+              placeholder="Anything noteworthy about the check-out?"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+          <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+            Exit time: <span className="font-medium text-foreground">{new Date().toLocaleString()}</span>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button onClick={confirm} disabled={busy}>
+            {busy ? "Checking out…" : "Confirm check-out"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AssetsCard({
+
   visitId,
   items,
   canEdit,
