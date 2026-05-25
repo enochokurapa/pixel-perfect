@@ -132,18 +132,6 @@ function RegisterPage() {
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  if (me.isLoading) {
-    return (
-      <div className="grid min-h-[50vh] place-items-center p-8 text-sm text-muted-foreground">
-        Loading your permissions…
-      </div>
-    );
-  }
-
-  if (!me.canRegister) {
-    return <div className="p-8 text-sm text-muted-foreground">You don't have permission to register visitors.</div>;
-  }
-
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-8 py-8">
       <header>
