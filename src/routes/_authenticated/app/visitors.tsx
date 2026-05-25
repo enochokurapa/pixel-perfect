@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { StatusBadge } from "./index";
-import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/app/visitors")({
   head: () => ({ meta: [{ title: "Visitors — Sentinel VMS" }] }),
@@ -14,7 +14,6 @@ export const Route = createFileRoute("/_authenticated/app/visitors")({
 });
 
 function VisitorsPage() {
-  const qc = useQueryClient();
   const [q, setQ] = useState("");
 
   const visits = useQuery({
@@ -32,29 +31,7 @@ function VisitorsPage() {
     },
   });
 
-  const checkOut = useMutation({
-    mutationFn: async (visit: { id: string; badge_number: string | null }) => {
-      const { error } = await supabase
-        .from("visits")
-        .update({
-          status: "checked_out",
-          check_out_at: new Date().toISOString(),
-        })
-        .eq("id", visit.id);
-      if (error) throw error;
-      if (visit.badge_number) {
-        await supabase
-          .from("badges")
-          .update({ status: "available" })
-          .eq("badge_number", visit.badge_number);
-      }
-    },
-    onSuccess: () => {
-      toast.success("Checked out");
-      qc.invalidateQueries();
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-  });
+
 
   const filtered = visits.data?.filter((v) => {
     if (!q) return true;
@@ -102,6 +79,7 @@ function VisitorsPage() {
                   <th className="px-5 py-3 text-left">Type</th>
                   <th className="px-5 py-3 text-left">Badge</th>
                   <th className="px-5 py-3 text-left">Check-in</th>
+                  <th className="px-5 py-3 text-left">Check-out</th>
                   <th className="px-5 py-3 text-left">Status</th>
                   <th className="px-5 py-3" />
                 </tr>
@@ -128,19 +106,18 @@ function VisitorsPage() {
                     <td className="px-5 py-3 text-xs text-muted-foreground">
                       {v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "—"}
                     </td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">
+                      {v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "—"}
+                    </td>
                     <td className="px-5 py-3">
                       <StatusBadge status={v.status} />
                     </td>
                     <td className="px-5 py-3 text-right">
                       {v.status === "checked_in" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            checkOut.mutate({ id: v.id, badge_number: v.badge_number })
-                          }
-                        >
-                          Check out
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/app/visits/$id" params={{ id: v.id }}>
+                            Check out
+                          </Link>
                         </Button>
                       )}
                     </td>
@@ -148,7 +125,7 @@ function VisitorsPage() {
                 ))}
                 {filtered?.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={9} className="p-8 text-center text-muted-foreground">
                       No visits found.
                     </td>
                   </tr>

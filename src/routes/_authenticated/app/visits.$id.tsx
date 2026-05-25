@@ -7,6 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -21,6 +31,7 @@ type VisitUpdate = Database["public"]["Tables"]["visits"]["Update"];
 type VisitAsset = Database["public"]["Tables"]["visit_assets"]["Row"];
 import { toast } from "sonner";
 import { StatusBadge } from "./index";
+
 
 export const Route = createFileRoute("/_authenticated/app/visits/$id")({
   head: () => ({ meta: [{ title: "Visit detail — Sentinel VMS" }] }),
@@ -83,8 +94,18 @@ function VisitDetail() {
     update.mutate({ approval: "not_approved", rejection_reason: reason });
   const checkIn = () =>
     update.mutate({ status: "checked_in", check_in_at: new Date().toISOString() });
-  const checkOut = async () => {
-    await update.mutateAsync({ status: "checked_out", check_out_at: new Date().toISOString() });
+  const checkOut = async (verification: {
+    badge_returned: boolean;
+    assets_verified: boolean;
+    checkout_notes: string;
+  }) => {
+    await update.mutateAsync({
+      status: "checked_out",
+      check_out_at: new Date().toISOString(),
+      badge_returned: verification.badge_returned,
+      assets_verified: verification.assets_verified,
+      checkout_notes: verification.checkout_notes || null,
+    });
     if (v.badge_number) {
       await supabase
         .from("badges")
@@ -136,9 +157,11 @@ function VisitDetail() {
               </Button>
             )}
             {canStaffEdit && v.status === "checked_in" && (
-              <Button variant="outline" onClick={checkOut} disabled={update.isPending}>
-                <LogOut className="mr-1 h-4 w-4" /> Check out
-              </Button>
+              <CheckOutButton
+                hasBadge={!!v.badge_number}
+                onConfirm={checkOut}
+                disabled={update.isPending}
+              />
             )}
           </div>
         </div>
@@ -152,6 +175,8 @@ function VisitDetail() {
           <CardContent className="grid gap-4 sm:grid-cols-2 text-sm">
             <Info label="Purpose" value={v.purpose} />
             <Info label="Host" value={v.host?.full_name ?? "—"} />
+            <Info label="Visit type" value={v.visit_type} className="capitalize" />
+            <Info label="Visit mode" value={v.visit_mode.replace("_", " ")} className="capitalize" />
             <Info label="Badge" value={v.badge_number ? `#${v.badge_number}` : "—"} />
             <Info label="Expected duration" value={`${v.expected_duration_minutes} min`} />
             <Info
@@ -159,7 +184,7 @@ function VisitDetail() {
               value={v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "—"}
             />
             <Info
-              label="Checked out"
+              label="Checked out (exit time)"
               value={v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "—"}
             />
             {v.visit_mode === "drive_in" && (
@@ -170,6 +195,23 @@ function VisitDetail() {
             )}
             {v.work_description && (
               <Info label="Work description" value={v.work_description} className="sm:col-span-2" />
+            )}
+            {v.status === "checked_out" && (
+              <>
+                <Info
+                  label="Badge returned"
+                  value={v.badge_returned ? "Yes ✓" : "No ✗"}
+                  className={v.badge_returned ? "text-success" : "text-destructive"}
+                />
+                <Info
+                  label="Assets verified"
+                  value={v.assets_verified ? "Yes ✓" : "No ✗"}
+                  className={v.assets_verified ? "text-success" : "text-destructive"}
+                />
+                {v.checkout_notes && (
+                  <Info label="Check-out notes" value={v.checkout_notes} className="sm:col-span-2" />
+                )}
+              </>
             )}
             {v.rejection_reason && (
               <Info
@@ -183,12 +225,18 @@ function VisitDetail() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Visitor</CardTitle>
+            <CardTitle>Visitor details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
+            <Info label="Full name" value={v.visitor?.full_name ?? "—"} />
             <Info label="Phone" value={v.visitor?.phone ?? "—"} />
             <Info label="Email" value={v.visitor?.email ?? "—"} />
-            <Info label="Company" value={v.visitor?.company ?? "—"} />
+            <Info label="Company / Origin" value={v.visitor?.company ?? "—"} />
+            <Info label="ID type" value={v.visitor?.id_type ?? "—"} />
+            <Info label="ID number" value={v.visitor?.id_number ?? "—"} />
+            {v.visitor?.id_scan_url && (
+              <Info label="ID scan" value="On file" />
+            )}
             <Button asChild variant="outline" size="sm" className="mt-2 w-full">
               <Link to="/app/blacklist">
                 <ShieldAlert className="mr-1 h-3.5 w-3.5" /> Manage blacklist
@@ -197,6 +245,7 @@ function VisitDetail() {
           </CardContent>
         </Card>
       </div>
+
 
       <AssetsCard
         visitId={id}
@@ -263,7 +312,115 @@ function RejectButton({
   );
 }
 
+function CheckOutButton({
+  hasBadge,
+  onConfirm,
+  disabled,
+}: {
+  hasBadge: boolean;
+  onConfirm: (v: { badge_returned: boolean; assets_verified: boolean; checkout_notes: string }) => Promise<void> | void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [badgeReturned, setBadgeReturned] = useState(false);
+  const [assetsVerified, setAssetsVerified] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const confirm = async () => {
+    if (hasBadge && !badgeReturned) {
+      toast.error("Please confirm the badge was returned.");
+      return;
+    }
+    if (!assetsVerified) {
+      toast.error("Please confirm assets were verified (or that none were brought in).");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onConfirm({
+        badge_returned: badgeReturned,
+        assets_verified: assetsVerified,
+        checkout_notes: notes.trim(),
+      });
+      toast.success("Visitor checked out");
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" disabled={disabled}>
+          <LogOut className="mr-1 h-4 w-4" /> Check out
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Check-out verification</DialogTitle>
+          <DialogDescription>
+            Confirm everything is in order before the visitor leaves. Exit time will be captured automatically.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          {hasBadge && (
+            <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer">
+              <Checkbox
+                checked={badgeReturned}
+                onCheckedChange={(c) => setBadgeReturned(c === true)}
+                className="mt-0.5"
+              />
+              <div>
+                <div className="text-sm font-medium">Badge returned</div>
+                <div className="text-xs text-muted-foreground">
+                  Confirm the visitor handed back their badge.
+                </div>
+              </div>
+            </label>
+          )}
+          <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer">
+            <Checkbox
+              checked={assetsVerified}
+              onCheckedChange={(c) => setAssetsVerified(c === true)}
+              className="mt-0.5"
+            />
+            <div>
+              <div className="text-sm font-medium">Assets verified</div>
+              <div className="text-xs text-muted-foreground">
+                Confirm all assets brought in are leaving with the visitor (or none were brought).
+              </div>
+            </div>
+          </label>
+          <div className="space-y-2">
+            <Label className="text-xs">Notes (optional)</Label>
+            <Textarea
+              rows={3}
+              placeholder="Anything noteworthy about the check-out?"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+          <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+            Exit time: <span className="font-medium text-foreground">{new Date().toLocaleString()}</span>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button onClick={confirm} disabled={busy}>
+            {busy ? "Checking out…" : "Confirm check-out"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AssetsCard({
+
   visitId,
   items,
   canEdit,

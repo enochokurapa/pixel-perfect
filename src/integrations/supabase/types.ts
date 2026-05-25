@@ -240,9 +240,12 @@ export type Database = {
       visits: {
         Row: {
           approval: Database["public"]["Enums"]["approval_status"]
+          assets_verified: boolean
           badge_number: string | null
+          badge_returned: boolean
           check_in_at: string | null
           check_out_at: string | null
+          checkout_notes: string | null
           company: string | null
           created_at: string
           created_by: string | null
@@ -264,9 +267,12 @@ export type Database = {
         }
         Insert: {
           approval?: Database["public"]["Enums"]["approval_status"]
+          assets_verified?: boolean
           badge_number?: string | null
+          badge_returned?: boolean
           check_in_at?: string | null
           check_out_at?: string | null
+          checkout_notes?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
@@ -288,9 +294,12 @@ export type Database = {
         }
         Update: {
           approval?: Database["public"]["Enums"]["approval_status"]
+          assets_verified?: boolean
           badge_number?: string | null
+          badge_returned?: boolean
           check_in_at?: string | null
           check_out_at?: string | null
+          checkout_notes?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null

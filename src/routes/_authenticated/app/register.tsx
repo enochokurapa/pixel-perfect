@@ -44,6 +44,7 @@ function RegisterPage() {
   const [idScanFile, setIdScanFile] = useState<File | null>(null);
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
   type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
+  const [hasAssets, setHasAssets] = useState<"no" | "yes">("no");
   const [assets, setAssets] = useState<AssetRow[]>([
     { kind: "device", brand: "", serial: "", description: "" },
   ]);
@@ -90,16 +91,19 @@ function RegisterPage() {
     mutationFn: async () => {
       const parsed = schema.parse({ ...form, host_id: hostId });
 
-      // Validate assets — at least one with brand + serial
-      const cleanAssets = assets
-        .map((a) => ({ ...a, brand: a.brand.trim(), serial: a.serial.trim(), description: a.description.trim() }))
-        .filter((a) => a.brand || a.serial || a.description);
-      if (cleanAssets.length === 0) {
-        throw new Error("At least one asset is required. Capture the visitor's items.");
-      }
-      for (const [i, a] of cleanAssets.entries()) {
-        if (!a.brand || !a.serial) {
-          throw new Error(`Asset #${i + 1}: brand and serial number are required.`);
+      // Validate assets only if visitor declared bringing assets
+      let cleanAssets: AssetRow[] = [];
+      if (hasAssets === "yes") {
+        cleanAssets = assets
+          .map((a) => ({ ...a, brand: a.brand.trim(), serial: a.serial.trim(), description: a.description.trim() }))
+          .filter((a) => a.brand || a.serial || a.description);
+        if (cleanAssets.length === 0) {
+          throw new Error("At least one asset is required when 'With asset' is selected.");
+        }
+        for (const [i, a] of cleanAssets.entries()) {
+          if (!a.brand || !a.serial) {
+            throw new Error(`Asset #${i + 1}: brand and serial number are required.`);
+          }
         }
       }
 
@@ -170,17 +174,19 @@ function RegisterPage() {
         .single();
       if (visitErr) throw visitErr;
 
-      // Insert captured assets
-      const { error: aErr } = await supabase.from("visit_assets").insert(
-        cleanAssets.map((a) => ({
-          visit_id: visit.id,
-          kind: a.kind,
-          brand: a.brand,
-          serial: a.serial,
-          description: a.description || null,
-        })),
-      );
-      if (aErr) throw aErr;
+      // Insert captured assets (only if any)
+      if (cleanAssets.length > 0) {
+        const { error: aErr } = await supabase.from("visit_assets").insert(
+          cleanAssets.map((a) => ({
+            visit_id: visit.id,
+            kind: a.kind,
+            brand: a.brand,
+            serial: a.serial,
+            description: a.description || null,
+          })),
+        );
+        if (aErr) throw aErr;
+      }
 
       if (parsed.badge_number) {
         await supabase
@@ -392,79 +398,94 @@ function RegisterPage() {
         <CardHeader>
           <CardTitle>3. Assets being brought in</CardTitle>
           <CardDescription>
-            Capture all items the visitor is bringing onto the premises. At least one is required.
+            Is the visitor bringing any item (laptop, device, etc.) onto the premises?
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {assets.map((a, i) => (
-            <div key={i} className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-12">
-              <div className="space-y-2 md:col-span-3">
-                <Label>Type</Label>
-                <Select
-                  value={a.kind}
-                  onValueChange={(v) =>
-                    setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, kind: v as AssetRow["kind"] } : x)))
-                  }
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="laptop">Laptop</SelectItem>
-                    <SelectItem value="device">Device</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2 md:col-span-3">
-                <Label>Brand <span className="text-destructive">*</span></Label>
-                <Input
-                  value={a.brand}
-                  onChange={(e) =>
-                    setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, brand: e.target.value } : x)))
-                  }
-                />
-              </div>
-              <div className="space-y-2 md:col-span-3">
-                <Label>Serial # <span className="text-destructive">*</span></Label>
-                <Input
-                  value={a.serial}
-                  onChange={(e) =>
-                    setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, serial: e.target.value } : x)))
-                  }
-                />
-              </div>
-              <div className="space-y-2 md:col-span-3">
-                <Label>Description</Label>
-                <Input
-                  value={a.description}
-                  onChange={(e) =>
-                    setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, description: e.target.value } : x)))
-                  }
-                />
-              </div>
-              {assets.length > 1 && (
-                <div className="md:col-span-12">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setAssets((arr) => arr.filter((_, j) => j !== i))}
-                  >
-                    Remove
-                  </Button>
+          <div className="space-y-2 md:max-w-xs">
+            <Label>Bringing any assets? <span className="text-destructive">*</span></Label>
+            <Select value={hasAssets} onValueChange={(v) => setHasAssets(v as "yes" | "no")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no">Without asset</SelectItem>
+                <SelectItem value="yes">With asset</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {hasAssets === "yes" && (
+            <>
+              {assets.map((a, i) => (
+                <div key={i} className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-12">
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Type</Label>
+                    <Select
+                      value={a.kind}
+                      onValueChange={(v) =>
+                        setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, kind: v as AssetRow["kind"] } : x)))
+                      }
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="laptop">Laptop</SelectItem>
+                        <SelectItem value="device">Device</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Brand <span className="text-destructive">*</span></Label>
+                    <Input
+                      value={a.brand}
+                      onChange={(e) =>
+                        setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, brand: e.target.value } : x)))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Serial # <span className="text-destructive">*</span></Label>
+                    <Input
+                      value={a.serial}
+                      onChange={(e) =>
+                        setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, serial: e.target.value } : x)))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Description</Label>
+                    <Input
+                      value={a.description}
+                      onChange={(e) =>
+                        setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, description: e.target.value } : x)))
+                      }
+                    />
+                  </div>
+                  {assets.length > 1 && (
+                    <div className="md:col-span-12">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setAssets((arr) => arr.filter((_, j) => j !== i))}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              setAssets((arr) => [...arr, { kind: "device", brand: "", serial: "", description: "" }])
-            }
-          >
-            + Add another asset
-          </Button>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setAssets((arr) => [...arr, { kind: "device", brand: "", serial: "", description: "" }])
+                }
+              >
+                + Add another asset
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
