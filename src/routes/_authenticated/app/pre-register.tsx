@@ -33,6 +33,7 @@ function PreRegisterPage() {
   const [duration, setDuration] = useState(180);
   const [form, setForm] = useState({ full_name: "", phone: "", email: "", company: "", purpose: "" });
   type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
+  const [hasAssets, setHasAssets] = useState<"no" | "yes">("no");
   const [assets, setAssets] = useState<AssetRow[]>([
     { kind: "device", brand: "", serial: "", description: "" },
   ]);
