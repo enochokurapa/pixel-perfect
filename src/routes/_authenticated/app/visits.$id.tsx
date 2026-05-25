@@ -83,8 +83,18 @@ function VisitDetail() {
     update.mutate({ approval: "not_approved", rejection_reason: reason });
   const checkIn = () =>
     update.mutate({ status: "checked_in", check_in_at: new Date().toISOString() });
-  const checkOut = async () => {
-    await update.mutateAsync({ status: "checked_out", check_out_at: new Date().toISOString() });
+  const checkOut = async (verification: {
+    badge_returned: boolean;
+    assets_verified: boolean;
+    checkout_notes: string;
+  }) => {
+    await update.mutateAsync({
+      status: "checked_out",
+      check_out_at: new Date().toISOString(),
+      badge_returned: verification.badge_returned,
+      assets_verified: verification.assets_verified,
+      checkout_notes: verification.checkout_notes || null,
+    });
     if (v.badge_number) {
       await supabase
         .from("badges")
