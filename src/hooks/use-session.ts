@@ -11,14 +11,37 @@ export function useSession() {
   const qc = useQueryClient();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    let cancelled = false;
+    const authTimeout = window.setTimeout(() => {
+      if (!cancelled) setSession(null);
+    }, 4000);
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        window.clearTimeout(authTimeout);
+        if (error) {
+          void supabase.auth.signOut({ scope: "local" });
+        }
+        if (!cancelled) setSession(data.session ?? null);
+      })
+      .catch(() => {
+        window.clearTimeout(authTimeout);
+        void supabase.auth.signOut({ scope: "local" });
+        if (!cancelled) setSession(null);
+      });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       qc.invalidateQueries();
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(authTimeout);
+      subscription.unsubscribe();
+    };
   }, [qc]);
 
   return session;
@@ -27,6 +50,7 @@ export function useSession() {
 export function useCurrentUser() {
   const session = useSession();
   const userId = session?.user.id;
+  const sessionLoading = session === undefined;
   const profile = useQuery({
     enabled: !!userId,
     queryKey: ["me", "profile", userId],
@@ -60,7 +84,7 @@ export function useCurrentUser() {
     userId,
     profile: profile.data,
     roles: roles.data ?? [],
-    isLoading: profile.isLoading || roles.isLoading,
+    isLoading: sessionLoading || profile.isLoading || roles.isLoading || roles.isFetching,
     isAdmin: has("admin"),
     isReceptionist: has("receptionist"),
     isSecurity: has("security"),
