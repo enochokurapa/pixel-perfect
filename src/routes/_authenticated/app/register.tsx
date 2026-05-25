@@ -44,6 +44,7 @@ function RegisterPage() {
   const [idScanFile, setIdScanFile] = useState<File | null>(null);
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
   type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
+  const [hasAssets, setHasAssets] = useState<"no" | "yes">("no");
   const [assets, setAssets] = useState<AssetRow[]>([
     { kind: "device", brand: "", serial: "", description: "" },
   ]);
