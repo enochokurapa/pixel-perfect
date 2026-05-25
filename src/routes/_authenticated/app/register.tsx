@@ -23,7 +23,7 @@ const schema = z.object({
   email: z.string().trim().email().max(255),
   company: z.string().trim().min(1, "Company / Origin is required").max(120),
   purpose: z.string().trim().min(2).max(500),
-  badge_number: z.string().trim().min(1, "Badge is required").max(40),
+  badge_number: z.string().trim().max(40),
   host_id: z.string().uuid({ message: "Host is required" }),
 });
 
@@ -110,7 +110,7 @@ function RegisterPage() {
         purpose: parsed.purpose,
         company: parsed.company,
         work_description: visitType !== "guest" ? form.work_description || null : null,
-        badge_number: parsed.badge_number,
+        badge_number: parsed.badge_number || null,
         vehicle_plate: visitMode === "drive_in" ? form.vehicle_plate || null : null,
         vehicle_type: visitMode === "drive_in" ? form.vehicle_type || null : null,
         status: "checked_in",
@@ -119,7 +119,9 @@ function RegisterPage() {
       }).select("id").single();
       if (visitErr) throw visitErr;
 
-      await supabase.from("badges").update({ status: "issued" }).eq("badge_number", parsed.badge_number);
+      if (parsed.badge_number) {
+        await supabase.from("badges").update({ status: "issued" }).eq("badge_number", parsed.badge_number);
+      }
       return visit.id;
     },
     onSuccess: () => {
@@ -231,9 +233,9 @@ function RegisterPage() {
           </div>
 
           <div className="space-y-2">
-            <Label>Badge number <span className="text-destructive">*</span></Label>
+            <Label>Badge number</Label>
             <Select value={form.badge_number} onValueChange={(v) => set("badge_number", v)}>
-              <SelectTrigger><SelectValue placeholder="Assign an available badge" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Assign an available badge if needed" /></SelectTrigger>
               <SelectContent>
                 {availableBadges.data?.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">No badges available — add in Badges</div>}
                 {availableBadges.data?.map((b) => (
