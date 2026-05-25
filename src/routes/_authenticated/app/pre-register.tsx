@@ -49,6 +49,19 @@ function PreRegisterPage() {
   const submit = useMutation({
     mutationFn: async () => {
       const parsed = schema.parse(form);
+
+      const cleanAssets = assets
+        .map((a) => ({ ...a, brand: a.brand.trim(), serial: a.serial.trim(), description: a.description.trim() }))
+        .filter((a) => a.brand || a.serial || a.description);
+      if (cleanAssets.length === 0) {
+        throw new Error("At least one asset is required. Capture the visitor's items.");
+      }
+      for (const [i, a] of cleanAssets.entries()) {
+        if (!a.brand || !a.serial) {
+          throw new Error(`Asset #${i + 1}: brand and serial number are required.`);
+        }
+      }
+
       const { data: existing } = await supabase.from("visitors").select("id").eq("phone", parsed.phone).maybeSingle();
       let visitorId = existing?.id;
       if (!visitorId) {
@@ -61,7 +74,7 @@ function PreRegisterPage() {
       const { data: bl } = await supabase.from("blacklist").select("reason").eq("visitor_id", visitorId).eq("active", true).maybeSingle();
       if (bl) throw new Error(`Visitor is blacklisted: ${bl.reason}`);
 
-      const { error: vErr } = await supabase.from("visits").insert({
+      const { data: visit, error: vErr } = await supabase.from("visits").insert({
         visitor_id: visitorId,
         host_id: hostId || me.userId,
         visit_type: visitType,
@@ -73,8 +86,19 @@ function PreRegisterPage() {
         pre_registered: true,
         expected_duration_minutes: duration,
         created_by: me.userId,
-      });
+      }).select("id").single();
       if (vErr) throw vErr;
+
+      const { error: aErr } = await supabase.from("visit_assets").insert(
+        cleanAssets.map((a) => ({
+          visit_id: visit.id,
+          kind: a.kind,
+          brand: a.brand,
+          serial: a.serial,
+          description: a.description || null,
+        })),
+      );
+      if (aErr) throw aErr;
     },
     onSuccess: () => {
       toast.success("Visit pre-registered. Host will be notified.");
