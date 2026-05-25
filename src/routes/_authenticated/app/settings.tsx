@@ -93,6 +93,14 @@ function Settings() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
+  if (me.isLoading) {
+    return (
+      <div className="grid min-h-[50vh] place-items-center p-8 text-sm text-muted-foreground">
+        Loading your permissions…
+      </div>
+    );
+  }
+
   if (!me.isAdmin) {
     return <div className="p-8 text-sm text-muted-foreground">Admins only.</div>;
   }
