@@ -12,16 +12,21 @@ export function useSession() {
 
   useEffect(() => {
     let cancelled = false;
+    const authTimeout = window.setTimeout(() => {
+      if (!cancelled) setSession(null);
+    }, 4000);
 
     supabase.auth
       .getSession()
       .then(({ data, error }) => {
+        window.clearTimeout(authTimeout);
         if (error) {
           void supabase.auth.signOut({ scope: "local" });
         }
         if (!cancelled) setSession(data.session ?? null);
       })
       .catch(() => {
+        window.clearTimeout(authTimeout);
         void supabase.auth.signOut({ scope: "local" });
         if (!cancelled) setSession(null);
       });
@@ -34,6 +39,7 @@ export function useSession() {
     });
     return () => {
       cancelled = true;
+      window.clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
   }, [qc]);
