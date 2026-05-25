@@ -188,7 +188,7 @@ function RegisterPage() {
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Visitor type</Label>
-            <Select value={visitType} onValueChange={(v: any) => setVisitType(v)}>
+            <Select value={visitType} onValueChange={(v) => setVisitType(v as typeof visitType)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -201,7 +201,7 @@ function RegisterPage() {
           </div>
           <div className="space-y-2">
             <Label>Visit mode</Label>
-            <Select value={visitMode} onValueChange={(v: any) => setVisitMode(v)}>
+            <Select value={visitMode} onValueChange={(v) => setVisitMode(v as typeof visitMode)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
