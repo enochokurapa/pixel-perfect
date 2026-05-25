@@ -10,6 +10,14 @@ import { toast } from "sonner";
 import { useCurrentUser } from "@/hooks/use-session";
 import { ShieldAlert } from "lucide-react";
 
+type BlacklistEntry = {
+  id: string;
+  reason: string;
+  active: boolean;
+  created_at: string;
+  visitor: { full_name: string; phone: string; company: string | null } | null;
+};
+
 export const Route = createFileRoute("/_authenticated/app/blacklist")({
   head: () => ({ meta: [{ title: "Blacklist — Sentinel VMS" }] }),
   component: BlacklistPage,
@@ -37,9 +45,9 @@ function BlacklistPage() {
           .select("id, reason, active, created_at, visitor:visitors(full_name, phone, company)")
           .order("created_at", { ascending: false });
         if (r.error) throw r.error;
-        return r.data as any[];
+        return r.data as BlacklistEntry[];
       }
-      return data as any[];
+      return data as BlacklistEntry[];
     },
   });
 
