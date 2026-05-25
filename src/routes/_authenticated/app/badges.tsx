@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useCurrentUser } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/_authenticated/app/badges")({
   head: () => ({ meta: [{ title: "Badges — Sentinel VMS" }] }),
@@ -14,7 +13,6 @@ export const Route = createFileRoute("/_authenticated/app/badges")({
 });
 
 function BadgesPage() {
-  const me = useCurrentUser();
   const qc = useQueryClient();
   const [newBadge, setNewBadge] = useState("");
 
@@ -50,15 +48,13 @@ function BadgesPage() {
         <p className="text-sm text-muted-foreground">Inventory of physical badges and their current status.</p>
       </header>
 
-      {me.canManageBadges && (
-        <Card>
-          <CardHeader><CardTitle>Add badge</CardTitle></CardHeader>
-          <CardContent className="flex gap-3">
-            <Input placeholder="e.g. B-014" value={newBadge} onChange={(e) => setNewBadge(e.target.value)} className="max-w-xs" />
-            <Button onClick={() => add.mutate()} disabled={add.isPending}>Add</Button>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader><CardTitle>Add badge</CardTitle></CardHeader>
+        <CardContent className="flex gap-3">
+          <Input placeholder="e.g. B-014" value={newBadge} onChange={(e) => setNewBadge(e.target.value)} className="max-w-xs" />
+          <Button onClick={() => add.mutate()} disabled={add.isPending}>Add</Button>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         <BadgeBucket title="Available" count={grouped.available.length} badges={grouped.available} tone="success" />
