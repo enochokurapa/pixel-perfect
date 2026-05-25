@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useCurrentUser } from "@/hooks/use-session";
+
+type BadgeRow = {
+  id: string;
+  badge_number: string;
+  status: string;
+};
 
 export const Route = createFileRoute("/_authenticated/app/badges")({
   head: () => ({ meta: [{ title: "Badges — Sentinel VMS" }] }),
@@ -14,7 +19,6 @@ export const Route = createFileRoute("/_authenticated/app/badges")({
 });
 
 function BadgesPage() {
-  const me = useCurrentUser();
   const qc = useQueryClient();
   const [newBadge, setNewBadge] = useState("");
 
@@ -33,7 +37,11 @@ function BadgesPage() {
       const { error } = await supabase.from("badges").insert({ badge_number: newBadge.trim() });
       if (error) throw error;
     },
-    onSuccess: () => { setNewBadge(""); toast.success("Badge added"); qc.invalidateQueries({ queryKey: ["badges"] }); },
+    onSuccess: () => {
+      setNewBadge("");
+      toast.success("Badge added");
+      qc.invalidateQueries({ queryKey: ["badges"] });
+    },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
@@ -47,30 +55,66 @@ function BadgesPage() {
     <div className="mx-auto max-w-5xl space-y-6 px-8 py-8">
       <header>
         <h1 className="font-display text-3xl font-semibold">Badges</h1>
-        <p className="text-sm text-muted-foreground">Inventory of physical badges and their current status.</p>
+        <p className="text-sm text-muted-foreground">
+          Inventory of physical badges and their current status.
+        </p>
       </header>
 
-      {me.canManageBadges && (
-        <Card>
-          <CardHeader><CardTitle>Add badge</CardTitle></CardHeader>
-          <CardContent className="flex gap-3">
-            <Input placeholder="e.g. B-014" value={newBadge} onChange={(e) => setNewBadge(e.target.value)} className="max-w-xs" />
-            <Button onClick={() => add.mutate()} disabled={add.isPending}>Add</Button>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Add badge</CardTitle>
+        </CardHeader>
+        <CardContent className="flex gap-3">
+          <Input
+            placeholder="e.g. B-014"
+            value={newBadge}
+            onChange={(e) => setNewBadge(e.target.value)}
+            className="max-w-xs"
+          />
+          <Button onClick={() => add.mutate()} disabled={add.isPending}>
+            Add
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <BadgeBucket title="Available" count={grouped.available.length} badges={grouped.available} tone="success" />
-        <BadgeBucket title="Issued" count={grouped.issued.length} badges={grouped.issued} tone="info" />
-        <BadgeBucket title="Unreturned" count={grouped.unreturned.length} badges={grouped.unreturned} tone="warning" />
+        <BadgeBucket
+          title="Available"
+          count={grouped.available.length}
+          badges={grouped.available}
+          tone="success"
+        />
+        <BadgeBucket
+          title="Issued"
+          count={grouped.issued.length}
+          badges={grouped.issued}
+          tone="info"
+        />
+        <BadgeBucket
+          title="Unreturned"
+          count={grouped.unreturned.length}
+          badges={grouped.unreturned}
+          tone="warning"
+        />
       </div>
     </div>
   );
 }
 
-function BadgeBucket({ title, count, badges, tone }: { title: string; count: number; badges: any[]; tone: "success" | "info" | "warning" }) {
-  const cls = { success: "text-success", info: "text-info", warning: "text-warning-foreground" }[tone];
+function BadgeBucket({
+  title,
+  count,
+  badges,
+  tone,
+}: {
+  title: string;
+  count: number;
+  badges: BadgeRow[];
+  tone: "success" | "info" | "warning";
+}) {
+  const cls = { success: "text-success", info: "text-info", warning: "text-warning-foreground" }[
+    tone
+  ];
   return (
     <Card>
       <CardHeader>
@@ -82,7 +126,10 @@ function BadgeBucket({ title, count, badges, tone }: { title: string; count: num
       <CardContent>
         <div className="flex flex-wrap gap-1.5">
           {badges.map((b) => (
-            <span key={b.id} className="rounded-md border border-border bg-secondary px-2 py-1 text-xs font-mono">
+            <span
+              key={b.id}
+              className="rounded-md border border-border bg-secondary px-2 py-1 text-xs font-mono"
+            >
               #{b.badge_number}
             </span>
           ))}

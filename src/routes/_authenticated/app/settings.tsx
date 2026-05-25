@@ -35,7 +35,6 @@ function Settings() {
   const resetFn = useServerFn(resetStaffPassword);
 
   const users = useQuery({
-    enabled: me.isAdmin,
     queryKey: ["staff"],
     queryFn: async () => {
       const { data } = await supabase
@@ -68,8 +67,7 @@ function Settings() {
   });
 
   const updateRolesMut = useMutation({
-    mutationFn: (payload: { user_id: string; roles: Role[] }) =>
-      updateRolesFn({ data: payload }),
+    mutationFn: (payload: { user_id: string; roles: Role[] }) => updateRolesFn({ data: payload }),
     onSuccess: () => {
       toast.success("Roles updated");
       qc.invalidateQueries({ queryKey: ["staff"] });
@@ -87,23 +85,10 @@ function Settings() {
   });
 
   const resetMut = useMutation({
-    mutationFn: (payload: { user_id: string; password: string }) =>
-      resetFn({ data: payload }),
+    mutationFn: (payload: { user_id: string; password: string }) => resetFn({ data: payload }),
     onSuccess: () => toast.success("Password reset"),
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
-
-  if (me.isLoading) {
-    return (
-      <div className="grid min-h-[50vh] place-items-center p-8 text-sm text-muted-foreground">
-        Loading your permissions…
-      </div>
-    );
-  }
-
-  if (!me.isAdmin) {
-    return <div className="p-8 text-sm text-muted-foreground">Admins only.</div>;
-  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-8 py-8">
@@ -120,7 +105,8 @@ function Settings() {
         <CardHeader>
           <CardTitle>Staff & roles</CardTitle>
           <CardDescription>
-            Toggle role chips to grant or revoke access. Reset a password or remove an account from the right.
+            Toggle role chips to grant or revoke access. Reset a password or remove an account from
+            the right.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -157,9 +143,7 @@ function Settings() {
                               key={r}
                               disabled={disable || updateRolesMut.isPending}
                               onClick={() => {
-                                const next = on
-                                  ? u.roles.filter((x) => x !== r)
-                                  : [...u.roles, r];
+                                const next = on ? u.roles.filter((x) => x !== r) : [...u.roles, r];
                                 if (next.length === 0) {
                                   toast.error("User must have at least one role");
                                   return;
@@ -238,7 +222,12 @@ function CreateStaffCard({
       department: department.trim() || null,
       roles,
     });
-    setName(""); setEmail(""); setPassword(""); setPosition(""); setPhone(""); setDepartment("");
+    setName("");
+    setEmail("");
+    setPassword("");
+    setPosition("");
+    setPhone("");
+    setDepartment("");
     setRoles(["host"]);
   };
 
@@ -255,7 +244,13 @@ function CreateStaffCard({
       <CardContent className="grid gap-4 md:grid-cols-2">
         <Field label="Full name" required value={full_name} onChange={setName} />
         <Field label="Email" required type="email" value={email} onChange={setEmail} />
-        <Field label="Initial password (8+ chars)" required type="text" value={password} onChange={setPassword} />
+        <Field
+          label="Initial password (8+ chars)"
+          required
+          type="text"
+          value={password}
+          onChange={setPassword}
+        />
         <Field label="Phone" value={phone} onChange={setPhone} />
         <Field label="Position / title" value={position} onChange={setPosition} />
         <Field label="Department" value={department} onChange={setDepartment} />
@@ -282,7 +277,8 @@ function CreateStaffCard({
           </div>
           <p className="text-[11px] text-muted-foreground">
             <ShieldCheck className="mr-1 inline h-3 w-3" />
-            Admin = full access · Receptionist = front-desk check-in/out & badges · Security = gate check-in/out, badges & escort · Host = receive & approve own visits
+            Admin = full access · Receptionist = front-desk check-in/out & badges · Security = gate
+            check-in/out, badges & escort · Host = receive & approve own visits
           </p>
         </div>
         <div className="md:col-span-2 flex justify-end">

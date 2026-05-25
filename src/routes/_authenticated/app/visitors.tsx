@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { StatusBadge } from "./index";
 import { toast } from "sonner";
-import { useCurrentUser } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/_authenticated/app/visitors")({
   head: () => ({ meta: [{ title: "Visitors — Sentinel VMS" }] }),
@@ -15,7 +14,6 @@ export const Route = createFileRoute("/_authenticated/app/visitors")({
 });
 
 function VisitorsPage() {
-  const me = useCurrentUser();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
 
@@ -24,7 +22,9 @@ function VisitorsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("visits")
-        .select("id, status, purpose, check_in_at, check_out_at, created_at, visit_type, badge_number, vehicle_plate, visitor:visitors(full_name, company, phone), host:profiles(full_name)")
+        .select(
+          "id, status, purpose, check_in_at, check_out_at, created_at, visit_type, badge_number, vehicle_plate, visitor:visitors(full_name, company, phone), host:profiles(full_name)",
+        )
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -34,25 +34,37 @@ function VisitorsPage() {
 
   const checkOut = useMutation({
     mutationFn: async (visit: { id: string; badge_number: string | null }) => {
-      const { error } = await supabase.from("visits").update({
-        status: "checked_out", check_out_at: new Date().toISOString(),
-      }).eq("id", visit.id);
+      const { error } = await supabase
+        .from("visits")
+        .update({
+          status: "checked_out",
+          check_out_at: new Date().toISOString(),
+        })
+        .eq("id", visit.id);
       if (error) throw error;
       if (visit.badge_number) {
-        await supabase.from("badges").update({ status: "available" }).eq("badge_number", visit.badge_number);
+        await supabase
+          .from("badges")
+          .update({ status: "available" })
+          .eq("badge_number", visit.badge_number);
       }
     },
-    onSuccess: () => { toast.success("Checked out"); qc.invalidateQueries(); },
+    onSuccess: () => {
+      toast.success("Checked out");
+      qc.invalidateQueries();
+    },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
   const filtered = visits.data?.filter((v) => {
     if (!q) return true;
     const s = q.toLowerCase();
-    return v.visitor?.full_name.toLowerCase().includes(s)
-      || v.visitor?.company?.toLowerCase().includes(s)
-      || v.purpose.toLowerCase().includes(s)
-      || v.badge_number?.toLowerCase().includes(s);
+    return (
+      v.visitor?.full_name.toLowerCase().includes(s) ||
+      v.visitor?.company?.toLowerCase().includes(s) ||
+      v.purpose.toLowerCase().includes(s) ||
+      v.badge_number?.toLowerCase().includes(s)
+    );
   });
 
   return (
@@ -63,7 +75,12 @@ function VisitorsPage() {
           <p className="text-sm text-muted-foreground">All visits, most recent first.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Input placeholder="Search name, company, badge…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
+          <Input
+            placeholder="Search name, company, badge…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="max-w-xs"
+          />
           <Button asChild size="lg">
             <Link to="/app/register">+ Register new visitor</Link>
           </Button>
@@ -71,7 +88,9 @@ function VisitorsPage() {
       </header>
 
       <Card>
-        <CardHeader><CardTitle>{filtered?.length ?? 0} visits</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>{filtered?.length ?? 0} visits</CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -91,10 +110,16 @@ function VisitorsPage() {
                 {filtered?.map((v) => (
                   <tr key={v.id} className="hover:bg-muted/30">
                     <td className="px-5 py-3">
-                      <Link to="/app/visits/$id" params={{ id: v.id }} className="font-medium hover:underline">
+                      <Link
+                        to="/app/visits/$id"
+                        params={{ id: v.id }}
+                        className="font-medium hover:underline"
+                      >
                         {v.visitor?.full_name}
                       </Link>
-                      <div className="text-xs text-muted-foreground">{v.visitor?.company ?? v.visitor?.phone}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {v.visitor?.company ?? v.visitor?.phone}
+                      </div>
                     </td>
                     <td className="px-5 py-3">{v.host?.full_name ?? "—"}</td>
                     <td className="px-5 py-3 max-w-xs truncate">{v.purpose}</td>
@@ -103,10 +128,18 @@ function VisitorsPage() {
                     <td className="px-5 py-3 text-xs text-muted-foreground">
                       {v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "—"}
                     </td>
-                    <td className="px-5 py-3"><StatusBadge status={v.status} /></td>
+                    <td className="px-5 py-3">
+                      <StatusBadge status={v.status} />
+                    </td>
                     <td className="px-5 py-3 text-right">
-                      {v.status === "checked_in" && me.canRegister && (
-                        <Button size="sm" variant="outline" onClick={() => checkOut.mutate({ id: v.id, badge_number: v.badge_number })}>
+                      {v.status === "checked_in" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            checkOut.mutate({ id: v.id, badge_number: v.badge_number })
+                          }
+                        >
                           Check out
                         </Button>
                       )}
@@ -114,7 +147,11 @@ function VisitorsPage() {
                   </tr>
                 ))}
                 {filtered?.length === 0 && (
-                  <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No visits found.</td></tr>
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                      No visits found.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
