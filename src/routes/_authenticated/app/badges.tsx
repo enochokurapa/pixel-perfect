@@ -7,6 +7,12 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { toast } from "sonner";
 
+type BadgeRow = {
+  id: string;
+  badge_number: string;
+  status: string;
+};
+
 export const Route = createFileRoute("/_authenticated/app/badges")({
   head: () => ({ meta: [{ title: "Badges — Sentinel VMS" }] }),
   component: BadgesPage,
@@ -103,7 +109,7 @@ function BadgeBucket({
 }: {
   title: string;
   count: number;
-  badges: any[];
+  badges: BadgeRow[];
   tone: "success" | "info" | "warning";
 }) {
   const cls = { success: "text-success", info: "text-info", warning: "text-warning-foreground" }[
