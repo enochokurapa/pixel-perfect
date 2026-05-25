@@ -102,6 +102,7 @@ function VisitorsPage() {
                   <th className="px-5 py-3 text-left">Type</th>
                   <th className="px-5 py-3 text-left">Badge</th>
                   <th className="px-5 py-3 text-left">Check-in</th>
+                  <th className="px-5 py-3 text-left">Check-out</th>
                   <th className="px-5 py-3 text-left">Status</th>
                   <th className="px-5 py-3" />
                 </tr>
