@@ -18,6 +18,7 @@ import { ArrowLeft, Check, LogIn, LogOut, Plus, ShieldAlert, Trash2, X } from "l
 import type { Database } from "@/integrations/supabase/types";
 
 type VisitUpdate = Database["public"]["Tables"]["visits"]["Update"];
+type VisitAsset = Database["public"]["Tables"]["visit_assets"]["Row"];
 import { toast } from "sonner";
 import { StatusBadge } from "./index";
 
@@ -269,7 +270,7 @@ function AssetsCard({
   onChange,
 }: {
   visitId: string;
-  items: any[];
+  items: VisitAsset[];
   canEdit: boolean;
   onChange: () => void;
 }) {
@@ -321,7 +322,7 @@ function AssetsCard({
           <div className="grid gap-3 rounded-md border border-dashed p-4 md:grid-cols-5">
             <div className="space-y-1.5">
               <Label className="text-xs">Kind</Label>
-              <Select value={kind} onValueChange={(v: any) => setKind(v)}>
+              <Select value={kind} onValueChange={(v) => setKind(v as typeof kind)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
