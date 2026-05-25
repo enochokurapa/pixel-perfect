@@ -32,6 +32,10 @@ function PreRegisterPage() {
   const [hostId, setHostId] = useState<string>(me.userId ?? "");
   const [duration, setDuration] = useState(180);
   const [form, setForm] = useState({ full_name: "", phone: "", email: "", company: "", purpose: "" });
+  type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
+  const [assets, setAssets] = useState<AssetRow[]>([
+    { kind: "device", brand: "", serial: "", description: "" },
+  ]);
 
   const hosts = useQuery({
     queryKey: ["hosts"],
