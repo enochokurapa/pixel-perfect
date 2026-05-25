@@ -14,7 +14,6 @@ export const Route = createFileRoute("/_authenticated/app/visitors")({
 });
 
 function VisitorsPage() {
-  const qc = useQueryClient();
   const [q, setQ] = useState("");
 
   const visits = useQuery({
@@ -32,29 +31,7 @@ function VisitorsPage() {
     },
   });
 
-  const checkOut = useMutation({
-    mutationFn: async (visit: { id: string; badge_number: string | null }) => {
-      const { error } = await supabase
-        .from("visits")
-        .update({
-          status: "checked_out",
-          check_out_at: new Date().toISOString(),
-        })
-        .eq("id", visit.id);
-      if (error) throw error;
-      if (visit.badge_number) {
-        await supabase
-          .from("badges")
-          .update({ status: "available" })
-          .eq("badge_number", visit.badge_number);
-      }
-    },
-    onSuccess: () => {
-      toast.success("Checked out");
-      qc.invalidateQueries();
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-  });
+
 
   const filtered = visits.data?.filter((v) => {
     if (!q) return true;
