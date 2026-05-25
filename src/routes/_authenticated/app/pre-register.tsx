@@ -93,16 +93,18 @@ function PreRegisterPage() {
       }).select("id").single();
       if (vErr) throw vErr;
 
-      const { error: aErr } = await supabase.from("visit_assets").insert(
-        cleanAssets.map((a) => ({
-          visit_id: visit.id,
-          kind: a.kind,
-          brand: a.brand,
-          serial: a.serial,
-          description: a.description || null,
-        })),
-      );
-      if (aErr) throw aErr;
+      if (cleanAssets.length > 0) {
+        const { error: aErr } = await supabase.from("visit_assets").insert(
+          cleanAssets.map((a) => ({
+            visit_id: visit.id,
+            kind: a.kind,
+            brand: a.brand,
+            serial: a.serial,
+            description: a.description || null,
+          })),
+        );
+        if (aErr) throw aErr;
+      }
     },
     onSuccess: () => {
       toast.success("Visit pre-registered. Host will be notified.");
