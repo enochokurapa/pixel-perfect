@@ -129,6 +129,9 @@ function VisitorsPage() {
                     <td className="px-5 py-3 text-xs text-muted-foreground">
                       {v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "—"}
                     </td>
+                    <td className="px-5 py-3 text-xs text-muted-foreground">
+                      {v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "—"}
+                    </td>
                     <td className="px-5 py-3">
                       <StatusBadge status={v.status} />
                     </td>
