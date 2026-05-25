@@ -35,7 +35,6 @@ function Settings() {
   const resetFn = useServerFn(resetStaffPassword);
 
   const users = useQuery({
-    enabled: me.isAdmin,
     queryKey: ["staff"],
     queryFn: async () => {
       const { data } = await supabase
@@ -92,18 +91,6 @@ function Settings() {
     onSuccess: () => toast.success("Password reset"),
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
-
-  if (me.isLoading) {
-    return (
-      <div className="grid min-h-[50vh] place-items-center p-8 text-sm text-muted-foreground">
-        Loading your permissions…
-      </div>
-    );
-  }
-
-  if (!me.isAdmin) {
-    return <div className="p-8 text-sm text-muted-foreground">Admins only.</div>;
-  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-8 py-8">
