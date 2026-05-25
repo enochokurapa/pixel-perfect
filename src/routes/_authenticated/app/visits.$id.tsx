@@ -164,6 +164,8 @@ function VisitDetail() {
           <CardContent className="grid gap-4 sm:grid-cols-2 text-sm">
             <Info label="Purpose" value={v.purpose} />
             <Info label="Host" value={v.host?.full_name ?? "—"} />
+            <Info label="Visit type" value={v.visit_type} className="capitalize" />
+            <Info label="Visit mode" value={v.visit_mode.replace("_", " ")} className="capitalize" />
             <Info label="Badge" value={v.badge_number ? `#${v.badge_number}` : "—"} />
             <Info label="Expected duration" value={`${v.expected_duration_minutes} min`} />
             <Info
@@ -171,7 +173,7 @@ function VisitDetail() {
               value={v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "—"}
             />
             <Info
-              label="Checked out"
+              label="Checked out (exit time)"
               value={v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "—"}
             />
             {v.visit_mode === "drive_in" && (
@@ -182,6 +184,23 @@ function VisitDetail() {
             )}
             {v.work_description && (
               <Info label="Work description" value={v.work_description} className="sm:col-span-2" />
+            )}
+            {v.status === "checked_out" && (
+              <>
+                <Info
+                  label="Badge returned"
+                  value={v.badge_returned ? "Yes ✓" : "No ✗"}
+                  className={v.badge_returned ? "text-success" : "text-destructive"}
+                />
+                <Info
+                  label="Assets verified"
+                  value={v.assets_verified ? "Yes ✓" : "No ✗"}
+                  className={v.assets_verified ? "text-success" : "text-destructive"}
+                />
+                {v.checkout_notes && (
+                  <Info label="Check-out notes" value={v.checkout_notes} className="sm:col-span-2" />
+                )}
+              </>
             )}
             {v.rejection_reason && (
               <Info
@@ -195,12 +214,18 @@ function VisitDetail() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Visitor</CardTitle>
+            <CardTitle>Visitor details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
+            <Info label="Full name" value={v.visitor?.full_name ?? "—"} />
             <Info label="Phone" value={v.visitor?.phone ?? "—"} />
             <Info label="Email" value={v.visitor?.email ?? "—"} />
-            <Info label="Company" value={v.visitor?.company ?? "—"} />
+            <Info label="Company / Origin" value={v.visitor?.company ?? "—"} />
+            <Info label="ID type" value={v.visitor?.id_type ?? "—"} />
+            <Info label="ID number" value={v.visitor?.id_number ?? "—"} />
+            {v.visitor?.id_scan_url && (
+              <Info label="ID scan" value="On file" />
+            )}
             <Button asChild variant="outline" size="sm" className="mt-2 w-full">
               <Link to="/app/blacklist">
                 <ShieldAlert className="mr-1 h-3.5 w-3.5" /> Manage blacklist
@@ -209,6 +234,7 @@ function VisitDetail() {
           </CardContent>
         </Card>
       </div>
+
 
       <AssetsCard
         visitId={id}
