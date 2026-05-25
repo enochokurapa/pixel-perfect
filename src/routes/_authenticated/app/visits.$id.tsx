@@ -71,8 +71,7 @@ function VisitDetail() {
     return <div className="p-8 text-sm text-muted-foreground">Visit not found.</div>;
   }
 
-  const isHost = v.host_id === me.userId;
-  const canStaffEdit = me.canRegister;
+  const canStaffEdit = true;
 
   const approve = () => update.mutate({ approval: "approved" });
   const reject = (reason: string) => update.mutate({ approval: "not_approved", rejection_reason: reason });
@@ -107,7 +106,7 @@ function VisitDetail() {
             </p>
           </div>
           <div className="flex gap-2">
-            {(isHost || me.isAdmin) && v.approval === "pending" && (
+            {v.approval === "pending" && (
               <>
                 <RejectButton onReject={reject} disabled={update.isPending} />
                 <Button onClick={approve} disabled={update.isPending}>
@@ -158,13 +157,11 @@ function VisitDetail() {
             <Info label="Phone" value={v.visitor?.phone ?? "—"} />
             <Info label="Email" value={v.visitor?.email ?? "—"} />
             <Info label="Company" value={v.visitor?.company ?? "—"} />
-            {me.canRegister && (
-              <Button asChild variant="outline" size="sm" className="mt-2 w-full">
-                <Link to="/app/blacklist">
-                  <ShieldAlert className="mr-1 h-3.5 w-3.5" /> Manage blacklist
-                </Link>
-              </Button>
-            )}
+            <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+              <Link to="/app/blacklist">
+                <ShieldAlert className="mr-1 h-3.5 w-3.5" /> Manage blacklist
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -176,7 +173,7 @@ function VisitDetail() {
         onChange={() => qc.invalidateQueries({ queryKey: ["visit-assets", id] })}
       />
 
-      {(isHost || canStaffEdit) && v.status === "checked_out" && (
+      {v.status === "checked_out" && (
         <FeedbackCard
           visitId={id}
           initial={v.feedback}
