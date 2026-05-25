@@ -90,6 +90,19 @@ function RegisterPage() {
     mutationFn: async () => {
       const parsed = schema.parse({ ...form, host_id: hostId });
 
+      // Validate assets — at least one with brand + serial
+      const cleanAssets = assets
+        .map((a) => ({ ...a, brand: a.brand.trim(), serial: a.serial.trim(), description: a.description.trim() }))
+        .filter((a) => a.brand || a.serial || a.description);
+      if (cleanAssets.length === 0) {
+        throw new Error("At least one asset is required. Capture the visitor's items.");
+      }
+      for (const [i, a] of cleanAssets.entries()) {
+        if (!a.brand || !a.serial) {
+          throw new Error(`Asset #${i + 1}: brand and serial number are required.`);
+        }
+      }
+
       // Find or create visitor (duplicate detection by phone)
       const { data: existing } = await supabase
         .from("visitors")
