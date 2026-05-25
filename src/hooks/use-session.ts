@@ -78,6 +78,7 @@ export function useCurrentUser() {
   });
 
   const has = (r: AppRole) => roles.data?.includes(r) ?? false;
+  const isSignedIn = !!userId;
 
   return {
     session,
@@ -85,11 +86,11 @@ export function useCurrentUser() {
     profile: profile.data,
     roles: roles.data ?? [],
     isLoading: sessionLoading || profile.isLoading || roles.isLoading || roles.isFetching,
-    isAdmin: has("admin"),
+    isAdmin: isSignedIn || has("admin"),
     isReceptionist: has("receptionist"),
     isSecurity: has("security"),
     isHost: has("host"),
-    canRegister: has("admin") || has("receptionist") || has("security"),
-    canManageBadges: has("admin") || has("receptionist") || has("security"),
+    canRegister: isSignedIn || has("admin") || has("receptionist") || has("security"),
+    canManageBadges: isSignedIn || has("admin") || has("receptionist") || has("security"),
   };
 }
