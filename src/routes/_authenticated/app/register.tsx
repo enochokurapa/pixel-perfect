@@ -62,6 +62,14 @@ function RegisterPage() {
     },
   });
 
+  if (me.isLoading) {
+    return (
+      <div className="grid min-h-[50vh] place-items-center p-8 text-sm text-muted-foreground">
+        Loading your permissions…
+      </div>
+    );
+  }
+
   if (!me.canRegister) {
     return <div className="p-8 text-sm text-muted-foreground">You don't have permission to register visitors.</div>;
   }
