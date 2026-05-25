@@ -32,6 +32,10 @@ function PreRegisterPage() {
   const [hostId, setHostId] = useState<string>(me.userId ?? "");
   const [duration, setDuration] = useState(180);
   const [form, setForm] = useState({ full_name: "", phone: "", email: "", company: "", purpose: "" });
+  type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
+  const [assets, setAssets] = useState<AssetRow[]>([
+    { kind: "device", brand: "", serial: "", description: "" },
+  ]);
 
   const hosts = useQuery({
     queryKey: ["hosts"],
@@ -45,6 +49,19 @@ function PreRegisterPage() {
   const submit = useMutation({
     mutationFn: async () => {
       const parsed = schema.parse(form);
+
+      const cleanAssets = assets
+        .map((a) => ({ ...a, brand: a.brand.trim(), serial: a.serial.trim(), description: a.description.trim() }))
+        .filter((a) => a.brand || a.serial || a.description);
+      if (cleanAssets.length === 0) {
+        throw new Error("At least one asset is required. Capture the visitor's items.");
+      }
+      for (const [i, a] of cleanAssets.entries()) {
+        if (!a.brand || !a.serial) {
+          throw new Error(`Asset #${i + 1}: brand and serial number are required.`);
+        }
+      }
+
       const { data: existing } = await supabase.from("visitors").select("id").eq("phone", parsed.phone).maybeSingle();
       let visitorId = existing?.id;
       if (!visitorId) {
@@ -57,7 +74,7 @@ function PreRegisterPage() {
       const { data: bl } = await supabase.from("blacklist").select("reason").eq("visitor_id", visitorId).eq("active", true).maybeSingle();
       if (bl) throw new Error(`Visitor is blacklisted: ${bl.reason}`);
 
-      const { error: vErr } = await supabase.from("visits").insert({
+      const { data: visit, error: vErr } = await supabase.from("visits").insert({
         visitor_id: visitorId,
         host_id: hostId || me.userId,
         visit_type: visitType,
@@ -69,8 +86,19 @@ function PreRegisterPage() {
         pre_registered: true,
         expected_duration_minutes: duration,
         created_by: me.userId,
-      });
+      }).select("id").single();
       if (vErr) throw vErr;
+
+      const { error: aErr } = await supabase.from("visit_assets").insert(
+        cleanAssets.map((a) => ({
+          visit_id: visit.id,
+          kind: a.kind,
+          brand: a.brand,
+          serial: a.serial,
+          description: a.description || null,
+        })),
+      );
+      if (aErr) throw aErr;
     },
     onSuccess: () => {
       toast.success("Visit pre-registered. Host will be notified.");
@@ -131,6 +159,59 @@ function PreRegisterPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Assets being brought in</CardTitle>
+          <CardDescription>Capture all items the visitor will bring. At least one is required.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {assets.map((a, i) => (
+            <div key={i} className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-12">
+              <div className="space-y-2 md:col-span-3">
+                <Label>Type</Label>
+                <Select
+                  value={a.kind}
+                  onValueChange={(v) =>
+                    setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, kind: v as AssetRow["kind"] } : x)))
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="laptop">Laptop</SelectItem>
+                    <SelectItem value="device">Device</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 md:col-span-3">
+                <Label>Brand <span className="text-destructive">*</span></Label>
+                <Input value={a.brand} onChange={(e) => setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, brand: e.target.value } : x)))} />
+              </div>
+              <div className="space-y-2 md:col-span-3">
+                <Label>Serial # <span className="text-destructive">*</span></Label>
+                <Input value={a.serial} onChange={(e) => setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, serial: e.target.value } : x)))} />
+              </div>
+              <div className="space-y-2 md:col-span-3">
+                <Label>Description</Label>
+                <Input value={a.description} onChange={(e) => setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, description: e.target.value } : x)))} />
+              </div>
+              {assets.length > 1 && (
+                <div className="md:col-span-12">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setAssets((arr) => arr.filter((_, j) => j !== i))}>
+                    Remove
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+          <Button type="button" variant="outline" size="sm" onClick={() => setAssets((arr) => [...arr, { kind: "device", brand: "", serial: "", description: "" }])}>
+            + Add another asset
+          </Button>
+        </CardContent>
+      </Card>
+
+
 
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={() => navigate({ to: "/app" })}>Cancel</Button>

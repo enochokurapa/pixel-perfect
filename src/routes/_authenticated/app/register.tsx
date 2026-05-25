@@ -43,6 +43,10 @@ function RegisterPage() {
   const [hostId, setHostId] = useState<string>("");
   const [idScanFile, setIdScanFile] = useState<File | null>(null);
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
+  type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
+  const [assets, setAssets] = useState<AssetRow[]>([
+    { kind: "device", brand: "", serial: "", description: "" },
+  ]);
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
@@ -85,6 +89,19 @@ function RegisterPage() {
   const submit = useMutation({
     mutationFn: async () => {
       const parsed = schema.parse({ ...form, host_id: hostId });
+
+      // Validate assets — at least one with brand + serial
+      const cleanAssets = assets
+        .map((a) => ({ ...a, brand: a.brand.trim(), serial: a.serial.trim(), description: a.description.trim() }))
+        .filter((a) => a.brand || a.serial || a.description);
+      if (cleanAssets.length === 0) {
+        throw new Error("At least one asset is required. Capture the visitor's items.");
+      }
+      for (const [i, a] of cleanAssets.entries()) {
+        if (!a.brand || !a.serial) {
+          throw new Error(`Asset #${i + 1}: brand and serial number are required.`);
+        }
+      }
 
       // Find or create visitor (duplicate detection by phone)
       const { data: existing } = await supabase
@@ -152,6 +169,18 @@ function RegisterPage() {
         .select("id")
         .single();
       if (visitErr) throw visitErr;
+
+      // Insert captured assets
+      const { error: aErr } = await supabase.from("visit_assets").insert(
+        cleanAssets.map((a) => ({
+          visit_id: visit.id,
+          kind: a.kind,
+          brand: a.brand,
+          serial: a.serial,
+          description: a.description || null,
+        })),
+      );
+      if (aErr) throw aErr;
 
       if (parsed.badge_number) {
         await supabase
@@ -361,7 +390,87 @@ function RegisterPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>3. Identification (optional)</CardTitle>
+          <CardTitle>3. Assets being brought in</CardTitle>
+          <CardDescription>
+            Capture all items the visitor is bringing onto the premises. At least one is required.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {assets.map((a, i) => (
+            <div key={i} className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-12">
+              <div className="space-y-2 md:col-span-3">
+                <Label>Type</Label>
+                <Select
+                  value={a.kind}
+                  onValueChange={(v) =>
+                    setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, kind: v as AssetRow["kind"] } : x)))
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="laptop">Laptop</SelectItem>
+                    <SelectItem value="device">Device</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 md:col-span-3">
+                <Label>Brand <span className="text-destructive">*</span></Label>
+                <Input
+                  value={a.brand}
+                  onChange={(e) =>
+                    setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, brand: e.target.value } : x)))
+                  }
+                />
+              </div>
+              <div className="space-y-2 md:col-span-3">
+                <Label>Serial # <span className="text-destructive">*</span></Label>
+                <Input
+                  value={a.serial}
+                  onChange={(e) =>
+                    setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, serial: e.target.value } : x)))
+                  }
+                />
+              </div>
+              <div className="space-y-2 md:col-span-3">
+                <Label>Description</Label>
+                <Input
+                  value={a.description}
+                  onChange={(e) =>
+                    setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, description: e.target.value } : x)))
+                  }
+                />
+              </div>
+              {assets.length > 1 && (
+                <div className="md:col-span-12">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAssets((arr) => arr.filter((_, j) => j !== i))}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setAssets((arr) => [...arr, { kind: "device", brand: "", serial: "", description: "" }])
+            }
+          >
+            + Add another asset
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>4. Identification (optional)</CardTitle>
           <CardDescription>Capture ID details and an optional scan for audit.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
