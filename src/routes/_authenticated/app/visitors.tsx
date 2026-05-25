@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { StatusBadge } from "./index";
 import { toast } from "sonner";
-import { useCurrentUser } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/_authenticated/app/visitors")({
   head: () => ({ meta: [{ title: "Visitors — Sentinel VMS" }] }),
@@ -15,7 +14,6 @@ export const Route = createFileRoute("/_authenticated/app/visitors")({
 });
 
 function VisitorsPage() {
-  const me = useCurrentUser();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
 
