@@ -169,51 +169,66 @@ function PreRegisterPage() {
       <Card>
         <CardHeader>
           <CardTitle>Assets being brought in</CardTitle>
-          <CardDescription>Capture all items the visitor will bring. At least one is required.</CardDescription>
+          <CardDescription>Will the visitor be bringing any item (laptop, device, etc.)?</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {assets.map((a, i) => (
-            <div key={i} className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-12">
-              <div className="space-y-2 md:col-span-3">
-                <Label>Type</Label>
-                <Select
-                  value={a.kind}
-                  onValueChange={(v) =>
-                    setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, kind: v as AssetRow["kind"] } : x)))
-                  }
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="laptop">Laptop</SelectItem>
-                    <SelectItem value="device">Device</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2 md:col-span-3">
-                <Label>Brand <span className="text-destructive">*</span></Label>
-                <Input value={a.brand} onChange={(e) => setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, brand: e.target.value } : x)))} />
-              </div>
-              <div className="space-y-2 md:col-span-3">
-                <Label>Serial # <span className="text-destructive">*</span></Label>
-                <Input value={a.serial} onChange={(e) => setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, serial: e.target.value } : x)))} />
-              </div>
-              <div className="space-y-2 md:col-span-3">
-                <Label>Description</Label>
-                <Input value={a.description} onChange={(e) => setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, description: e.target.value } : x)))} />
-              </div>
-              {assets.length > 1 && (
-                <div className="md:col-span-12">
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setAssets((arr) => arr.filter((_, j) => j !== i))}>
-                    Remove
-                  </Button>
+          <div className="space-y-2 md:max-w-xs">
+            <Label>Bringing any assets? <span className="text-destructive">*</span></Label>
+            <Select value={hasAssets} onValueChange={(v) => setHasAssets(v as "yes" | "no")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no">Without asset</SelectItem>
+                <SelectItem value="yes">With asset</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {hasAssets === "yes" && (
+            <>
+              {assets.map((a, i) => (
+                <div key={i} className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-12">
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Type</Label>
+                    <Select
+                      value={a.kind}
+                      onValueChange={(v) =>
+                        setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, kind: v as AssetRow["kind"] } : x)))
+                      }
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="laptop">Laptop</SelectItem>
+                        <SelectItem value="device">Device</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Brand <span className="text-destructive">*</span></Label>
+                    <Input value={a.brand} onChange={(e) => setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, brand: e.target.value } : x)))} />
+                  </div>
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Serial # <span className="text-destructive">*</span></Label>
+                    <Input value={a.serial} onChange={(e) => setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, serial: e.target.value } : x)))} />
+                  </div>
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Description</Label>
+                    <Input value={a.description} onChange={(e) => setAssets((arr) => arr.map((x, j) => (i === j ? { ...x, description: e.target.value } : x)))} />
+                  </div>
+                  {assets.length > 1 && (
+                    <div className="md:col-span-12">
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setAssets((arr) => arr.filter((_, j) => j !== i))}>
+                        Remove
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-          <Button type="button" variant="outline" size="sm" onClick={() => setAssets((arr) => [...arr, { kind: "device", brand: "", serial: "", description: "" }])}>
-            + Add another asset
-          </Button>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={() => setAssets((arr) => [...arr, { kind: "device", brand: "", serial: "", description: "" }])}>
+                + Add another asset
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
