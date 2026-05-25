@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowLeft, Check, LogIn, LogOut, Plus, ShieldAlert, Trash2, X } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -72,12 +78,17 @@ function VisitDetail() {
   const canStaffEdit = true;
 
   const approve = () => update.mutate({ approval: "approved" });
-  const reject = (reason: string) => update.mutate({ approval: "not_approved", rejection_reason: reason });
-  const checkIn = () => update.mutate({ status: "checked_in", check_in_at: new Date().toISOString() });
+  const reject = (reason: string) =>
+    update.mutate({ approval: "not_approved", rejection_reason: reason });
+  const checkIn = () =>
+    update.mutate({ status: "checked_in", check_in_at: new Date().toISOString() });
   const checkOut = async () => {
     await update.mutateAsync({ status: "checked_out", check_out_at: new Date().toISOString() });
     if (v.badge_number) {
-      await supabase.from("badges").update({ status: "available" }).eq("badge_number", v.badge_number);
+      await supabase
+        .from("badges")
+        .update({ status: "available" })
+        .eq("badge_number", v.badge_number);
       qc.invalidateQueries();
     }
   };
@@ -85,7 +96,12 @@ function VisitDetail() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-8 py-8">
       <div>
-        <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/app/visitors" })} className="-ml-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate({ to: "/app/visitors" })}
+          className="-ml-2"
+        >
           <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Back to visitors
         </Button>
         <div className="mt-2 flex items-start justify-between gap-4">
@@ -100,7 +116,8 @@ function VisitDetail() {
               )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground capitalize">
-              {v.visit_type} · {v.visit_mode.replace("_", " ")} · {v.visitor?.company ?? "No company"}
+              {v.visit_type} · {v.visit_mode.replace("_", " ")} ·{" "}
+              {v.visitor?.company ?? "No company"}
             </p>
           </div>
           <div className="flex gap-2">
@@ -128,29 +145,45 @@ function VisitDetail() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="md:col-span-2">
-          <CardHeader><CardTitle>Visit information</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Visit information</CardTitle>
+          </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2 text-sm">
             <Info label="Purpose" value={v.purpose} />
             <Info label="Host" value={v.host?.full_name ?? "—"} />
             <Info label="Badge" value={v.badge_number ? `#${v.badge_number}` : "—"} />
             <Info label="Expected duration" value={`${v.expected_duration_minutes} min`} />
-            <Info label="Checked in" value={v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "—"} />
-            <Info label="Checked out" value={v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "—"} />
+            <Info
+              label="Checked in"
+              value={v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "—"}
+            />
+            <Info
+              label="Checked out"
+              value={v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "—"}
+            />
             {v.visit_mode === "drive_in" && (
               <>
                 <Info label="Vehicle plate" value={v.vehicle_plate ?? "—"} />
                 <Info label="Vehicle type" value={v.vehicle_type ?? "—"} />
               </>
             )}
-            {v.work_description && <Info label="Work description" value={v.work_description} className="sm:col-span-2" />}
+            {v.work_description && (
+              <Info label="Work description" value={v.work_description} className="sm:col-span-2" />
+            )}
             {v.rejection_reason && (
-              <Info label="Rejection reason" value={v.rejection_reason} className="sm:col-span-2 text-destructive" />
+              <Info
+                label="Rejection reason"
+                value={v.rejection_reason}
+                className="sm:col-span-2 text-destructive"
+              />
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Visitor</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Visitor</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <Info label="Phone" value={v.visitor?.phone ?? "—"} />
             <Info label="Email" value={v.visitor?.email ?? "—"} />
@@ -191,7 +224,13 @@ function Info({ label, value, className }: { label: string; value: string; class
   );
 }
 
-function RejectButton({ onReject, disabled }: { onReject: (reason: string) => void; disabled?: boolean }) {
+function RejectButton({
+  onReject,
+  disabled,
+}: {
+  onReject: (reason: string) => void;
+  disabled?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   if (!open) {
@@ -203,15 +242,37 @@ function RejectButton({ onReject, disabled }: { onReject: (reason: string) => vo
   }
   return (
     <div className="flex items-center gap-2">
-      <Input placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} className="h-9 w-48" />
-      <Button variant="destructive" size="sm" onClick={() => { if (reason.trim()) onReject(reason.trim()); }} disabled={disabled}>
+      <Input
+        placeholder="Reason"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        className="h-9 w-48"
+      />
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={() => {
+          if (reason.trim()) onReject(reason.trim());
+        }}
+        disabled={disabled}
+      >
         Confirm
       </Button>
     </div>
   );
 }
 
-function AssetsCard({ visitId, items, canEdit, onChange }: { visitId: string; items: any[]; canEdit: boolean; onChange: () => void }) {
+function AssetsCard({
+  visitId,
+  items,
+  canEdit,
+  onChange,
+}: {
+  visitId: string;
+  items: any[];
+  canEdit: boolean;
+  onChange: () => void;
+}) {
   const [kind, setKind] = useState<"laptop" | "device" | "other">("device");
   const [brand, setBrand] = useState("");
   const [serial, setSerial] = useState("");
@@ -229,15 +290,23 @@ function AssetsCard({ visitId, items, canEdit, onChange }: { visitId: string; it
       description: description || null,
     });
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    setBrand(""); setSerial(""); setDescription("");
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setBrand("");
+    setSerial("");
+    setDescription("");
     toast.success("Asset recorded");
     onChange();
   };
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("visit_assets").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     onChange();
   };
 
@@ -253,7 +322,9 @@ function AssetsCard({ visitId, items, canEdit, onChange }: { visitId: string; it
             <div className="space-y-1.5">
               <Label className="text-xs">Kind</Label>
               <Select value={kind} onValueChange={(v: any) => setKind(v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="device">Device</SelectItem>
                   <SelectItem value="laptop">Laptop</SelectItem>
@@ -273,7 +344,9 @@ function AssetsCard({ visitId, items, canEdit, onChange }: { visitId: string; it
               <Label className="text-xs">Description</Label>
               <div className="flex gap-2">
                 <Input value={description} onChange={(e) => setDescription(e.target.value)} />
-                <Button onClick={add} disabled={busy}><Plus className="h-4 w-4" /></Button>
+                <Button onClick={add} disabled={busy}>
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
@@ -318,14 +391,25 @@ function AssetsCard({ visitId, items, canEdit, onChange }: { visitId: string; it
   );
 }
 
-function FeedbackCard({ visitId, initial, onSaved }: { visitId: string; initial: string | null; onSaved: () => void }) {
+function FeedbackCard({
+  visitId,
+  initial,
+  onSaved,
+}: {
+  visitId: string;
+  initial: string | null;
+  onSaved: () => void;
+}) {
   const [text, setText] = useState(initial ?? "");
   const [busy, setBusy] = useState(false);
   const save = async () => {
     setBusy(true);
     const { error } = await supabase.from("visits").update({ feedback: text }).eq("id", visitId);
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Feedback saved");
     onSaved();
   };
@@ -336,9 +420,16 @@ function FeedbackCard({ visitId, initial, onSaved }: { visitId: string; initial:
         <CardDescription>Capture what happened during the visit.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="How did the visit go?" />
+        <Textarea
+          rows={4}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="How did the visit go?"
+        />
         <div className="flex justify-end">
-          <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save feedback"}</Button>
+          <Button onClick={save} disabled={busy}>
+            {busy ? "Saving…" : "Save feedback"}
+          </Button>
         </div>
       </CardContent>
     </Card>
