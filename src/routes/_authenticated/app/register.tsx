@@ -43,6 +43,10 @@ function RegisterPage() {
   const [hostId, setHostId] = useState<string>("");
   const [idScanFile, setIdScanFile] = useState<File | null>(null);
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
+  type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
+  const [assets, setAssets] = useState<AssetRow[]>([
+    { kind: "device", brand: "", serial: "", description: "" },
+  ]);
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
