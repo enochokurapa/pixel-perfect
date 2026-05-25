@@ -170,6 +170,18 @@ function RegisterPage() {
         .single();
       if (visitErr) throw visitErr;
 
+      // Insert captured assets
+      const { error: aErr } = await supabase.from("visit_assets").insert(
+        cleanAssets.map((a) => ({
+          visit_id: visit.id,
+          kind: a.kind,
+          brand: a.brand,
+          serial: a.serial,
+          description: a.description || null,
+        })),
+      );
+      if (aErr) throw aErr;
+
       if (parsed.badge_number) {
         await supabase
           .from("badges")
