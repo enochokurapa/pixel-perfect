@@ -137,14 +137,10 @@ function VisitorsPage() {
                     </td>
                     <td className="px-5 py-3 text-right">
                       {v.status === "checked_in" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            checkOut.mutate({ id: v.id, badge_number: v.badge_number })
-                          }
-                        >
-                          Check out
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/app/visits/$id" params={{ id: v.id }}>
+                            Check out
+                          </Link>
                         </Button>
                       )}
                     </td>
