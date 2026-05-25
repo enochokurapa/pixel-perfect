@@ -15,6 +15,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
         position: z.string().trim().max(120).optional().nullable(),
         phone: z.string().trim().max(40).optional().nullable(),
         department: z.string().trim().max(120).optional().nullable(),
+        branch_id: z.string().uuid().optional().nullable(),
         roles: z.array(z.enum(ROLES)).min(1).max(4),
       })
       .parse(input),
@@ -30,8 +31,6 @@ export const createStaffMember = createServerFn({ method: "POST" })
 
     const newUserId = created.user.id;
 
-    // The handle_new_user trigger has already inserted profile + default 'host' role.
-    // Update profile extras.
     await supabaseAdmin
       .from("profiles")
       .update({
@@ -39,10 +38,10 @@ export const createStaffMember = createServerFn({ method: "POST" })
         position: data.position ?? null,
         phone: data.phone ?? null,
         department: data.department ?? null,
+        branch_id: data.branch_id ?? null,
       })
       .eq("id", newUserId);
 
-    // Replace roles with the requested set.
     await supabaseAdmin.from("user_roles").delete().eq("user_id", newUserId);
     const rows = data.roles.map((role) => ({ user_id: newUserId, role }));
     const { error: rErr } = await supabaseAdmin.from("user_roles").insert(rows);

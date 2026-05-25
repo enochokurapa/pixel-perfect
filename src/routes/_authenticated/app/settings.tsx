@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useCurrentUser } from "@/hooks/use-session";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Trash2, KeyRound, UserPlus, ShieldCheck } from "lucide-react";
+import { Trash2, KeyRound, UserPlus, ShieldCheck, Building2, Plus } from "lucide-react";
 import {
   createStaffMember,
   deleteStaffMember,
@@ -25,6 +25,8 @@ export const Route = createFileRoute("/_authenticated/app/settings")({
 type Role = "admin" | "receptionist" | "security" | "host";
 const ALL_ROLES: Role[] = ["admin", "receptionist", "security", "host"];
 
+type Branch = { id: string; name: string; location: string | null };
+
 function Settings() {
   const me = useCurrentUser();
   const qc = useQueryClient();
@@ -34,12 +36,24 @@ function Settings() {
   const deleteFn = useServerFn(deleteStaffMember);
   const resetFn = useServerFn(resetStaffPassword);
 
+  const branches = useQuery({
+    queryKey: ["branches"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("branches")
+        .select("id, name, location")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as Branch[];
+    },
+  });
+
   const users = useQuery({
     queryKey: ["staff"],
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name, email, position, department, phone")
+        .select("id, full_name, email, position, department, phone, branch_id")
         .order("full_name");
       const { data: roles } = await supabase.from("user_roles").select("user_id, role");
       return (data ?? []).map((p) => ({
@@ -57,6 +71,7 @@ function Settings() {
       position?: string | null;
       phone?: string | null;
       department?: string | null;
+      branch_id?: string | null;
       roles: Role[];
     }) => createFn({ data: payload }),
     onSuccess: () => {
@@ -90,23 +105,47 @@ function Settings() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
+  const updateProfileMut = useMutation({
+    mutationFn: async (p: {
+      id: string;
+      branch_id: string | null;
+      position: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ branch_id: p.branch_id, position: p.position })
+        .eq("id", p.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Updated");
+      qc.invalidateQueries({ queryKey: ["staff"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-8 py-8">
       <header>
         <h1 className="font-display text-3xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground">
-          Create staff accounts, assign roles, and manage access.
+          Manage branches, staff accounts, roles, and positions.
         </p>
       </header>
 
-      <CreateStaffCard onCreate={(p) => createMut.mutateAsync(p)} busy={createMut.isPending} />
+      <BranchesCard branches={branches.data ?? []} />
+
+      <CreateStaffCard
+        branches={branches.data ?? []}
+        onCreate={(p) => createMut.mutateAsync(p)}
+        busy={createMut.isPending}
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>Staff & roles</CardTitle>
           <CardDescription>
-            Toggle role chips to grant or revoke access. Reset a password or remove an account from
-            the right.
+            Toggle role chips to grant or revoke access. Assign a branch & position per staff member.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -116,6 +155,7 @@ function Settings() {
                 <tr>
                   <th className="px-5 py-3 text-left">Name</th>
                   <th className="px-5 py-3 text-left">Email</th>
+                  <th className="px-5 py-3 text-left">Branch / Position</th>
                   <th className="px-5 py-3 text-left">Roles</th>
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
@@ -125,19 +165,27 @@ function Settings() {
                   <tr key={u.id}>
                     <td className="px-5 py-3 align-top">
                       <div className="font-medium">{u.full_name}</div>
-                      {(u.position || u.department) && (
-                        <div className="text-[11px] text-muted-foreground">
-                          {[u.position, u.department].filter(Boolean).join(" · ")}
-                        </div>
+                      {u.department && (
+                        <div className="text-[11px] text-muted-foreground">{u.department}</div>
                       )}
                     </td>
                     <td className="px-5 py-3 align-top text-muted-foreground">{u.email}</td>
+                    <td className="px-5 py-3 align-top">
+                      <BranchPositionEditor
+                        branches={branches.data ?? []}
+                        branchId={u.branch_id ?? null}
+                        position={u.position ?? ""}
+                        onSave={(branch_id, position) =>
+                          updateProfileMut.mutateAsync({ id: u.id, branch_id, position })
+                        }
+                      />
+                    </td>
                     <td className="px-5 py-3 align-top">
                       <div className="flex flex-wrap gap-2">
                         {ALL_ROLES.map((r) => {
                           const on = u.roles.includes(r);
                           const isSelf = u.id === me.userId;
-                          const disable = isSelf && r === "admin" && on; // can't remove own admin
+                          const disable = isSelf && r === "admin" && on;
                           return (
                             <button
                               key={r}
@@ -182,9 +230,156 @@ function Settings() {
   );
 }
 
+function BranchesCard({ branches }: { branches: Branch[] }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [location, setLocation] = useState("");
+
+  const addMut = useMutation({
+    mutationFn: async (p: { name: string; location: string | null }) => {
+      const { error } = await supabase.from("branches").insert(p);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Branch added");
+      setName("");
+      setLocation("");
+      qc.invalidateQueries({ queryKey: ["branches"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const delMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("branches").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Branch removed");
+      qc.invalidateQueries({ queryKey: ["branches"] });
+      qc.invalidateQueries({ queryKey: ["staff"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="h-4 w-4" /> Branches
+        </CardTitle>
+        <CardDescription>Add the office branches/locations of your organization.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+          <div className="space-y-2">
+            <Label>Branch name *</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. HQ" />
+          </div>
+          <div className="space-y-2">
+            <Label>Location</Label>
+            <Input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="City, address"
+            />
+          </div>
+          <div className="flex items-end">
+            <Button
+              disabled={!name.trim() || addMut.isPending}
+              onClick={() =>
+                addMut.mutate({ name: name.trim(), location: location.trim() || null })
+              }
+            >
+              <Plus className="mr-1 h-4 w-4" /> Add branch
+            </Button>
+          </div>
+        </div>
+
+        {branches.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+            No branches yet. Add your first one above.
+          </div>
+        ) : (
+          <div className="divide-y divide-border rounded-md border border-border">
+            {branches.map((b) => (
+              <div key={b.id} className="flex items-center justify-between px-4 py-2.5">
+                <div>
+                  <div className="font-medium">{b.name}</div>
+                  {b.location && (
+                    <div className="text-xs text-muted-foreground">{b.location}</div>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => {
+                    if (confirm(`Remove branch "${b.name}"?`)) delMut.mutate(b.id);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BranchPositionEditor({
+  branches,
+  branchId,
+  position,
+  onSave,
+}: {
+  branches: Branch[];
+  branchId: string | null;
+  position: string;
+  onSave: (branchId: string | null, position: string | null) => Promise<unknown>;
+}) {
+  const [b, setB] = useState<string>(branchId ?? "");
+  const [p, setP] = useState<string>(position);
+  const dirty = (b || null) !== (branchId || null) || (p || "") !== (position || "");
+  return (
+    <div className="flex flex-col gap-1.5">
+      <select
+        value={b}
+        onChange={(e) => setB(e.target.value)}
+        className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
+      >
+        <option value="">— No branch —</option>
+        {branches.map((br) => (
+          <option key={br.id} value={br.id}>
+            {br.name}
+          </option>
+        ))}
+      </select>
+      <Input
+        value={p}
+        onChange={(e) => setP(e.target.value)}
+        placeholder="Position / title"
+        className="h-8 text-xs"
+      />
+      {dirty && (
+        <Button
+          size="sm"
+          className="h-7 self-start text-xs"
+          onClick={() => onSave(b || null, p.trim() || null)}
+        >
+          Save
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function CreateStaffCard({
   onCreate,
   busy,
+  branches,
 }: {
   onCreate: (p: {
     full_name: string;
@@ -193,9 +388,11 @@ function CreateStaffCard({
     position?: string | null;
     phone?: string | null;
     department?: string | null;
+    branch_id?: string | null;
     roles: Role[];
   }) => Promise<unknown>;
   busy: boolean;
+  branches: Branch[];
 }) {
   const [full_name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -203,6 +400,7 @@ function CreateStaffCard({
   const [position, setPosition] = useState("");
   const [phone, setPhone] = useState("");
   const [department, setDepartment] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [roles, setRoles] = useState<Role[]>(["host"]);
 
   const toggle = (r: Role) =>
@@ -220,6 +418,7 @@ function CreateStaffCard({
       position: position.trim() || null,
       phone: phone.trim() || null,
       department: department.trim() || null,
+      branch_id: branchId || null,
       roles,
     });
     setName("");
@@ -228,6 +427,7 @@ function CreateStaffCard({
     setPosition("");
     setPhone("");
     setDepartment("");
+    setBranchId("");
     setRoles(["host"]);
   };
 
@@ -254,6 +454,21 @@ function CreateStaffCard({
         <Field label="Phone" value={phone} onChange={setPhone} />
         <Field label="Position / title" value={position} onChange={setPosition} />
         <Field label="Department" value={department} onChange={setDepartment} />
+        <div className="space-y-2">
+          <Label>Branch</Label>
+          <select
+            value={branchId}
+            onChange={(e) => setBranchId(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          >
+            <option value="">— No branch —</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="space-y-2 md:col-span-2">
           <Label>Roles *</Label>
           <div className="flex flex-wrap gap-2">

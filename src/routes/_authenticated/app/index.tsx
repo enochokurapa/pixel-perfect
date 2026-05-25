@@ -82,17 +82,20 @@ function Dashboard() {
     refetchInterval: 60_000,
   });
 
-  // For charts — last 30 days
+  // For charts — current week (Mon–Sat)
   const chartData = useQuery({
     queryKey: ["dashboard", "charts"],
     queryFn: async () => {
-      const since = new Date();
-      since.setDate(since.getDate() - 6);
-      since.setHours(0, 0, 0, 0);
+      const now = new Date();
+      const dow = now.getDay();
+      const daysSinceMon = (dow + 6) % 7;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - daysSinceMon);
+      monday.setHours(0, 0, 0, 0);
       const { data, error } = await supabase
         .from("visits")
         .select("created_at, visit_type, status")
-        .gte("created_at", since.toISOString());
+        .gte("created_at", monday.toISOString());
       if (error) throw error;
       return data ?? [];
     },
@@ -101,26 +104,20 @@ function Dashboard() {
 
   const { dailyData, typeData, statusData } = useMemo(() => {
     const rows = chartData.data ?? [];
-    // Daily bar: last 7 days
-    const days: { day: string; visits: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      d.setHours(0, 0, 0, 0);
-      days.push({
-        day: d.toLocaleDateString(undefined, { weekday: "short" }),
-        visits: 0,
-      });
-    }
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const days = labels.map((day) => ({ day, visits: 0 }));
+    const now = new Date();
+    const dow = now.getDay();
+    const daysSinceMon = (dow + 6) % 7;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - daysSinceMon);
+    monday.setHours(0, 0, 0, 0);
     rows.forEach((r) => {
       const created = new Date(r.created_at);
-      const diff = Math.floor(
-        (startOfToday.getTime() - new Date(created).setHours(0, 0, 0, 0)) / 86400000,
+      const idx = Math.floor(
+        (new Date(created).setHours(0, 0, 0, 0) - monday.getTime()) / 86400000,
       );
-      const idx = 6 - diff;
-      if (idx >= 0 && idx < 7) days[idx].visits += 1;
+      if (idx >= 0 && idx < 6) days[idx].visits += 1;
     });
 
     const typeCounts: Record<string, number> = {};
@@ -234,7 +231,7 @@ function Dashboard() {
       <section className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Visits — last 7 days</CardTitle>
+            <CardTitle>Visits — this week (Mon–Sat)</CardTitle>
           </CardHeader>
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -296,7 +293,7 @@ function Dashboard() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Status distribution (last 7 days)</CardTitle>
+            <CardTitle>Status distribution (this week)</CardTitle>
           </CardHeader>
           <CardContent className="h-64">
             {statusData.length === 0 ? (
