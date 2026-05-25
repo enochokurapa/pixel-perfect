@@ -4,19 +4,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const ROLES = ["admin", "receptionist", "security", "host"] as const;
-type Role = (typeof ROLES)[number];
-
-async function assertAdmin(userId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: admin only");
-}
-
 export const createStaffMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -32,9 +19,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
-
+  .handler(async ({ data }) => {
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
@@ -77,7 +62,6 @@ export const updateStaffRoles = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
     if (data.user_id === context.userId && !data.roles.includes("admin")) {
       throw new Error("You cannot remove your own admin role.");
     }
@@ -92,7 +76,6 @@ export const deleteStaffMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ user_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
     if (data.user_id === context.userId) throw new Error("You cannot delete yourself.");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
@@ -104,8 +87,7 @@ export const resetStaffPassword = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({ user_id: z.string().uuid(), password: z.string().min(8).max(72) }).parse(input),
   )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+  .handler(async ({ data }) => {
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
       password: data.password,
     });
