@@ -146,9 +146,11 @@ function VisitDetail() {
               </Button>
             )}
             {canStaffEdit && v.status === "checked_in" && (
-              <Button variant="outline" onClick={checkOut} disabled={update.isPending}>
-                <LogOut className="mr-1 h-4 w-4" /> Check out
-              </Button>
+              <CheckOutButton
+                hasBadge={!!v.badge_number}
+                onConfirm={checkOut}
+                disabled={update.isPending}
+              />
             )}
           </div>
         </div>
