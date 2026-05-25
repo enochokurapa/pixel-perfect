@@ -15,7 +15,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
         position: z.string().trim().max(120).optional().nullable(),
         phone: z.string().trim().max(40).optional().nullable(),
         department: z.string().trim().max(120).optional().nullable(),
-        roles: z.array(z.enum(ROLES)).min(1).max(3),
+        roles: z.array(z.enum(ROLES)).min(1).max(4),
       })
       .parse(input),
   )
@@ -57,7 +57,7 @@ export const updateStaffRoles = createServerFn({ method: "POST" })
     z
       .object({
         user_id: z.string().uuid(),
-        roles: z.array(z.enum(ROLES)).min(1).max(3),
+        roles: z.array(z.enum(ROLES)).min(1).max(4),
       })
       .parse(input),
   )
