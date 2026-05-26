@@ -24,13 +24,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Check, LogIn, LogOut, Plus, ShieldAlert, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, FileSpreadsheet, FileText, LogIn, LogOut, Plus, ShieldAlert, Trash2, X } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type VisitUpdate = Database["public"]["Tables"]["visits"]["Update"];
 type VisitAsset = Database["public"]["Tables"]["visit_assets"]["Row"];
 import { toast } from "sonner";
 import { StatusBadge } from "./index";
+import { exportExcel, exportDetailPdf } from "@/lib/visit-export";
 
 
 export const Route = createFileRoute("/_authenticated/app/visits/$id")({
@@ -38,7 +39,84 @@ export const Route = createFileRoute("/_authenticated/app/visits/$id")({
   component: VisitDetail,
 });
 
+
+
+
+function downloadExcel(v: any, assetList: VisitAsset[]) {
+  const rows = [
+    { Field: "Full name", Value: v.visitor?.full_name ?? "" },
+    { Field: "Phone", Value: v.visitor?.phone ?? "" },
+    { Field: "Email", Value: v.visitor?.email ?? "" },
+    { Field: "Company", Value: v.visitor?.company ?? "" },
+    { Field: "ID type", Value: v.visitor?.id_type ?? "" },
+    { Field: "ID number", Value: v.visitor?.id_number ?? "" },
+    { Field: "Host", Value: v.host?.full_name ?? "" },
+    { Field: "Purpose", Value: v.purpose ?? "" },
+    { Field: "Visit type", Value: v.visit_type ?? "" },
+    { Field: "Visit mode", Value: v.visit_mode ?? "" },
+    { Field: "Badge", Value: v.badge_number ?? "" },
+    { Field: "Vehicle plate", Value: v.vehicle_plate ?? "" },
+    { Field: "Vehicle type", Value: v.vehicle_type ?? "" },
+    { Field: "Expected duration (min)", Value: v.expected_duration_minutes ?? "" },
+    { Field: "Status", Value: v.status ?? "" },
+    { Field: "Approval", Value: v.approval ?? "" },
+    { Field: "Check-in", Value: v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "" },
+    { Field: "Check-out", Value: v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "" },
+    { Field: "Badge returned", Value: v.badge_returned ? "Yes" : "No" },
+    { Field: "Assets verified", Value: v.assets_verified ? "Yes" : "No" },
+    { Field: "Checkout notes", Value: v.checkout_notes ?? "" },
+    { Field: "Rejection reason", Value: v.rejection_reason ?? "" },
+    { Field: "Feedback", Value: v.feedback ?? "" },
+    ...assetList.map((a, i) => ({ Field: `Asset ${i + 1}`, Value: `${a.kind} ${a.brand ?? ""} ${a.serial ?? ""} ${a.description ?? ""}`.trim() })),
+  ];
+  exportExcel(`visit-${v.visitor?.full_name ?? "detail"}`, rows);
+}
+
+function downloadPdf(v: any, assetList: VisitAsset[]) {
+  const visitor: [string, string][] = [
+    ["Full name", v.visitor?.full_name ?? "—"],
+    ["Phone", v.visitor?.phone ?? "—"],
+    ["Email", v.visitor?.email ?? "—"],
+    ["Company", v.visitor?.company ?? "—"],
+    ["ID type", v.visitor?.id_type ?? "—"],
+    ["ID number", v.visitor?.id_number ?? "—"],
+  ];
+  const visit: [string, string][] = [
+    ["Host", v.host?.full_name ?? "—"],
+    ["Purpose", v.purpose ?? "—"],
+    ["Visit type", v.visit_type ?? "—"],
+    ["Visit mode", v.visit_mode ?? "—"],
+    ["Badge", v.badge_number ?? "—"],
+    ["Vehicle plate", v.vehicle_plate ?? "—"],
+    ["Vehicle type", v.vehicle_type ?? "—"],
+    ["Expected duration", `${v.expected_duration_minutes ?? "—"} min`],
+    ["Status", v.status ?? "—"],
+    ["Approval", v.approval ?? "—"],
+    ["Check-in", v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "—"],
+    ["Check-out", v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "—"],
+    ["Badge returned", v.badge_returned ? "Yes" : "No"],
+    ["Assets verified", v.assets_verified ? "Yes" : "No"],
+    ["Checkout notes", v.checkout_notes ?? "—"],
+    ["Rejection reason", v.rejection_reason ?? "—"],
+    ["Feedback", v.feedback ?? "—"],
+  ];
+  const assetRows: [string, string][] = assetList.length
+    ? assetList.map((a, i) => [`Asset ${i + 1} (${a.kind})`, `${a.brand ?? ""} ${a.serial ?? ""} ${a.description ?? ""}`.trim() || "—"])
+    : [["Assets", "None recorded"]];
+  exportDetailPdf(
+    `visit-${v.visitor?.full_name ?? "detail"}`,
+    `Visit Report — ${v.visitor?.full_name ?? ""}`,
+    [
+      { heading: "Visitor", rows: visitor },
+      { heading: "Visit", rows: visit },
+      { heading: "Equipment & assets", rows: assetRows },
+    ],
+  );
+}
+
 function VisitDetail() {
+
+
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -142,7 +220,13 @@ function VisitDetail() {
               {v.visitor?.company ?? "No company"}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => downloadExcel(v, assets.data ?? [])}>
+              <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => downloadPdf(v, assets.data ?? [])}>
+              <FileText className="mr-1 h-4 w-4" /> PDF
+            </Button>
             {v.approval === "pending" && (
               <>
                 <RejectButton onReject={reject} disabled={update.isPending} />
