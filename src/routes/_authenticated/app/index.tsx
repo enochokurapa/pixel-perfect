@@ -43,6 +43,7 @@ const PAGE_SIZE = 6;
 function Dashboard() {
   const me = useCurrentUser();
   const [page, setPage] = useState(0);
+  const [openTile, setOpenTile] = useState<TileKey | null>(null);
 
   const stats = useQuery({
     queryKey: ["dashboard", "stats"],
