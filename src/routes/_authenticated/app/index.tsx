@@ -432,11 +432,13 @@ function StatCard({
   value,
   icon: Icon,
   tone,
+  onClick,
 }: {
   label: string;
   value: number | undefined;
   icon: any;
   tone: "default" | "info" | "warning";
+  onClick?: () => void;
 }) {
   const toneClass = {
     default: "bg-secondary text-secondary-foreground",
@@ -444,7 +446,10 @@ function StatCard({
     warning: "bg-warning/15 text-warning-foreground",
   }[tone];
   return (
-    <Card>
+    <Card
+      onClick={onClick}
+      className={onClick ? "cursor-pointer transition-colors hover:bg-muted/40" : ""}
+    >
       <CardContent className="flex items-center gap-4 p-5">
         <div className={`grid h-10 w-10 place-items-center rounded-md ${toneClass}`}>
           <Icon className="h-5 w-5" />
