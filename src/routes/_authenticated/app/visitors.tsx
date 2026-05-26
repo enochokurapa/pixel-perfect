@@ -4,9 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useMemo, useState } from "react";
 import { StatusBadge } from "./index";
-
+import { exportExcel, exportPdf } from "@/lib/visit-export";
+import { FileSpreadsheet, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app/visitors")({
   head: () => ({ meta: [{ title: "Visitors — Sentinel VMS" }] }),
@@ -15,6 +24,10 @@ export const Route = createFileRoute("/_authenticated/app/visitors")({
 
 function VisitorsPage() {
   const [q, setQ] = useState("");
+  const [status, setStatus] = useState<string>("all");
+  const [type, setType] = useState<string>("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   const visits = useQuery({
     queryKey: ["visits", "all"],
@@ -22,27 +35,57 @@ function VisitorsPage() {
       const { data, error } = await supabase
         .from("visits")
         .select(
-          "id, status, purpose, check_in_at, check_out_at, created_at, visit_type, badge_number, vehicle_plate, visitor:visitors(full_name, company, phone), host:profiles(full_name)",
+          "id, status, purpose, check_in_at, check_out_at, created_at, visit_type, badge_number, vehicle_plate, visitor:visitors(full_name, company, phone, email), host:profiles(full_name)",
         )
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(500);
       if (error) throw error;
       return data;
     },
   });
 
+  const filtered = useMemo(() => {
+    return visits.data?.filter((v) => {
+      if (q) {
+        const s = q.toLowerCase();
+        const match =
+          v.visitor?.full_name.toLowerCase().includes(s) ||
+          v.visitor?.company?.toLowerCase().includes(s) ||
+          v.purpose.toLowerCase().includes(s) ||
+          v.badge_number?.toLowerCase().includes(s);
+        if (!match) return false;
+      }
+      if (status !== "all" && v.status !== status) return false;
+      if (type !== "all" && v.visit_type !== type) return false;
+      if (from && new Date(v.created_at) < new Date(from)) return false;
+      if (to && new Date(v.created_at) > new Date(to + "T23:59:59")) return false;
+      return true;
+    });
+  }, [visits.data, q, status, type, from, to]);
 
+  const toRows = () =>
+    (filtered ?? []).map((v) => ({
+      Visitor: v.visitor?.full_name ?? "",
+      Company: v.visitor?.company ?? "",
+      Phone: v.visitor?.phone ?? "",
+      Email: v.visitor?.email ?? "",
+      Host: v.host?.full_name ?? "",
+      Purpose: v.purpose,
+      Type: v.visit_type,
+      Badge: v.badge_number ?? "",
+      Vehicle: v.vehicle_plate ?? "",
+      "Check-in": v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "",
+      "Check-out": v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "",
+      Status: v.status,
+    }));
 
-  const filtered = visits.data?.filter((v) => {
-    if (!q) return true;
-    const s = q.toLowerCase();
-    return (
-      v.visitor?.full_name.toLowerCase().includes(s) ||
-      v.visitor?.company?.toLowerCase().includes(s) ||
-      v.purpose.toLowerCase().includes(s) ||
-      v.badge_number?.toLowerCase().includes(s)
-    );
-  });
+  const resetFilters = () => {
+    setQ("");
+    setStatus("all");
+    setType("all");
+    setFrom("");
+    setTo("");
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-8 py-8">
@@ -51,18 +94,66 @@ function VisitorsPage() {
           <h1 className="font-display text-3xl font-semibold">Visitors</h1>
           <p className="text-sm text-muted-foreground">All visits, most recent first.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Input
-            placeholder="Search name, company, badge…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="max-w-xs"
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportExcel("visitors", toRows())}>
+            <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => exportPdf("visitors", "Visitors", toRows())}>
+            <FileText className="mr-1 h-4 w-4" /> PDF
+          </Button>
           <Button asChild size="lg">
             <Link to="/app/register">+ Register new visitor</Link>
           </Button>
         </div>
       </header>
+
+      <Card>
+        <CardContent className="grid gap-3 p-4 md:grid-cols-6">
+          <div className="md:col-span-2 space-y-1">
+            <Label className="text-xs">Search</Label>
+            <Input
+              placeholder="Name, company, badge…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Status</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="checked_in">Checked in</SelectItem>
+                <SelectItem value="checked_out">Checked out</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Type</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="guest">Guest</SelectItem>
+                <SelectItem value="contractor">Contractor</SelectItem>
+                <SelectItem value="delivery">Delivery</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">From</Label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">To</Label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+          <div className="md:col-span-6 flex justify-end">
+            <Button variant="ghost" size="sm" onClick={resetFilters}>Reset filters</Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -113,13 +204,11 @@ function VisitorsPage() {
                       <StatusBadge status={v.status} />
                     </td>
                     <td className="px-5 py-3 text-right">
-                      {v.status === "checked_in" && (
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to="/app/visits/$id" params={{ id: v.id }}>
-                            Check out
-                          </Link>
-                        </Button>
-                      )}
+                      <Button size="sm" variant="outline" asChild>
+                        <Link to="/app/visits/$id" params={{ id: v.id }}>
+                          View
+                        </Link>
+                      </Button>
                     </td>
                   </tr>
                 ))}
