@@ -24,13 +24,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Check, LogIn, LogOut, Plus, ShieldAlert, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, FileSpreadsheet, FileText, LogIn, LogOut, Plus, ShieldAlert, Trash2, X } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type VisitUpdate = Database["public"]["Tables"]["visits"]["Update"];
 type VisitAsset = Database["public"]["Tables"]["visit_assets"]["Row"];
 import { toast } from "sonner";
 import { StatusBadge } from "./index";
+import { exportExcel, exportDetailPdf } from "@/lib/visit-export";
 
 
 export const Route = createFileRoute("/_authenticated/app/visits/$id")({
