@@ -11,6 +11,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2, KeyRound, UserPlus, ShieldCheck, Building2, Plus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   createStaffMember,
   deleteStaffMember,
