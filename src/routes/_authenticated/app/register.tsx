@@ -252,6 +252,8 @@ function RegisterPage() {
               <Label>
                 {visitType === "supplier"
                   ? "What are they supplying?"
+                  : visitType === "delivery"
+                  ? "What is being delivered? (items, sender, recipient)"
                   : "Description of contracted work"}
               </Label>
               <Textarea
