@@ -10,6 +10,7 @@ import { useCurrentUser } from "@/hooks/use-session";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2, KeyRound, UserPlus, ShieldCheck, Building2, Plus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   createStaffMember,
   deleteStaffMember,
