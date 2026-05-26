@@ -114,6 +114,9 @@ function downloadPdf(v: any, assetList: VisitAsset[]) {
   );
 }
 
+function VisitDetail() {
+
+
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
