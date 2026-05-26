@@ -252,33 +252,52 @@ function Settings() {
                       />
                     </td>
                     <td className="px-5 py-3 align-top">
-                      <div className="flex flex-wrap gap-2">
-                        {ALL_ROLES.map((r) => {
-                          const on = u.roles.includes(r);
-                          const isSelf = u.id === me.userId;
-                          const disable = isSelf && r === "admin" && on;
-                          return (
-                            <button
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap gap-1.5">
+                          {u.roles.length === 0 && (
+                            <span className="text-xs text-muted-foreground">No roles</span>
+                          )}
+                          {u.roles.map((r) => (
+                            <span
                               key={r}
-                              disabled={disable || updateRolesMut.isPending}
-                              onClick={() => {
-                                const next = on ? u.roles.filter((x) => x !== r) : [...u.roles, r];
-                                if (next.length === 0) {
-                                  toast.error("User must have at least one role");
-                                  return;
-                                }
-                                updateRolesMut.mutate({ user_id: u.id, roles: next });
-                              }}
-                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize border transition-colors disabled:opacity-50 ${
-                                on
-                                  ? "bg-primary text-primary-foreground border-primary"
-                                  : "border-border text-muted-foreground hover:bg-muted"
-                              }`}
+                              className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium capitalize text-primary"
                             >
                               {r}
-                            </button>
-                          );
-                        })}
+                            </span>
+                          ))}
+                        </div>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              disabled={updateRolesMut.isPending}
+                            >
+                              Edit roles
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-96">
+                            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              Role permissions
+                            </div>
+                            <RoleChecklist
+                              selected={u.roles}
+                              disabledRoles={
+                                u.id === me.userId && u.roles.includes("admin") ? ["admin"] : []
+                              }
+                              busy={updateRolesMut.isPending}
+                              onChange={(next) =>
+                                updateRolesMut.mutate({ user_id: u.id, roles: next })
+                              }
+                            />
+                            {u.id === me.userId && (
+                              <p className="mt-2 text-[11px] text-muted-foreground">
+                                You can't remove your own Admin role here (locked for safety).
+                              </p>
+                            )}
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </td>
                     <td className="px-5 py-3 align-top text-right">
