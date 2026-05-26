@@ -75,7 +75,7 @@ function RoleChecklist({
             <Checkbox
               checked={on}
               disabled={isDisabled}
-              onCheckedChange={(c) => {
+              onCheckedChange={(c: boolean | "indeterminate") => {
                 const next = c === true ? [...selected, r] : selected.filter((x) => x !== r);
                 if (next.length === 0) {
                   toast.error("User must have at least one role");
