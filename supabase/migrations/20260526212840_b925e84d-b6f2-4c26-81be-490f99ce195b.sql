@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.scan_overstays() FROM PUBLIC, anon, authenticated;
