@@ -31,6 +31,7 @@ import {
   Legend,
   CartesianGrid,
 } from "recharts";
+import { TileDetailModal, type TileKey } from "@/components/tile-detail-modal";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   head: () => ({ meta: [{ title: "Dashboard — Sentinel VMS" }] }),
