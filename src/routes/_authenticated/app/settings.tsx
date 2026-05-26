@@ -494,8 +494,6 @@ function CreateStaffCard({
   const [branchId, setBranchId] = useState("");
   const [roles, setRoles] = useState<Role[]>(["host"]);
 
-  const toggle = (r: Role) =>
-    setRoles((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]));
 
   const submit = async () => {
     if (!full_name.trim() || !email.trim() || password.length < 8 || roles.length === 0) {
