@@ -25,6 +25,76 @@ export const Route = createFileRoute("/_authenticated/app/settings")({
 type Role = "admin" | "receptionist" | "security" | "host";
 const ALL_ROLES: Role[] = ["admin", "receptionist", "security", "host"];
 
+const ROLE_INFO: Record<Role, { label: string; description: string }> = {
+  admin: {
+    label: "Admin",
+    description:
+      "Full control. Manages branches, staff, roles, badges, blacklist, all visits and settings. Can create other admins.",
+  },
+  receptionist: {
+    label: "Receptionist",
+    description:
+      "Front-desk: register walk-ins, check visitors in & out, assign badges, manage assets.",
+  },
+  security: {
+    label: "Security",
+    description:
+      "Gate operations: check-in/out at gate, verify badges & assets, escort visitors, view blacklist.",
+  },
+  host: {
+    label: "Host",
+    description:
+      "Receive own visitors: approve/reject pre-registered visits, get arrival notifications, extend stay.",
+  },
+};
+
+function RoleChecklist({
+  selected,
+  onChange,
+  disabledRoles = [],
+  busy,
+}: {
+  selected: Role[];
+  onChange: (next: Role[]) => void;
+  disabledRoles?: Role[];
+  busy?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      {ALL_ROLES.map((r) => {
+        const on = selected.includes(r);
+        const isDisabled = disabledRoles.includes(r) || busy;
+        return (
+          <label
+            key={r}
+            className={`flex cursor-pointer items-start gap-3 rounded-md border p-2.5 text-sm transition-colors ${
+              on ? "border-primary/50 bg-primary/5" : "border-border hover:bg-muted/40"
+            } ${isDisabled ? "opacity-60" : ""}`}
+          >
+            <Checkbox
+              checked={on}
+              disabled={isDisabled}
+              onCheckedChange={(c) => {
+                const next = c === true ? [...selected, r] : selected.filter((x) => x !== r);
+                if (next.length === 0) {
+                  toast.error("User must have at least one role");
+                  return;
+                }
+                onChange(next);
+              }}
+              className="mt-0.5"
+            />
+            <div>
+              <div className="font-medium capitalize">{ROLE_INFO[r].label}</div>
+              <div className="text-xs text-muted-foreground">{ROLE_INFO[r].description}</div>
+            </div>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 type Branch = { id: string; name: string; location: string | null };
 
 function Settings() {
