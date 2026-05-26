@@ -212,23 +212,15 @@ function Dashboard() {
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Visitors inside" value={stats.data?.inside} icon={Users} tone="info" />
-        <StatCard label="Today's visits" value={stats.data?.today} icon={LogIn} tone="default" />
-        <StatCard label="Overstayed" value={stats.data?.overstay} icon={AlertTriangle} tone="warning" />
-        <StatCard
-          label="Badges issued"
-          value={stats.data?.badgesIssued}
-          icon={BadgeCheck}
-          tone="default"
-        />
-        <StatCard
-          label="Unissued badges"
-          value={stats.data?.badgesUnissued}
-          icon={BadgeMinus}
-          tone="info"
-        />
-        <StatCard label="With assets" value={stats.data?.withAssets} icon={Laptop} tone="default" />
+        <StatCard label="Visitors inside" value={stats.data?.inside} icon={Users} tone="info" onClick={() => setOpenTile("inside")} />
+        <StatCard label="Today's visits" value={stats.data?.today} icon={LogIn} tone="default" onClick={() => setOpenTile("today")} />
+        <StatCard label="Overstayed" value={stats.data?.overstay} icon={AlertTriangle} tone="warning" onClick={() => setOpenTile("overstay")} />
+        <StatCard label="Badges issued" value={stats.data?.badgesIssued} icon={BadgeCheck} tone="default" onClick={() => setOpenTile("badgesIssued")} />
+        <StatCard label="Unissued badges" value={stats.data?.badgesUnissued} icon={BadgeMinus} tone="info" onClick={() => setOpenTile("badgesUnissued")} />
+        <StatCard label="With assets" value={stats.data?.withAssets} icon={Laptop} tone="default" onClick={() => setOpenTile("withAssets")} />
       </section>
+
+      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} />
 
       <section className="grid gap-6 lg:grid-cols-2">
         <Card>
