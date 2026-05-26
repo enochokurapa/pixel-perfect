@@ -38,7 +38,7 @@ function RegisterPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor">("guest");
+  const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor" | "delivery">("guest");
   const [visitMode, setVisitMode] = useState<"walk_in" | "drive_in">("walk_in");
   const [hostId, setHostId] = useState<string>("");
   const [idScanFile, setIdScanFile] = useState<File | null>(null);
@@ -231,6 +231,7 @@ function RegisterPage() {
                 <SelectItem value="guest">Guest</SelectItem>
                 <SelectItem value="supplier">Supplier</SelectItem>
                 <SelectItem value="contractor">Contractor</SelectItem>
+                <SelectItem value="delivery">Delivery</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -251,6 +252,8 @@ function RegisterPage() {
               <Label>
                 {visitType === "supplier"
                   ? "What are they supplying?"
+                  : visitType === "delivery"
+                  ? "What is being delivered? (items, sender, recipient)"
                   : "Description of contracted work"}
               </Label>
               <Textarea

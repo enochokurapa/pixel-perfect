@@ -130,6 +130,24 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_settings: {
+        Row: {
+          id: string
+          office_name: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          office_name?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          office_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           branch_id: string | null
@@ -233,6 +251,36 @@ export type Database = {
           },
         ]
       }
+      visit_response_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string | null
+          response: string | null
+          token: string
+          used_at: string | null
+          visit_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason?: string | null
+          response?: string | null
+          token: string
+          used_at?: string | null
+          visit_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string | null
+          response?: string | null
+          token?: string
+          used_at?: string | null
+          visit_id?: string
+        }
+        Relationships: []
+      }
       visitors: {
         Row: {
           company: string | null
@@ -278,6 +326,7 @@ export type Database = {
           assets_verified: boolean
           badge_number: string | null
           badge_returned: boolean
+          branch_id: string | null
           check_in_at: string | null
           check_out_at: string | null
           checkout_notes: string | null
@@ -288,10 +337,12 @@ export type Database = {
           feedback: string | null
           host_id: string | null
           id: string
+          overstay_notified_at: string | null
           pre_registered: boolean
           purpose: string
           rejection_reason: string | null
           status: Database["public"]["Enums"]["visit_status"]
+          stay_extended_count: number
           updated_at: string
           vehicle_plate: string | null
           vehicle_type: string | null
@@ -305,6 +356,7 @@ export type Database = {
           assets_verified?: boolean
           badge_number?: string | null
           badge_returned?: boolean
+          branch_id?: string | null
           check_in_at?: string | null
           check_out_at?: string | null
           checkout_notes?: string | null
@@ -315,10 +367,12 @@ export type Database = {
           feedback?: string | null
           host_id?: string | null
           id?: string
+          overstay_notified_at?: string | null
           pre_registered?: boolean
           purpose: string
           rejection_reason?: string | null
           status?: Database["public"]["Enums"]["visit_status"]
+          stay_extended_count?: number
           updated_at?: string
           vehicle_plate?: string | null
           vehicle_type?: string | null
@@ -332,6 +386,7 @@ export type Database = {
           assets_verified?: boolean
           badge_number?: string | null
           badge_returned?: boolean
+          branch_id?: string | null
           check_in_at?: string | null
           check_out_at?: string | null
           checkout_notes?: string | null
@@ -342,10 +397,12 @@ export type Database = {
           feedback?: string | null
           host_id?: string | null
           id?: string
+          overstay_notified_at?: string | null
           pre_registered?: boolean
           purpose?: string
           rejection_reason?: string | null
           status?: Database["public"]["Enums"]["visit_status"]
+          stay_extended_count?: number
           updated_at?: string
           vehicle_plate?: string | null
           vehicle_type?: string | null
@@ -384,6 +441,7 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      scan_overstays: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "receptionist" | "host" | "security"
@@ -402,9 +460,11 @@ export type Database = {
         | "visit_approved"
         | "visit_rejected"
         | "overstay"
+        | "visit_response"
+        | "staff_credentials"
       visit_mode: "walk_in" | "drive_in"
       visit_status: "pending" | "checked_in" | "checked_out" | "overstayed"
-      visit_type: "supplier" | "contractor" | "guest"
+      visit_type: "supplier" | "contractor" | "guest" | "delivery"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -549,10 +609,12 @@ export const Constants = {
         "visit_approved",
         "visit_rejected",
         "overstay",
+        "visit_response",
+        "staff_credentials",
       ],
       visit_mode: ["walk_in", "drive_in"],
       visit_status: ["pending", "checked_in", "checked_out", "overstayed"],
-      visit_type: ["supplier", "contractor", "guest"],
+      visit_type: ["supplier", "contractor", "guest", "delivery"],
     },
   },
 } as const

@@ -10,6 +10,8 @@ import { useCurrentUser } from "@/hooks/use-session";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2, KeyRound, UserPlus, ShieldCheck, Building2, Plus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   createStaffMember,
   deleteStaffMember,
@@ -24,6 +26,76 @@ export const Route = createFileRoute("/_authenticated/app/settings")({
 
 type Role = "admin" | "receptionist" | "security" | "host";
 const ALL_ROLES: Role[] = ["admin", "receptionist", "security", "host"];
+
+const ROLE_INFO: Record<Role, { label: string; description: string }> = {
+  admin: {
+    label: "Admin",
+    description:
+      "Full control. Manages branches, staff, roles, badges, blacklist, all visits and settings. Can create other admins.",
+  },
+  receptionist: {
+    label: "Receptionist",
+    description:
+      "Front-desk: register walk-ins, check visitors in & out, assign badges, manage assets.",
+  },
+  security: {
+    label: "Security",
+    description:
+      "Gate operations: check-in/out at gate, verify badges & assets, escort visitors, view blacklist.",
+  },
+  host: {
+    label: "Host",
+    description:
+      "Receive own visitors: approve/reject pre-registered visits, get arrival notifications, extend stay.",
+  },
+};
+
+function RoleChecklist({
+  selected,
+  onChange,
+  disabledRoles = [],
+  busy,
+}: {
+  selected: Role[];
+  onChange: (next: Role[]) => void;
+  disabledRoles?: Role[];
+  busy?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      {ALL_ROLES.map((r) => {
+        const on = selected.includes(r);
+        const isDisabled = disabledRoles.includes(r) || busy;
+        return (
+          <label
+            key={r}
+            className={`flex cursor-pointer items-start gap-3 rounded-md border p-2.5 text-sm transition-colors ${
+              on ? "border-primary/50 bg-primary/5" : "border-border hover:bg-muted/40"
+            } ${isDisabled ? "opacity-60" : ""}`}
+          >
+            <Checkbox
+              checked={on}
+              disabled={isDisabled}
+              onCheckedChange={(c: boolean | "indeterminate") => {
+                const next = c === true ? [...selected, r] : selected.filter((x) => x !== r);
+                if (next.length === 0) {
+                  toast.error("User must have at least one role");
+                  return;
+                }
+                onChange(next);
+              }}
+              className="mt-0.5"
+            />
+            <div>
+              <div className="font-medium capitalize">{ROLE_INFO[r].label}</div>
+              <div className="text-xs text-muted-foreground">{ROLE_INFO[r].description}</div>
+            </div>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
 
 type Branch = { id: string; name: string; location: string | null };
 
@@ -181,33 +253,52 @@ function Settings() {
                       />
                     </td>
                     <td className="px-5 py-3 align-top">
-                      <div className="flex flex-wrap gap-2">
-                        {ALL_ROLES.map((r) => {
-                          const on = u.roles.includes(r);
-                          const isSelf = u.id === me.userId;
-                          const disable = isSelf && r === "admin" && on;
-                          return (
-                            <button
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap gap-1.5">
+                          {u.roles.length === 0 && (
+                            <span className="text-xs text-muted-foreground">No roles</span>
+                          )}
+                          {u.roles.map((r) => (
+                            <span
                               key={r}
-                              disabled={disable || updateRolesMut.isPending}
-                              onClick={() => {
-                                const next = on ? u.roles.filter((x) => x !== r) : [...u.roles, r];
-                                if (next.length === 0) {
-                                  toast.error("User must have at least one role");
-                                  return;
-                                }
-                                updateRolesMut.mutate({ user_id: u.id, roles: next });
-                              }}
-                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize border transition-colors disabled:opacity-50 ${
-                                on
-                                  ? "bg-primary text-primary-foreground border-primary"
-                                  : "border-border text-muted-foreground hover:bg-muted"
-                              }`}
+                              className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium capitalize text-primary"
                             >
                               {r}
-                            </button>
-                          );
-                        })}
+                            </span>
+                          ))}
+                        </div>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              disabled={updateRolesMut.isPending}
+                            >
+                              Edit roles
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-96">
+                            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              Role permissions
+                            </div>
+                            <RoleChecklist
+                              selected={u.roles}
+                              disabledRoles={
+                                u.id === me.userId && u.roles.includes("admin") ? ["admin"] : []
+                              }
+                              busy={updateRolesMut.isPending}
+                              onChange={(next) =>
+                                updateRolesMut.mutate({ user_id: u.id, roles: next })
+                              }
+                            />
+                            {u.id === me.userId && (
+                              <p className="mt-2 text-[11px] text-muted-foreground">
+                                You can't remove your own Admin role here (locked for safety).
+                              </p>
+                            )}
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </td>
                     <td className="px-5 py-3 align-top text-right">
@@ -403,8 +494,6 @@ function CreateStaffCard({
   const [branchId, setBranchId] = useState("");
   const [roles, setRoles] = useState<Role[]>(["host"]);
 
-  const toggle = (r: Role) =>
-    setRoles((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]));
 
   const submit = async () => {
     if (!full_name.trim() || !email.trim() || password.length < 8 || roles.length === 0) {
@@ -470,31 +559,12 @@ function CreateStaffCard({
           </select>
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label>Roles *</Label>
-          <div className="flex flex-wrap gap-2">
-            {ALL_ROLES.map((r) => {
-              const on = roles.includes(r);
-              return (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => toggle(r)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium capitalize border transition-colors ${
-                    on
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  {r}
-                </button>
-              );
-            })}
-          </div>
+          <Label>Roles <span className="text-destructive">*</span></Label>
           <p className="text-[11px] text-muted-foreground">
             <ShieldCheck className="mr-1 inline h-3 w-3" />
-            Admin = full access · Receptionist = front-desk check-in/out & badges · Security = gate
-            check-in/out, badges & escort · Host = receive & approve own visits
+            Tick every role this person should have. You can grant Admin to create another administrator.
           </p>
+          <RoleChecklist selected={roles} onChange={setRoles} />
         </div>
         <div className="md:col-span-2 flex justify-end">
           <Button onClick={submit} disabled={busy}>
