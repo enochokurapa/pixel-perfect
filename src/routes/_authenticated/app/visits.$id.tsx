@@ -143,7 +143,13 @@ function VisitDetail() {
               {v.visitor?.company ?? "No company"}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => downloadExcel(v, assets.data ?? [])}>
+              <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => downloadPdf(v, assets.data ?? [])}>
+              <FileText className="mr-1 h-4 w-4" /> PDF
+            </Button>
             {v.approval === "pending" && (
               <>
                 <RejectButton onReject={reject} disabled={update.isPending} />
