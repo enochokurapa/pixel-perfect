@@ -28,7 +28,7 @@ function PreRegisterPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor">("guest");
+  const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor" | "delivery">("guest");
   const [hostId, setHostId] = useState<string>(me.userId ?? "");
   const [duration, setDuration] = useState(180);
   const [form, setForm] = useState({ full_name: "", phone: "", email: "", company: "", purpose: "" });
