@@ -39,8 +39,8 @@ export const Route = createFileRoute("/_authenticated/app/visits/$id")({
   component: VisitDetail,
 });
 
-type VisitRow = Awaited<ReturnType<typeof loadVisit>>;
-async function loadVisit(_id: string) { return null as unknown as Record<string, unknown> & { visitor: Record<string, unknown> | null; host: Record<string, unknown> | null }; }
+
+
 
 function downloadExcel(v: any, assetList: VisitAsset[]) {
   const rows = [
