@@ -38,7 +38,7 @@ function RegisterPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor">("guest");
+  const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor" | "delivery">("guest");
   const [visitMode, setVisitMode] = useState<"walk_in" | "drive_in">("walk_in");
   const [hostId, setHostId] = useState<string>("");
   const [idScanFile, setIdScanFile] = useState<File | null>(null);
