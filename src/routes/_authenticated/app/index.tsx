@@ -31,6 +31,7 @@ import {
   Legend,
   CartesianGrid,
 } from "recharts";
+import { TileDetailModal, type TileKey } from "@/components/tile-detail-modal";
 
 export const Route = createFileRoute("/_authenticated/app/")({
   head: () => ({ meta: [{ title: "Dashboard — Sentinel VMS" }] }),
@@ -42,6 +43,7 @@ const PAGE_SIZE = 6;
 function Dashboard() {
   const me = useCurrentUser();
   const [page, setPage] = useState(0);
+  const [openTile, setOpenTile] = useState<TileKey | null>(null);
 
   const stats = useQuery({
     queryKey: ["dashboard", "stats"],
@@ -210,23 +212,15 @@ function Dashboard() {
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Visitors inside" value={stats.data?.inside} icon={Users} tone="info" />
-        <StatCard label="Today's visits" value={stats.data?.today} icon={LogIn} tone="default" />
-        <StatCard label="Overstayed" value={stats.data?.overstay} icon={AlertTriangle} tone="warning" />
-        <StatCard
-          label="Badges issued"
-          value={stats.data?.badgesIssued}
-          icon={BadgeCheck}
-          tone="default"
-        />
-        <StatCard
-          label="Unissued badges"
-          value={stats.data?.badgesUnissued}
-          icon={BadgeMinus}
-          tone="info"
-        />
-        <StatCard label="With assets" value={stats.data?.withAssets} icon={Laptop} tone="default" />
+        <StatCard label="Visitors inside" value={stats.data?.inside} icon={Users} tone="info" onClick={() => setOpenTile("inside")} />
+        <StatCard label="Today's visits" value={stats.data?.today} icon={LogIn} tone="default" onClick={() => setOpenTile("today")} />
+        <StatCard label="Overstayed" value={stats.data?.overstay} icon={AlertTriangle} tone="warning" onClick={() => setOpenTile("overstay")} />
+        <StatCard label="Badges issued" value={stats.data?.badgesIssued} icon={BadgeCheck} tone="default" onClick={() => setOpenTile("badgesIssued")} />
+        <StatCard label="Unissued badges" value={stats.data?.badgesUnissued} icon={BadgeMinus} tone="info" onClick={() => setOpenTile("badgesUnissued")} />
+        <StatCard label="With assets" value={stats.data?.withAssets} icon={Laptop} tone="default" onClick={() => setOpenTile("withAssets")} />
       </section>
+
+      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} />
 
       <section className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -438,11 +432,13 @@ function StatCard({
   value,
   icon: Icon,
   tone,
+  onClick,
 }: {
   label: string;
   value: number | undefined;
   icon: any;
   tone: "default" | "info" | "warning";
+  onClick?: () => void;
 }) {
   const toneClass = {
     default: "bg-secondary text-secondary-foreground",
@@ -450,7 +446,10 @@ function StatCard({
     warning: "bg-warning/15 text-warning-foreground",
   }[tone];
   return (
-    <Card>
+    <Card
+      onClick={onClick}
+      className={onClick ? "cursor-pointer transition-colors hover:bg-muted/40" : ""}
+    >
       <CardContent className="flex items-center gap-4 p-5">
         <div className={`grid h-10 w-10 place-items-center rounded-md ${toneClass}`}>
           <Icon className="h-5 w-5" />
