@@ -561,31 +561,12 @@ function CreateStaffCard({
           </select>
         </div>
         <div className="space-y-2 md:col-span-2">
-          <Label>Roles *</Label>
-          <div className="flex flex-wrap gap-2">
-            {ALL_ROLES.map((r) => {
-              const on = roles.includes(r);
-              return (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => toggle(r)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium capitalize border transition-colors ${
-                    on
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  {r}
-                </button>
-              );
-            })}
-          </div>
+          <Label>Roles <span className="text-destructive">*</span></Label>
           <p className="text-[11px] text-muted-foreground">
             <ShieldCheck className="mr-1 inline h-3 w-3" />
-            Admin = full access · Receptionist = front-desk check-in/out & badges · Security = gate
-            check-in/out, badges & escort · Host = receive & approve own visits
+            Tick every role this person should have. You can grant Admin to create another administrator.
           </p>
+          <RoleChecklist selected={roles} onChange={setRoles} />
         </div>
         <div className="md:col-span-2 flex justify-end">
           <Button onClick={submit} disabled={busy}>
