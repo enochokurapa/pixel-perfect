@@ -145,6 +145,7 @@ function PreRegisterPage() {
                 <SelectItem value="guest">Guest</SelectItem>
                 <SelectItem value="supplier">Supplier</SelectItem>
                 <SelectItem value="contractor">Contractor</SelectItem>
+                <SelectItem value="delivery">Delivery</SelectItem>
               </SelectContent>
             </Select>
           </div>
