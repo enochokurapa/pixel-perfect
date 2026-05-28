@@ -235,11 +235,28 @@ function Settings() {
       />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Staff & roles</CardTitle>
-          <CardDescription>
-            Toggle role chips to grant or revoke access. Assign a branch & position per staff member.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <div>
+            <CardTitle>Staff & roles</CardTitle>
+            <CardDescription>
+              Tick the boxes to grant each activity. Freeze a staff member to block their sign-in.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-1 rounded-md border border-border p-0.5 text-xs">
+            {(["active", "inactive", "all"] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setActiveFilter(k)}
+                className={`rounded px-2.5 py-1 capitalize transition-colors ${
+                  activeFilter === k
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -250,89 +267,119 @@ function Settings() {
                   <th className="px-5 py-3 text-left">Email</th>
                   <th className="px-5 py-3 text-left">Branch / Position</th>
                   <th className="px-5 py-3 text-left">Roles</th>
+                  <th className="px-5 py-3 text-left">Status</th>
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {users.data?.map((u) => (
-                  <tr key={u.id}>
-                    <td className="px-5 py-3 align-top">
-                      <div className="font-medium">{u.full_name}</div>
-                      {u.department && (
-                        <div className="text-[11px] text-muted-foreground">{u.department}</div>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 align-top text-muted-foreground">{u.email}</td>
-                    <td className="px-5 py-3 align-top">
-                      <BranchPositionEditor
-                        branches={branches.data ?? []}
-                        branchId={u.branch_id ?? null}
-                        position={u.position ?? ""}
-                        onSave={(branch_id, position) =>
-                          updateProfileMut.mutateAsync({ id: u.id, branch_id, position })
-                        }
-                      />
-                    </td>
-                    <td className="px-5 py-3 align-top">
-                      <div className="space-y-1.5">
-                        <div className="flex flex-wrap gap-1.5">
-                          {u.roles.length === 0 && (
-                            <span className="text-xs text-muted-foreground">No roles</span>
-                          )}
-                          {u.roles.map((r) => (
-                            <span
-                              key={r}
-                              className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium capitalize text-primary"
-                            >
-                              {r}
-                            </span>
-                          ))}
-                        </div>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              disabled={updateRolesMut.isPending}
-                            >
-                              Edit roles
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="start" className="w-96">
-                            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                              Role permissions
-                            </div>
-                            <RoleChecklist
-                              selected={u.roles}
-                              disabledRoles={
-                                u.id === me.userId && u.roles.includes("admin") ? ["admin"] : []
-                              }
-                              busy={updateRolesMut.isPending}
-                              onChange={(next) =>
-                                updateRolesMut.mutate({ user_id: u.id, roles: next })
-                              }
-                            />
-                            {u.id === me.userId && (
-                              <p className="mt-2 text-[11px] text-muted-foreground">
-                                You can't remove your own Admin role here (locked for safety).
-                              </p>
+                {users.data
+                  ?.filter((u) => {
+                    if (activeFilter === "all") return true;
+                    return activeFilter === "active" ? u.is_active : !u.is_active;
+                  })
+                  .map((u) => (
+                    <tr key={u.id} className={u.is_active ? "" : "opacity-60"}>
+                      <td className="px-5 py-3 align-top">
+                        <div className="font-medium">{u.full_name}</div>
+                        {u.department && (
+                          <div className="text-[11px] text-muted-foreground">{u.department}</div>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 align-top text-muted-foreground">{u.email}</td>
+                      <td className="px-5 py-3 align-top">
+                        <BranchPositionEditor
+                          branches={branches.data ?? []}
+                          branchId={u.branch_id ?? null}
+                          position={u.position ?? ""}
+                          onSave={(branch_id, position) =>
+                            updateProfileMut.mutateAsync({ id: u.id, branch_id, position })
+                          }
+                        />
+                      </td>
+                      <td className="px-5 py-3 align-top">
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap gap-1.5">
+                            {u.roles.length === 0 && (
+                              <span className="text-xs text-muted-foreground">No roles</span>
                             )}
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 align-top text-right">
-                      <RowActions
-                        userId={u.id}
-                        email={u.email}
-                        isSelf={u.id === me.userId}
-                        onReset={(pw) => resetMut.mutateAsync({ user_id: u.id, password: pw })}
-                        onDelete={() => deleteMut.mutateAsync(u.id)}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                            {u.roles
+                              .filter((r): r is Role => (ALL_ROLES as string[]).includes(r))
+                              .map((r) => (
+                                <span
+                                  key={r}
+                                  className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                                >
+                                  {ROLE_INFO[r].label}
+                                </span>
+                              ))}
+                          </div>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                disabled={updateRolesMut.isPending}
+                              >
+                                Edit roles
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" className="w-96">
+                              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Role permissions
+                              </div>
+                              <RoleChecklist
+                                selected={
+                                  u.roles.filter((r): r is Role =>
+                                    (ALL_ROLES as string[]).includes(r),
+                                  )
+                                }
+                                disabledRoles={
+                                  u.id === me.userId && u.roles.includes("admin") ? ["admin"] : []
+                                }
+                                busy={updateRolesMut.isPending}
+                                onChange={(next) =>
+                                  updateRolesMut.mutate({ user_id: u.id, roles: next })
+                                }
+                              />
+                              {u.id === me.userId && (
+                                <p className="mt-2 text-[11px] text-muted-foreground">
+                                  You can't remove your own Admin role here (locked for safety).
+                                </p>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 align-top">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={u.is_active}
+                            disabled={u.id === me.userId || activeMut.isPending}
+                            onCheckedChange={(c) =>
+                              activeMut.mutate({ user_id: u.id, is_active: c })
+                            }
+                          />
+                          <span
+                            className={`text-[11px] font-medium ${
+                              u.is_active ? "text-emerald-600" : "text-muted-foreground"
+                            }`}
+                          >
+                            {u.is_active ? "Active" : "Frozen"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 align-top text-right">
+                        <RowActions
+                          userId={u.id}
+                          email={u.email}
+                          isSelf={u.id === me.userId}
+                          onReset={(pw) => resetMut.mutateAsync({ user_id: u.id, password: pw })}
+                          onDelete={() => deleteMut.mutateAsync(u.id)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
