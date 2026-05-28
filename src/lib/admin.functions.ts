@@ -100,3 +100,25 @@ export const resetStaffPassword = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const setStaffActive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ user_id: z.string().uuid(), is_active: z.boolean() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    if (data.user_id === context.userId && !data.is_active) {
+      throw new Error("You cannot deactivate yourself.");
+    }
+    const { error: pErr } = await supabaseAdmin
+      .from("profiles")
+      .update({ is_active: data.is_active })
+      .eq("id", data.user_id);
+    if (pErr) throw new Error(pErr.message);
+    // Freeze sign-in via Supabase Auth ban_duration
+    const { error: aErr } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      ban_duration: data.is_active ? "none" : "876600h",
+    } as never);
+    if (aErr) throw new Error(aErr.message);
+    return { ok: true };
+  });
