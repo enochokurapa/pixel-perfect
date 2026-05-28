@@ -3,7 +3,14 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const ROLES = ["admin", "receptionist", "security", "host"] as const;
+const ROLES = [
+  "admin",
+  "host",
+  "receptionist",
+  "security",
+  "register_guest",
+  "pre_register_guest",
+] as const;
 export const createStaffMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
