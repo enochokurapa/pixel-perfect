@@ -113,6 +113,10 @@ function Settings() {
   const updateRolesFn = useServerFn(updateStaffRoles);
   const deleteFn = useServerFn(deleteStaffMember);
   const resetFn = useServerFn(resetStaffPassword);
+  const setActiveFn = useServerFn(setStaffActive);
+
+  const [activeFilter, setActiveFilter] = useState<"active" | "inactive" | "all">("active");
+
 
   const branches = useQuery({
     queryKey: ["branches"],
