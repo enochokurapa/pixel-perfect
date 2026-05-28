@@ -26,29 +26,33 @@ export const Route = createFileRoute("/_authenticated/app/settings")({
   component: Settings,
 });
 
-type Role = "admin" | "receptionist" | "security" | "host";
-const ALL_ROLES: Role[] = ["admin", "receptionist", "security", "host"];
+type Role =
+  | "admin"
+  | "host"
+  | "register_guest"
+  | "pre_register_guest";
+const ALL_ROLES: Role[] = ["admin", "host", "register_guest", "pre_register_guest"];
 
 const ROLE_INFO: Record<Role, { label: string; description: string }> = {
   admin: {
     label: "Admin",
     description:
-      "Full control. Manages branches, staff, roles, badges, blacklist, all visits and settings. Can create other admins.",
-  },
-  receptionist: {
-    label: "Receptionist",
-    description:
-      "Front-desk: register walk-ins, check visitors in & out, assign badges, manage assets.",
-  },
-  security: {
-    label: "Security",
-    description:
-      "Gate operations: check-in/out at gate, verify badges & assets, escort visitors, view blacklist.",
+      "Full control. Manages branches, staff, roles, badges, blacklist, all visits and settings. Can grant Admin to others.",
   },
   host: {
     label: "Host",
     description:
-      "Receive own visitors: approve/reject pre-registered visits, get arrival notifications, extend stay.",
+      "Receives own visitors: approve/reject pre-registered visits, get arrival notifications, extend stay.",
+  },
+  register_guest: {
+    label: "Register guest",
+    description:
+      "Can register walk-in visitors at the gate or reception, assign badges, capture assets, check in & out.",
+  },
+  pre_register_guest: {
+    label: "Pre-register guest",
+    description:
+      "Can pre-register visitors in advance and send them confirmation emails before arrival.",
   },
 };
 
