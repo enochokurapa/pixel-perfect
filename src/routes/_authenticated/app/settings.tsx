@@ -135,7 +135,7 @@ function Settings() {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name, email, position, department, phone, branch_id")
+        .select("id, full_name, email, position, department, phone, branch_id, is_active")
         .order("full_name");
       const { data: roles } = await supabase.from("user_roles").select("user_id, role");
       return (data ?? []).map((p) => ({
@@ -144,6 +144,7 @@ function Settings() {
       }));
     },
   });
+
 
   const createMut = useMutation({
     mutationFn: (payload: {
