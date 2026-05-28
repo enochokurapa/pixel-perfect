@@ -188,6 +188,16 @@ function Settings() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
+  const activeMut = useMutation({
+    mutationFn: (payload: { user_id: string; is_active: boolean }) =>
+      setActiveFn({ data: payload }),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.is_active ? "Staff activated" : "Staff frozen out");
+      qc.invalidateQueries({ queryKey: ["staff"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   const updateProfileMut = useMutation({
     mutationFn: async (p: {
       id: string;
