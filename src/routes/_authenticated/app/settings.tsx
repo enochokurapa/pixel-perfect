@@ -11,11 +11,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2, KeyRound, UserPlus, ShieldCheck, Building2, Plus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   createStaffMember,
   deleteStaffMember,
   resetStaffPassword,
+  setStaffActive,
   updateStaffRoles,
 } from "@/lib/admin.functions";
 
@@ -24,29 +26,33 @@ export const Route = createFileRoute("/_authenticated/app/settings")({
   component: Settings,
 });
 
-type Role = "admin" | "receptionist" | "security" | "host";
-const ALL_ROLES: Role[] = ["admin", "receptionist", "security", "host"];
+type Role =
+  | "admin"
+  | "host"
+  | "register_guest"
+  | "pre_register_guest";
+const ALL_ROLES: Role[] = ["admin", "host", "register_guest", "pre_register_guest"];
 
 const ROLE_INFO: Record<Role, { label: string; description: string }> = {
   admin: {
     label: "Admin",
     description:
-      "Full control. Manages branches, staff, roles, badges, blacklist, all visits and settings. Can create other admins.",
-  },
-  receptionist: {
-    label: "Receptionist",
-    description:
-      "Front-desk: register walk-ins, check visitors in & out, assign badges, manage assets.",
-  },
-  security: {
-    label: "Security",
-    description:
-      "Gate operations: check-in/out at gate, verify badges & assets, escort visitors, view blacklist.",
+      "Full control. Manages branches, staff, roles, badges, blacklist, all visits and settings. Can grant Admin to others.",
   },
   host: {
     label: "Host",
     description:
-      "Receive own visitors: approve/reject pre-registered visits, get arrival notifications, extend stay.",
+      "Receives own visitors: approve/reject pre-registered visits, get arrival notifications, extend stay.",
+  },
+  register_guest: {
+    label: "Register guest",
+    description:
+      "Can register walk-in visitors at the gate or reception, assign badges, capture assets, check in & out.",
+  },
+  pre_register_guest: {
+    label: "Pre-register guest",
+    description:
+      "Can pre-register visitors in advance and send them confirmation emails before arrival.",
   },
 };
 
@@ -107,6 +113,10 @@ function Settings() {
   const updateRolesFn = useServerFn(updateStaffRoles);
   const deleteFn = useServerFn(deleteStaffMember);
   const resetFn = useServerFn(resetStaffPassword);
+  const setActiveFn = useServerFn(setStaffActive);
+
+  const [activeFilter, setActiveFilter] = useState<"active" | "inactive" | "all">("active");
+
 
   const branches = useQuery({
     queryKey: ["branches"],
@@ -125,7 +135,7 @@ function Settings() {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name, email, position, department, phone, branch_id")
+        .select("id, full_name, email, position, department, phone, branch_id, is_active")
         .order("full_name");
       const { data: roles } = await supabase.from("user_roles").select("user_id, role");
       return (data ?? []).map((p) => ({
@@ -134,6 +144,7 @@ function Settings() {
       }));
     },
   });
+
 
   const createMut = useMutation({
     mutationFn: (payload: {
@@ -177,6 +188,16 @@ function Settings() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
+  const activeMut = useMutation({
+    mutationFn: (payload: { user_id: string; is_active: boolean }) =>
+      setActiveFn({ data: payload }),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.is_active ? "Staff activated" : "Staff frozen out");
+      qc.invalidateQueries({ queryKey: ["staff"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   const updateProfileMut = useMutation({
     mutationFn: async (p: {
       id: string;
@@ -214,11 +235,28 @@ function Settings() {
       />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Staff & roles</CardTitle>
-          <CardDescription>
-            Toggle role chips to grant or revoke access. Assign a branch & position per staff member.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <div>
+            <CardTitle>Staff & roles</CardTitle>
+            <CardDescription>
+              Tick the boxes to grant each activity. Freeze a staff member to block their sign-in.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-1 rounded-md border border-border p-0.5 text-xs">
+            {(["active", "inactive", "all"] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setActiveFilter(k)}
+                className={`rounded px-2.5 py-1 capitalize transition-colors ${
+                  activeFilter === k
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -229,89 +267,119 @@ function Settings() {
                   <th className="px-5 py-3 text-left">Email</th>
                   <th className="px-5 py-3 text-left">Branch / Position</th>
                   <th className="px-5 py-3 text-left">Roles</th>
+                  <th className="px-5 py-3 text-left">Status</th>
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {users.data?.map((u) => (
-                  <tr key={u.id}>
-                    <td className="px-5 py-3 align-top">
-                      <div className="font-medium">{u.full_name}</div>
-                      {u.department && (
-                        <div className="text-[11px] text-muted-foreground">{u.department}</div>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 align-top text-muted-foreground">{u.email}</td>
-                    <td className="px-5 py-3 align-top">
-                      <BranchPositionEditor
-                        branches={branches.data ?? []}
-                        branchId={u.branch_id ?? null}
-                        position={u.position ?? ""}
-                        onSave={(branch_id, position) =>
-                          updateProfileMut.mutateAsync({ id: u.id, branch_id, position })
-                        }
-                      />
-                    </td>
-                    <td className="px-5 py-3 align-top">
-                      <div className="space-y-1.5">
-                        <div className="flex flex-wrap gap-1.5">
-                          {u.roles.length === 0 && (
-                            <span className="text-xs text-muted-foreground">No roles</span>
-                          )}
-                          {u.roles.map((r) => (
-                            <span
-                              key={r}
-                              className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium capitalize text-primary"
-                            >
-                              {r}
-                            </span>
-                          ))}
-                        </div>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              disabled={updateRolesMut.isPending}
-                            >
-                              Edit roles
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="start" className="w-96">
-                            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                              Role permissions
-                            </div>
-                            <RoleChecklist
-                              selected={u.roles}
-                              disabledRoles={
-                                u.id === me.userId && u.roles.includes("admin") ? ["admin"] : []
-                              }
-                              busy={updateRolesMut.isPending}
-                              onChange={(next) =>
-                                updateRolesMut.mutate({ user_id: u.id, roles: next })
-                              }
-                            />
-                            {u.id === me.userId && (
-                              <p className="mt-2 text-[11px] text-muted-foreground">
-                                You can't remove your own Admin role here (locked for safety).
-                              </p>
+                {users.data
+                  ?.filter((u) => {
+                    if (activeFilter === "all") return true;
+                    return activeFilter === "active" ? u.is_active : !u.is_active;
+                  })
+                  .map((u) => (
+                    <tr key={u.id} className={u.is_active ? "" : "opacity-60"}>
+                      <td className="px-5 py-3 align-top">
+                        <div className="font-medium">{u.full_name}</div>
+                        {u.department && (
+                          <div className="text-[11px] text-muted-foreground">{u.department}</div>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 align-top text-muted-foreground">{u.email}</td>
+                      <td className="px-5 py-3 align-top">
+                        <BranchPositionEditor
+                          branches={branches.data ?? []}
+                          branchId={u.branch_id ?? null}
+                          position={u.position ?? ""}
+                          onSave={(branch_id, position) =>
+                            updateProfileMut.mutateAsync({ id: u.id, branch_id, position })
+                          }
+                        />
+                      </td>
+                      <td className="px-5 py-3 align-top">
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap gap-1.5">
+                            {u.roles.length === 0 && (
+                              <span className="text-xs text-muted-foreground">No roles</span>
                             )}
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 align-top text-right">
-                      <RowActions
-                        userId={u.id}
-                        email={u.email}
-                        isSelf={u.id === me.userId}
-                        onReset={(pw) => resetMut.mutateAsync({ user_id: u.id, password: pw })}
-                        onDelete={() => deleteMut.mutateAsync(u.id)}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                            {u.roles
+                              .filter((r): r is Role => (ALL_ROLES as string[]).includes(r))
+                              .map((r) => (
+                                <span
+                                  key={r}
+                                  className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                                >
+                                  {ROLE_INFO[r].label}
+                                </span>
+                              ))}
+                          </div>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                disabled={updateRolesMut.isPending}
+                              >
+                                Edit roles
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" className="w-96">
+                              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Role permissions
+                              </div>
+                              <RoleChecklist
+                                selected={
+                                  u.roles.filter((r): r is Role =>
+                                    (ALL_ROLES as string[]).includes(r),
+                                  )
+                                }
+                                disabledRoles={
+                                  u.id === me.userId && u.roles.includes("admin") ? ["admin"] : []
+                                }
+                                busy={updateRolesMut.isPending}
+                                onChange={(next) =>
+                                  updateRolesMut.mutate({ user_id: u.id, roles: next })
+                                }
+                              />
+                              {u.id === me.userId && (
+                                <p className="mt-2 text-[11px] text-muted-foreground">
+                                  You can't remove your own Admin role here (locked for safety).
+                                </p>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 align-top">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={u.is_active}
+                            disabled={u.id === me.userId || activeMut.isPending}
+                            onCheckedChange={(c) =>
+                              activeMut.mutate({ user_id: u.id, is_active: c })
+                            }
+                          />
+                          <span
+                            className={`text-[11px] font-medium ${
+                              u.is_active ? "text-emerald-600" : "text-muted-foreground"
+                            }`}
+                          >
+                            {u.is_active ? "Active" : "Frozen"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 align-top text-right">
+                        <RowActions
+                          userId={u.id}
+                          email={u.email}
+                          isSelf={u.id === me.userId}
+                          onReset={(pw) => resetMut.mutateAsync({ user_id: u.id, password: pw })}
+                          onDelete={() => deleteMut.mutateAsync(u.id)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>

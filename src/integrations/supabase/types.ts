@@ -156,6 +156,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          is_active: boolean
           phone: string | null
           position: string | null
           updated_at: string
@@ -167,6 +168,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          is_active?: boolean
           phone?: string | null
           position?: string | null
           updated_at?: string
@@ -178,6 +180,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          is_active?: boolean
           phone?: string | null
           position?: string | null
           updated_at?: string
@@ -444,7 +447,13 @@ export type Database = {
       scan_overstays: { Args: never; Returns: undefined }
     }
     Enums: {
-      app_role: "admin" | "receptionist" | "host" | "security"
+      app_role:
+        | "admin"
+        | "receptionist"
+        | "host"
+        | "security"
+        | "register_guest"
+        | "pre_register_guest"
       approval_status:
         | "not_required"
         | "pending"
@@ -592,7 +601,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "receptionist", "host", "security"],
+      app_role: [
+        "admin",
+        "receptionist",
+        "host",
+        "security",
+        "register_guest",
+        "pre_register_guest",
+      ],
       approval_status: [
         "not_required",
         "pending",
