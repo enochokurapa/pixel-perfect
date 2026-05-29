@@ -44,26 +44,36 @@ function Dashboard() {
   const me = useCurrentUser();
   const [page, setPage] = useState(0);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
+  const scopedBranch = !me.canViewAllBranches ? me.branchId : null;
 
   const stats = useQuery({
-    queryKey: ["dashboard", "stats"],
+    queryKey: ["dashboard", "stats", scopedBranch ?? "all"],
     queryFn: async () => {
       const now = new Date();
+      const insideQ = supabase
+        .from("visits")
+        .select("id, check_in_at, expected_duration_minutes")
+        .eq("status", "checked_in");
+      const todayQ = supabase
+        .from("visits")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+      const assetsQ = supabase
+        .from("visit_assets")
+        .select("visit_id", { count: "exact", head: true });
+      if (scopedBranch) {
+        insideQ.eq("branch_id", scopedBranch);
+        todayQ.eq("branch_id", scopedBranch);
+      }
       const [insideRows, today, badgesIssued, badgesAvailable, withAssets] = await Promise.all([
-        supabase
-          .from("visits")
-          .select("id, check_in_at, expected_duration_minutes")
-          .eq("status", "checked_in"),
-        supabase
-          .from("visits")
-          .select("id", { count: "exact", head: true })
-          .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
+        insideQ,
+        todayQ,
         supabase.from("badges").select("id", { count: "exact", head: true }).eq("status", "issued"),
         supabase
           .from("badges")
           .select("id", { count: "exact", head: true })
           .eq("status", "available"),
-        supabase.from("visit_assets").select("visit_id", { count: "exact", head: true }),
+        assetsQ,
       ]);
       const inside = insideRows.data ?? [];
       const overstay = inside.filter((v) => {
@@ -86,7 +96,7 @@ function Dashboard() {
 
   // For charts — current week (Mon–Sat)
   const chartData = useQuery({
-    queryKey: ["dashboard", "charts"],
+    queryKey: ["dashboard", "charts", scopedBranch ?? "all"],
     queryFn: async () => {
       const now = new Date();
       const dow = now.getDay();
@@ -94,15 +104,18 @@ function Dashboard() {
       const monday = new Date(now);
       monday.setDate(now.getDate() - daysSinceMon);
       monday.setHours(0, 0, 0, 0);
-      const { data, error } = await supabase
+      let q = supabase
         .from("visits")
-        .select("created_at, visit_type, status")
+        .select("created_at, visit_type, status, branch_id")
         .gte("created_at", monday.toISOString());
+      if (scopedBranch) q = q.eq("branch_id", scopedBranch);
+      const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     },
     refetchInterval: 60_000,
   });
+
 
   const { dailyData, typeData, statusData } = useMemo(() => {
     const rows = chartData.data ?? [];
