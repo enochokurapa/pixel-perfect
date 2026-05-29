@@ -2,15 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { ALL_ROLES } from "@/lib/permissions";
 
-const ROLES = [
-  "admin",
-  "host",
-  "receptionist",
-  "security",
-  "register_guest",
-  "pre_register_guest",
-] as const;
+const ROLES = ALL_ROLES as readonly [string, ...string[]];
+
 export const createStaffMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
