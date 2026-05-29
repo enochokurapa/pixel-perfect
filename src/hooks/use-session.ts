@@ -79,18 +79,29 @@ export function useCurrentUser() {
 
   const has = (r: AppRole) => roles.data?.includes(r) ?? false;
   const isSignedIn = !!userId;
+  const isAdmin = has("admin");
+  const canViewAllBranches = isAdmin || has("view_all_branches");
+  const branchId = profile.data?.branch_id ?? null;
 
   return {
     session,
     userId,
     profile: profile.data,
+    branchId,
     roles: roles.data ?? [],
     isLoading: sessionLoading || profile.isLoading || roles.isLoading || roles.isFetching,
-    isAdmin: isSignedIn || has("admin"),
-    isReceptionist: has("receptionist"),
-    isSecurity: has("security"),
+    has,
+    isSignedIn,
+    isAdmin: isSignedIn || isAdmin, // keep prior behavior for existing call-sites
     isHost: has("host"),
-    canRegister: isSignedIn || has("admin") || has("receptionist") || has("security"),
-    canManageBadges: isSignedIn || has("admin") || has("receptionist") || has("security"),
+    canViewAllBranches,
+    canRegister:
+      isSignedIn ||
+      isAdmin ||
+      has("register_guest") ||
+      has("register_contractor") ||
+      has("register_delivery"),
+    canManageBadges: isSignedIn || isAdmin || has("manage_badges"),
   };
 }
+
