@@ -21,7 +21,8 @@ export const createStaffMember = createServerFn({ method: "POST" })
         phone: z.string().trim().max(40).optional().nullable(),
         department: z.string().trim().max(120).optional().nullable(),
         branch_id: z.string().uuid().optional().nullable(),
-        roles: z.array(z.enum(ROLES)).min(1).max(4),
+        roles: z.array(z.enum(ROLES)).min(1).max(ROLES.length),
+
       })
       .parse(input),
   )
