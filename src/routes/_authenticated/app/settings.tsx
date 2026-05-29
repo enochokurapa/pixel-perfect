@@ -295,7 +295,8 @@ function Settings() {
                                   key={r}
                                   className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
                                 >
-                                  {ROLE_INFO[r].label}
+                                  {ROLE_LABELS[r]}
+
                                 </span>
                               ))}
                           </div>
@@ -310,7 +311,8 @@ function Settings() {
                                 Edit roles
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent align="start" className="w-96">
+                            <PopoverContent align="start" className="w-[420px]">
+
                               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                 Role permissions
                               </div>
