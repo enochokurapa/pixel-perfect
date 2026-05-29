@@ -48,9 +48,9 @@ export const createStaffMember = createServerFn({ method: "POST" })
       })
       .eq("id", newUserId);
 
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", newUserId);
     const rows = data.roles.map((role) => ({ user_id: newUserId, role: role as DbRole }));
 
-    const rows = data.roles.map((role) => ({ user_id: newUserId, role }));
     const { error: rErr } = await supabaseAdmin.from("user_roles").insert(rows);
     if (rErr) throw new Error(rErr.message);
 
@@ -63,7 +63,8 @@ export const updateStaffRoles = createServerFn({ method: "POST" })
     z
       .object({
         user_id: z.string().uuid(),
-        roles: z.array(z.enum(ROLES)).min(1).max(4),
+        roles: z.array(z.enum(ROLES)).min(1).max(ROLES.length),
+
       })
       .parse(input),
   )
@@ -72,7 +73,8 @@ export const updateStaffRoles = createServerFn({ method: "POST" })
       throw new Error("You cannot remove your own admin role.");
     }
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
-    const rows = data.roles.map((role) => ({ user_id: data.user_id, role }));
+    const rows = data.roles.map((role) => ({ user_id: data.user_id, role: role as DbRole }));
+
     const { error } = await supabaseAdmin.from("user_roles").insert(rows);
     if (error) throw new Error(error.message);
     return { ok: true };
