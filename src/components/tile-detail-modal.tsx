@@ -78,9 +78,11 @@ export function TileDetailModal({
       let query = supabase
         .from("visits")
         .select(
-          "id, status, purpose, check_in_at, created_at, badge_number, expected_duration_minutes, visit_type, visitor:visitors(full_name, company, phone), host:profiles(full_name)",
+          "id, status, purpose, check_in_at, created_at, badge_number, expected_duration_minutes, visit_type, branch_id, visitor:visitors(full_name, company, phone), host:profiles(full_name)",
         )
         .order("created_at", { ascending: false });
+      if (branchId) query = query.eq("branch_id", branchId);
+
 
       if (tile === "inside" || tile === "overstay") {
         query = query.eq("status", "checked_in");
