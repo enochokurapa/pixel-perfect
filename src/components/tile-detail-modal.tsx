@@ -44,16 +44,19 @@ function fmtDuration(ms: number) {
 export function TileDetailModal({
   tile,
   onClose,
+  branchId,
 }: {
   tile: TileKey | null;
   onClose: () => void;
+  branchId?: string | null;
 }) {
   const open = tile !== null;
 
   const q = useQuery({
-    queryKey: ["tile-detail", tile],
+    queryKey: ["tile-detail", tile, branchId ?? "all"],
     enabled: open,
     queryFn: async () => {
+
       if (!tile) return [];
       const now = Date.now();
       if (tile === "badgesIssued" || tile === "badgesUnissued") {
