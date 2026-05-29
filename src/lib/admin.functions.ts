@@ -2,9 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { ALL_ROLES } from "@/lib/permissions";
+import { ALL_ROLES, type Role } from "@/lib/permissions";
+import type { Database } from "@/integrations/supabase/types";
 
-const ROLES = ALL_ROLES as readonly [string, ...string[]];
+type DbRole = Database["public"]["Enums"]["app_role"];
+const ROLES = ALL_ROLES as unknown as readonly [Role, ...Role[]];
+
 
 export const createStaffMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
