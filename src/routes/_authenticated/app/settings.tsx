@@ -20,41 +20,12 @@ import {
   setStaffActive,
   updateStaffRoles,
 } from "@/lib/admin.functions";
+import { ALL_ROLES, ROLE_GROUPS, ROLE_LABELS, type Role } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_authenticated/app/settings")({
   head: () => ({ meta: [{ title: "Settings — Sentinel VMS" }] }),
   component: Settings,
 });
-
-type Role =
-  | "admin"
-  | "host"
-  | "register_guest"
-  | "pre_register_guest";
-const ALL_ROLES: Role[] = ["admin", "host", "register_guest", "pre_register_guest"];
-
-const ROLE_INFO: Record<Role, { label: string; description: string }> = {
-  admin: {
-    label: "Admin",
-    description:
-      "Full control. Manages branches, staff, roles, badges, blacklist, all visits and settings. Can grant Admin to others.",
-  },
-  host: {
-    label: "Host",
-    description:
-      "Receives own visitors: approve/reject pre-registered visits, get arrival notifications, extend stay.",
-  },
-  register_guest: {
-    label: "Register guest",
-    description:
-      "Can register walk-in visitors at the gate or reception, assign badges, capture assets, check in & out.",
-  },
-  pre_register_guest: {
-    label: "Pre-register guest",
-    description:
-      "Can pre-register visitors in advance and send them confirmation emails before arrival.",
-  },
-};
 
 function RoleChecklist({
   selected,
@@ -67,41 +38,56 @@ function RoleChecklist({
   disabledRoles?: Role[];
   busy?: boolean;
 }) {
+  const toggle = (r: Role, on: boolean) => {
+    const next = on ? [...new Set([...selected, r])] : selected.filter((x) => x !== r);
+    if (next.length === 0) {
+      toast.error("User must have at least one permission");
+      return;
+    }
+    onChange(next);
+  };
+
   return (
-    <div className="space-y-2">
-      {ALL_ROLES.map((r) => {
-        const on = selected.includes(r);
-        const isDisabled = disabledRoles.includes(r) || busy;
-        return (
-          <label
-            key={r}
-            className={`flex cursor-pointer items-start gap-3 rounded-md border p-2.5 text-sm transition-colors ${
-              on ? "border-primary/50 bg-primary/5" : "border-border hover:bg-muted/40"
-            } ${isDisabled ? "opacity-60" : ""}`}
-          >
-            <Checkbox
-              checked={on}
-              disabled={isDisabled}
-              onCheckedChange={(c: boolean | "indeterminate") => {
-                const next = c === true ? [...selected, r] : selected.filter((x) => x !== r);
-                if (next.length === 0) {
-                  toast.error("User must have at least one role");
-                  return;
-                }
-                onChange(next);
-              }}
-              className="mt-0.5"
-            />
-            <div>
-              <div className="font-medium capitalize">{ROLE_INFO[r].label}</div>
-              <div className="text-xs text-muted-foreground">{ROLE_INFO[r].description}</div>
+    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+      {ROLE_GROUPS.map((group) => (
+        <div key={group.key} className="space-y-2">
+          <div className="flex items-baseline justify-between border-b pb-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-foreground">
+              {group.label}
             </div>
-          </label>
-        );
-      })}
+            <div className="text-[10px] text-muted-foreground">{group.description}</div>
+          </div>
+          <div className="space-y-1.5">
+            {group.roles.map((r) => {
+              const on = selected.includes(r.id);
+              const isDisabled = disabledRoles.includes(r.id) || busy;
+              return (
+                <label
+                  key={r.id}
+                  className={`flex cursor-pointer items-start gap-2.5 rounded-md border p-2 text-sm transition-colors ${
+                    on ? "border-primary/50 bg-primary/5" : "border-border hover:bg-muted/40"
+                  } ${isDisabled ? "opacity-60" : ""}`}
+                >
+                  <Checkbox
+                    checked={on}
+                    disabled={isDisabled}
+                    onCheckedChange={(c) => toggle(r.id, c === true)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <div className="text-[13px] font-medium">{r.label}</div>
+                    <div className="text-[11px] text-muted-foreground">{r.description}</div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
+
 
 type Branch = { id: string; name: string; location: string | null };
 
