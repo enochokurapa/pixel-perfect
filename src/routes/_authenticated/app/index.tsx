@@ -233,7 +233,8 @@ function Dashboard() {
         <StatCard label="With assets" value={stats.data?.withAssets} icon={Laptop} tone="default" onClick={() => setOpenTile("withAssets")} />
       </section>
 
-      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} />
+      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} />
+
 
       <section className="grid gap-6 lg:grid-cols-2">
         <Card>
