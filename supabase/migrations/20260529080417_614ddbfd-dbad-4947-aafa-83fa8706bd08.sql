@@ -1,0 +1,14 @@
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'manage_staff';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'manage_branches';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'manage_blacklist';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'view_all_branches';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'view_reports';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'approve_own_visits';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'reject_own_visits';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'extend_own_visits';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'register_contractor';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'register_delivery';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'checkout_visitor';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'manage_badges';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'pre_register_contractor';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'pre_register_delivery';

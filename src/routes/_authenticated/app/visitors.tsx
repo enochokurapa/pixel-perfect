@@ -16,6 +16,7 @@ import { useMemo, useState } from "react";
 import { StatusBadge } from "./index";
 import { exportExcel, exportPdf } from "@/lib/visit-export";
 import { FileSpreadsheet, FileText } from "lucide-react";
+import { useCurrentUser } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/_authenticated/app/visitors")({
   head: () => ({ meta: [{ title: "Visitors — Sentinel VMS" }] }),
@@ -23,26 +24,32 @@ export const Route = createFileRoute("/_authenticated/app/visitors")({
 });
 
 function VisitorsPage() {
+  const me = useCurrentUser();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [type, setType] = useState<string>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
+  const scopedBranch = !me.canViewAllBranches ? me.branchId : null;
+
   const visits = useQuery({
-    queryKey: ["visits", "all"],
+    queryKey: ["visits", "all", scopedBranch ?? "all"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("visits")
         .select(
-          "id, status, purpose, check_in_at, check_out_at, created_at, visit_type, badge_number, vehicle_plate, visitor:visitors(full_name, company, phone, email), host:profiles(full_name)",
+          "id, status, purpose, check_in_at, check_out_at, created_at, visit_type, badge_number, vehicle_plate, branch_id, visitor:visitors(full_name, company, phone, email), host:profiles(full_name)",
         )
         .order("created_at", { ascending: false })
         .limit(500);
+      if (scopedBranch) query = query.eq("branch_id", scopedBranch);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
   });
+
 
   const filtered = useMemo(() => {
     return visits.data?.filter((v) => {

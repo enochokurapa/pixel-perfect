@@ -454,6 +454,20 @@ export type Database = {
         | "security"
         | "register_guest"
         | "pre_register_guest"
+        | "manage_staff"
+        | "manage_branches"
+        | "manage_blacklist"
+        | "view_all_branches"
+        | "view_reports"
+        | "approve_own_visits"
+        | "reject_own_visits"
+        | "extend_own_visits"
+        | "register_contractor"
+        | "register_delivery"
+        | "checkout_visitor"
+        | "manage_badges"
+        | "pre_register_contractor"
+        | "pre_register_delivery"
       approval_status:
         | "not_required"
         | "pending"
@@ -608,6 +622,20 @@ export const Constants = {
         "security",
         "register_guest",
         "pre_register_guest",
+        "manage_staff",
+        "manage_branches",
+        "manage_blacklist",
+        "view_all_branches",
+        "view_reports",
+        "approve_own_visits",
+        "reject_own_visits",
+        "extend_own_visits",
+        "register_contractor",
+        "register_delivery",
+        "checkout_visitor",
+        "manage_badges",
+        "pre_register_contractor",
+        "pre_register_delivery",
       ],
       approval_status: [
         "not_required",

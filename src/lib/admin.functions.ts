@@ -2,15 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { ALL_ROLES, type Role } from "@/lib/permissions";
+import type { Database } from "@/integrations/supabase/types";
 
-const ROLES = [
-  "admin",
-  "host",
-  "receptionist",
-  "security",
-  "register_guest",
-  "pre_register_guest",
-] as const;
+type DbRole = Database["public"]["Enums"]["app_role"];
+const ROLES = ALL_ROLES as unknown as readonly [Role, ...Role[]];
+
+
 export const createStaffMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -23,7 +21,8 @@ export const createStaffMember = createServerFn({ method: "POST" })
         phone: z.string().trim().max(40).optional().nullable(),
         department: z.string().trim().max(120).optional().nullable(),
         branch_id: z.string().uuid().optional().nullable(),
-        roles: z.array(z.enum(ROLES)).min(1).max(4),
+        roles: z.array(z.enum(ROLES)).min(1).max(ROLES.length),
+
       })
       .parse(input),
   )
@@ -50,7 +49,8 @@ export const createStaffMember = createServerFn({ method: "POST" })
       .eq("id", newUserId);
 
     await supabaseAdmin.from("user_roles").delete().eq("user_id", newUserId);
-    const rows = data.roles.map((role) => ({ user_id: newUserId, role }));
+    const rows = data.roles.map((role) => ({ user_id: newUserId, role: role as DbRole }));
+
     const { error: rErr } = await supabaseAdmin.from("user_roles").insert(rows);
     if (rErr) throw new Error(rErr.message);
 
@@ -63,7 +63,8 @@ export const updateStaffRoles = createServerFn({ method: "POST" })
     z
       .object({
         user_id: z.string().uuid(),
-        roles: z.array(z.enum(ROLES)).min(1).max(4),
+        roles: z.array(z.enum(ROLES)).min(1).max(ROLES.length),
+
       })
       .parse(input),
   )
@@ -72,7 +73,8 @@ export const updateStaffRoles = createServerFn({ method: "POST" })
       throw new Error("You cannot remove your own admin role.");
     }
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
-    const rows = data.roles.map((role) => ({ user_id: data.user_id, role }));
+    const rows = data.roles.map((role) => ({ user_id: data.user_id, role: role as DbRole }));
+
     const { error } = await supabaseAdmin.from("user_roles").insert(rows);
     if (error) throw new Error(error.message);
     return { ok: true };
