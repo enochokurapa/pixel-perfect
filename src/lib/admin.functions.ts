@@ -48,7 +48,8 @@ export const createStaffMember = createServerFn({ method: "POST" })
       })
       .eq("id", newUserId);
 
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", newUserId);
+    const rows = data.roles.map((role) => ({ user_id: newUserId, role: role as DbRole }));
+
     const rows = data.roles.map((role) => ({ user_id: newUserId, role }));
     const { error: rErr } = await supabaseAdmin.from("user_roles").insert(rows);
     if (rErr) throw new Error(rErr.message);
