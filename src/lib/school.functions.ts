@@ -115,11 +115,15 @@ export const checkInStudent = createServerFn({ method: "POST" })
     // Notify linked guardians in-app
     const { data: links } = await supabaseAdmin
       .from("student_guardians")
-      .select("guardian_id, guardians(user_id)")
+      .select("guardian_id")
       .eq("student_id", data.student_id);
-    const recipientIds = (links ?? [])
-      .map((l) => (l as { guardians: { user_id: string | null } | null }).guardians?.user_id)
-      .filter((id): id is string => !!id);
+    const guardianIds = (links ?? []).map((l) => l.guardian_id);
+    let recipientIds: string[] = [];
+    if (guardianIds.length) {
+      const { data: gs } = await supabaseAdmin
+        .from("guardians").select("user_id").in("id", guardianIds);
+      recipientIds = (gs ?? []).map((g) => g.user_id).filter((id): id is string => !!id);
+    }
     if (recipientIds.length) {
       await supabaseAdmin.from("notifications").insert(
         recipientIds.map((rid) => ({
@@ -223,12 +227,18 @@ export const createPickupRequest = createServerFn({ method: "POST" })
     // Notify primary guardian(s) in-app
     const { data: links } = await supabaseAdmin
       .from("student_guardians")
-      .select("guardian_id, is_primary, guardians(user_id, email, full_name)")
+      .select("guardian_id, is_primary")
       .eq("student_id", data.student_id);
-    type Link = { is_primary: boolean; guardians: { user_id: string | null; email: string | null; full_name: string | null } | null };
-    const primary = ((links ?? []) as Link[]).filter((l) => l.is_primary);
-    const targets = primary.length ? primary : ((links ?? []) as Link[]);
-    const userIds = targets.map((t) => t.guardians?.user_id).filter((x): x is string => !!x);
+    const linkList = links ?? [];
+    const primaryIds = linkList.filter((l) => l.is_primary).map((l) => l.guardian_id);
+    const targetIds = primaryIds.length ? primaryIds : linkList.map((l) => l.guardian_id);
+    let guardians: { user_id: string | null; email: string | null }[] = [];
+    if (targetIds.length) {
+      const { data: gs } = await supabaseAdmin
+        .from("guardians").select("user_id, email").in("id", targetIds);
+      guardians = gs ?? [];
+    }
+    const userIds = guardians.map((g) => g.user_id).filter((x): x is string => !!x);
     if (userIds.length) {
       await supabaseAdmin.from("notifications").insert(
         userIds.map((uid) => ({
@@ -244,7 +254,7 @@ export const createPickupRequest = createServerFn({ method: "POST" })
       id: req.id,
       token,
       response_url: `/pickup-response/${token}`,
-      guardian_emails: targets.map((t) => t.guardians?.email).filter(Boolean),
+      guardian_emails: guardians.map((g) => g.email).filter(Boolean),
     };
   });
 
