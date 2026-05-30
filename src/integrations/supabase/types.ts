@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_logs: {
+        Row: {
+          branch_id: string | null
+          check_in_at: string
+          check_in_method: Database["public"]["Enums"]["check_in_method"]
+          check_out_at: string | null
+          checked_in_by: string | null
+          checked_out_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          pickup_request_id: string | null
+          student_id: string
+        }
+        Insert: {
+          branch_id?: string | null
+          check_in_at?: string
+          check_in_method?: Database["public"]["Enums"]["check_in_method"]
+          check_out_at?: string | null
+          checked_in_by?: string | null
+          checked_out_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pickup_request_id?: string | null
+          student_id: string
+        }
+        Update: {
+          branch_id?: string | null
+          check_in_at?: string
+          check_in_method?: Database["public"]["Enums"]["check_in_method"]
+          check_out_at?: string | null
+          checked_in_by?: string | null
+          checked_out_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pickup_request_id?: string | null
+          student_id?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           badge_number: string
@@ -79,6 +121,7 @@ export type Database = {
           id: string
           location: string | null
           name: string
+          site_type: Database["public"]["Enums"]["site_type"]
           updated_at: string
         }
         Insert: {
@@ -86,6 +129,7 @@ export type Database = {
           id?: string
           location?: string | null
           name: string
+          site_type?: Database["public"]["Enums"]["site_type"]
           updated_at?: string
         }
         Update: {
@@ -93,7 +137,38 @@ export type Database = {
           id?: string
           location?: string | null
           name?: string
+          site_type?: Database["public"]["Enums"]["site_type"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      guardians: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -148,6 +223,93 @@ export type Database = {
         }
         Relationships: []
       }
+      pickup_requests: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          guardian_id: string | null
+          id: string
+          pickup_person_name: string
+          pickup_person_phone: string | null
+          pickup_person_photo_url: string | null
+          rejection_reason: string | null
+          requested_at: string
+          requested_by: string | null
+          responded_at: string | null
+          status: Database["public"]["Enums"]["pickup_status"]
+          student_id: string
+          updated_at: string
+          vehicle_plate: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          guardian_id?: string | null
+          id?: string
+          pickup_person_name: string
+          pickup_person_phone?: string | null
+          pickup_person_photo_url?: string | null
+          rejection_reason?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["pickup_status"]
+          student_id: string
+          updated_at?: string
+          vehicle_plate?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          guardian_id?: string | null
+          id?: string
+          pickup_person_name?: string
+          pickup_person_phone?: string | null
+          pickup_person_photo_url?: string | null
+          rejection_reason?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["pickup_status"]
+          student_id?: string
+          updated_at?: string
+          vehicle_plate?: string | null
+        }
+        Relationships: []
+      }
+      pickup_response_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          pickup_request_id: string
+          reason: string | null
+          response: string | null
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          pickup_request_id: string
+          reason?: string | null
+          response?: string | null
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          pickup_request_id?: string
+          reason?: string | null
+          response?: string | null
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           branch_id: string | null
@@ -194,6 +356,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      student_guardians: {
+        Row: {
+          created_at: string
+          guardian_id: string
+          id: string
+          is_primary: boolean
+          relation: string | null
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          guardian_id: string
+          id?: string
+          is_primary?: boolean
+          relation?: string | null
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          guardian_id?: string
+          id?: string
+          is_primary?: boolean
+          relation?: string | null
+          student_id?: string
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          branch_id: string | null
+          class: string | null
+          created_at: string
+          full_name: string
+          id: string
+          is_active: boolean
+          photo_url: string | null
+          student_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          class?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          photo_url?: string | null
+          student_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          class?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          photo_url?: string | null
+          student_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -468,6 +693,14 @@ export type Database = {
         | "manage_badges"
         | "pre_register_contractor"
         | "pre_register_delivery"
+        | "school_admin"
+        | "teacher"
+        | "gate_officer"
+        | "guardian"
+        | "manage_students"
+        | "check_in_student"
+        | "approve_pickup"
+        | "view_student_reports"
       approval_status:
         | "not_required"
         | "pending"
@@ -476,6 +709,7 @@ export type Database = {
         | "confirmed"
       asset_kind: "laptop" | "device" | "other"
       badge_status: "available" | "issued" | "unreturned" | "retired"
+      check_in_method: "van" | "parent" | "walking" | "other"
       notification_type:
         | "visit_arrived"
         | "visit_pre_registered"
@@ -485,6 +719,12 @@ export type Database = {
         | "overstay"
         | "visit_response"
         | "staff_credentials"
+        | "student_arrival"
+        | "pickup_approval_request"
+        | "pickup_approved"
+        | "pickup_rejected"
+      pickup_status: "pending" | "approved" | "rejected" | "expired"
+      site_type: "corporate" | "school"
       visit_mode: "walk_in" | "drive_in"
       visit_status: "pending" | "checked_in" | "checked_out" | "overstayed"
       visit_type: "supplier" | "contractor" | "guest" | "delivery"
@@ -636,6 +876,14 @@ export const Constants = {
         "manage_badges",
         "pre_register_contractor",
         "pre_register_delivery",
+        "school_admin",
+        "teacher",
+        "gate_officer",
+        "guardian",
+        "manage_students",
+        "check_in_student",
+        "approve_pickup",
+        "view_student_reports",
       ],
       approval_status: [
         "not_required",
@@ -646,6 +894,7 @@ export const Constants = {
       ],
       asset_kind: ["laptop", "device", "other"],
       badge_status: ["available", "issued", "unreturned", "retired"],
+      check_in_method: ["van", "parent", "walking", "other"],
       notification_type: [
         "visit_arrived",
         "visit_pre_registered",
@@ -655,7 +904,13 @@ export const Constants = {
         "overstay",
         "visit_response",
         "staff_credentials",
+        "student_arrival",
+        "pickup_approval_request",
+        "pickup_approved",
+        "pickup_rejected",
       ],
+      pickup_status: ["pending", "approved", "rejected", "expired"],
+      site_type: ["corporate", "school"],
       visit_mode: ["walk_in", "drive_in"],
       visit_status: ["pending", "checked_in", "checked_out", "overstayed"],
       visit_type: ["supplier", "contractor", "guest", "delivery"],
