@@ -19,7 +19,16 @@ export type Role =
   | "manage_badges"
   | "pre_register_guest"
   | "pre_register_contractor"
-  | "pre_register_delivery";
+  | "pre_register_delivery"
+  // School module
+  | "school_admin"
+  | "teacher"
+  | "gate_officer"
+  | "guardian"
+  | "manage_students"
+  | "check_in_student"
+  | "approve_pickup"
+  | "view_student_reports";
 
 export type RoleGroup = {
   key: string;
@@ -34,19 +43,11 @@ export const ROLE_GROUPS: RoleGroup[] = [
     label: "Admin",
     description: "Organization-wide management and oversight.",
     roles: [
-      {
-        id: "admin",
-        label: "Super admin",
-        description: "Full control. Implicitly grants every other permission and can create more admins.",
-      },
+      { id: "admin", label: "Super admin", description: "Full control. Implicitly grants every other permission and can create more admins." },
       { id: "manage_staff", label: "Manage staff", description: "Create, edit, freeze and delete staff accounts." },
       { id: "manage_branches", label: "Manage branches", description: "Add, edit and remove office branches." },
       { id: "manage_blacklist", label: "Manage blacklist", description: "Add or remove visitors from the blacklist." },
-      {
-        id: "view_all_branches",
-        label: "View all branches",
-        description: "See visitors and reports across every branch (otherwise scoped to their assigned branch).",
-      },
+      { id: "view_all_branches", label: "View all branches", description: "See visitors and reports across every branch." },
       { id: "view_reports", label: "View & export reports", description: "Access the Reports module and Excel/PDF exports." },
     ],
   },
@@ -81,6 +82,21 @@ export const ROLE_GROUPS: RoleGroup[] = [
       { id: "pre_register_guest", label: "Pre-register guests", description: "Schedule a guest visit and send a confirmation email." },
       { id: "pre_register_contractor", label: "Pre-register contractors", description: "Schedule a contractor visit in advance." },
       { id: "pre_register_delivery", label: "Pre-register deliveries", description: "Schedule a delivery in advance." },
+    ],
+  },
+  {
+    key: "school",
+    label: "School (active when branch is a school)",
+    description: "Student movement, pickup control, and guardian portal.",
+    roles: [
+      { id: "school_admin", label: "School admin", description: "Full school management: students, guardians, attendance, pickups." },
+      { id: "teacher", label: "Teacher", description: "Class teacher: can view students and check them in." },
+      { id: "gate_officer", label: "Gate officer", description: "Operate the pickup gate: create pickup requests and release approved children." },
+      { id: "guardian", label: "Guardian (portal)", description: "Parent/guardian: portal-only access to approve pickups and view their child's attendance." },
+      { id: "manage_students", label: "Manage students", description: "Add, edit and assign guardians to students." },
+      { id: "check_in_student", label: "Check students in/out", description: "Record student arrival and release approved students." },
+      { id: "approve_pickup", label: "Override pickup approval", description: "Staff override to approve a pickup when guardian cannot respond." },
+      { id: "view_student_reports", label: "View student reports", description: "Access attendance and pickup reports." },
     ],
   },
 ];
