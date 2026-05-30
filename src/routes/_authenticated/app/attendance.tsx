@@ -36,17 +36,18 @@ function AttendancePage() {
   });
 
   const today = useQuery({
-    queryKey: ["attendance", "today", scoped ?? "all"],
+    queryKey: ["attendance", "today", scoped ?? "all", (students.data ?? []).length],
     queryFn: async () => {
       const start = new Date(); start.setHours(0, 0, 0, 0);
       let q = supabase.from("attendance_logs")
-        .select("id, student_id, check_in_at, check_out_at, check_in_method, students(full_name, class)")
+        .select("id, student_id, check_in_at, check_out_at, check_in_method")
         .gte("check_in_at", start.toISOString())
         .order("check_in_at", { ascending: false });
       if (scoped) q = q.eq("branch_id", scoped);
       const { data, error } = await q;
       if (error) throw error;
-      return data;
+      const map = new Map((students.data ?? []).map((s) => [s.id, s]));
+      return (data ?? []).map((r) => ({ ...r, student: map.get(r.student_id) ?? null }));
     },
   });
 
@@ -114,7 +115,7 @@ function AttendancePage() {
               </thead>
               <tbody>
                 {(today.data ?? []).map((l) => {
-                  const s = (l as { students: { full_name: string; class: string | null } | null }).students;
+                  const s = l.student;
                   return (
                     <tr key={l.id} className="border-t">
                       <td className="p-3 font-medium">{s?.full_name ?? "—"}</td>

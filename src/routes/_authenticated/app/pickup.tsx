@@ -29,12 +29,22 @@ function PickupPage() {
   const [phone, setPhone] = useState("");
   const [plate, setPlate] = useState("");
 
+  const studentMap = useQuery({
+    queryKey: ["students-map", scoped ?? "all"],
+    queryFn: async () => {
+      let q = supabase.from("students").select("id, full_name, class");
+      if (scoped) q = q.eq("branch_id", scoped);
+      const { data } = await q;
+      return new Map((data ?? []).map((s) => [s.id, s]));
+    },
+  });
+
   const students = useQuery({
-    queryKey: ["students-in-school", scoped ?? "all"],
+    queryKey: ["students-in-school", scoped ?? "all", studentMap.data?.size ?? 0],
     queryFn: async () => {
       const start = new Date(); start.setHours(0, 0, 0, 0);
       let q = supabase.from("attendance_logs")
-        .select("id, student_id, check_in_method, students(id, full_name, class)")
+        .select("id, student_id, check_in_method")
         .gte("check_in_at", start.toISOString())
         .is("check_out_at", null);
       if (scoped) q = q.eq("branch_id", scoped);
@@ -48,7 +58,7 @@ function PickupPage() {
     queryKey: ["pickup-requests", scoped ?? "all"],
     queryFn: async () => {
       let q = supabase.from("pickup_requests")
-        .select("id, status, pickup_person_name, pickup_person_phone, vehicle_plate, requested_at, rejection_reason, student_id, students(full_name, class)")
+        .select("id, status, pickup_person_name, pickup_person_phone, vehicle_plate, requested_at, rejection_reason, student_id")
         .order("requested_at", { ascending: false }).limit(50);
       if (scoped) q = q.eq("branch_id", scoped);
       const { data, error } = await q;
@@ -91,8 +101,8 @@ function PickupPage() {
   });
 
   const studentChoices = (students.data ?? []).map((row) => {
-    const s = (row as { students: { id: string; full_name: string; class: string | null } | null }).students;
-    return { attendanceId: row.id, studentId: s?.id ?? "", label: s ? `${s.full_name}${s.class ? ` (${s.class})` : ""}` : "—", method: row.check_in_method };
+    const s = studentMap.data?.get(row.student_id);
+    return { attendanceId: row.id, studentId: row.student_id, label: s ? `${s.full_name}${s.class ? ` (${s.class})` : ""}` : "—", method: row.check_in_method };
   });
 
   return (
@@ -136,7 +146,7 @@ function PickupPage() {
               </thead>
               <tbody>
                 {(requests.data ?? []).map((r) => {
-                  const s = (r as { students: { full_name: string; class: string | null } | null }).students;
+                  const s = studentMap.data?.get(r.student_id);
                   const inSchool = studentChoices.find((c) => c.studentId === r.student_id);
                   const canRelease = r.status === "approved" && inSchool;
                   return (
