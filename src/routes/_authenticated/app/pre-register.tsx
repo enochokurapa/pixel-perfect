@@ -31,7 +31,7 @@ function PreRegisterPage() {
   const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor" | "delivery">("guest");
   const [hostId, setHostId] = useState<string>(me.userId ?? "");
   const [duration, setDuration] = useState(180);
-  const [form, setForm] = useState({ full_name: "", phone: "", email: "", company: "", purpose: "" });
+  const [form, setForm] = useState({ salutation: "", full_name: "", phone: "", email: "", company: "", purpose: "" });
   type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
   const [hasAssets, setHasAssets] = useState<"no" | "yes">("no");
   const [assets, setAssets] = useState<AssetRow[]>([
@@ -70,10 +70,12 @@ function PreRegisterPage() {
       let visitorId = existing?.id;
       if (!visitorId) {
         const { data: v, error } = await supabase.from("visitors").insert({
-          full_name: parsed.full_name, phone: parsed.phone, email: parsed.email, company: form.company || null,
+          full_name: parsed.full_name, phone: parsed.phone, email: parsed.email, company: form.company || null, salutation: form.salutation || null,
         }).select("id").single();
         if (error) throw error;
         visitorId = v.id;
+      } else if (form.salutation) {
+        await supabase.from("visitors").update({ salutation: form.salutation }).eq("id", visitorId);
       }
       const { data: bl } = await supabase.from("blacklist").select("reason").eq("visitor_id", visitorId).eq("active", true).maybeSingle();
       if (bl) throw new Error(`Visitor is blacklisted: ${bl.reason}`);
@@ -126,6 +128,21 @@ function PreRegisterPage() {
       <Card>
         <CardHeader><CardTitle>Visitor</CardTitle><CardDescription>Who is coming to see you?</CardDescription></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Salutation</Label>
+            <Select value={form.salutation} onValueChange={(v) => set("salutation", v)}>
+              <SelectTrigger><SelectValue placeholder="Mr. / Mrs. / Ms. …" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Mr.">Mr.</SelectItem>
+                <SelectItem value="Mrs.">Mrs.</SelectItem>
+                <SelectItem value="Ms.">Ms.</SelectItem>
+                <SelectItem value="Miss">Miss</SelectItem>
+                <SelectItem value="Dr.">Dr.</SelectItem>
+                <SelectItem value="Prof.">Prof.</SelectItem>
+                <SelectItem value="Eng.">Eng.</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Field label="Full name" required value={form.full_name} onChange={(v) => set("full_name", v)} />
           <Field label="Phone" required value={form.phone} onChange={(v) => set("phone", v)} />
           <Field label="Email" required type="email" value={form.email} onChange={(v) => set("email", v)} />

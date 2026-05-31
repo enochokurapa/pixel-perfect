@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { Bell, Check } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -56,15 +56,82 @@ export function NotificationsBell() {
   const items = notifications.data ?? [];
   const unread = items.filter((n) => !n.read).length;
 
+  // Overstay watch — flashes the bell + beeps until no checked-in visitor is overstaying.
+  const overstays = useQuery({
+    enabled: !!me.userId,
+    queryKey: ["overstay-watch", me.branchId],
+    queryFn: async () => {
+      let q = supabase
+        .from("visits")
+        .select("id, check_in_at, expected_duration_minutes, branch_id")
+        .eq("status", "checked_in");
+      if (!me.canViewAllBranches && me.branchId) q = q.eq("branch_id", me.branchId);
+      const { data, error } = await q;
+      if (error) throw error;
+      const now = Date.now();
+      return (data ?? []).filter((v) => {
+        if (!v.check_in_at) return false;
+        return new Date(v.check_in_at).getTime() + (v.expected_duration_minutes ?? 180) * 60_000 < now;
+      }).length;
+    },
+    refetchInterval: 30_000,
+  });
+  const hasOverstay = (overstays.data ?? 0) > 0;
+
+  const beepRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!hasOverstay) {
+      if (beepRef.current) {
+        window.clearInterval(beepRef.current);
+        beepRef.current = null;
+      }
+      return;
+    }
+    const play = () => {
+      try {
+        const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new Ctx();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = 880;
+        g.gain.value = 0.08;
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start();
+        setTimeout(() => {
+          o.stop();
+          ctx.close();
+        }, 220);
+      } catch {
+        /* ignore */
+      }
+    };
+    play();
+    beepRef.current = window.setInterval(play, 3000);
+    return () => {
+      if (beepRef.current) window.clearInterval(beepRef.current);
+      beepRef.current = null;
+    };
+  }, [hasOverstay]);
+
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("relative", hasOverstay && "animate-pulse text-destructive")}
+          aria-label={hasOverstay ? `${overstays.data} overstayed visitor(s)` : "Notifications"}
+        >
+          <Bell className={cn("h-4 w-4", hasOverstay && "animate-bounce")} />
           {unread > 0 && (
             <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
               {unread > 9 ? "9+" : unread}
             </span>
+          )}
+          {hasOverstay && (
+            <span className="absolute inset-0 rounded-full ring-2 ring-destructive/60 animate-ping pointer-events-none" />
           )}
         </Button>
       </PopoverTrigger>
