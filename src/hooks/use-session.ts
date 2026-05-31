@@ -82,7 +82,7 @@ export function useCurrentUser() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("branches")
-        .select("id, name, site_type")
+        .select("id, name")
         .eq("id", profile.data!.branch_id!)
         .maybeSingle();
       if (error) throw error;
@@ -95,25 +95,18 @@ export function useCurrentUser() {
   const isAdmin = has("admin");
   const canViewAllBranches = isAdmin || has("view_all_branches");
   const branchId = profile.data?.branch_id ?? null;
-  const siteType = (branch.data?.site_type ?? "corporate") as "corporate" | "school";
-  const isGuardian = has("guardian");
-  // A pure guardian has no other staff roles
-  const isPureGuardian = isGuardian && (roles.data?.length ?? 0) === 1;
 
   return {
     session,
     userId,
     profile: profile.data,
     branchId,
-    siteType,
     roles: roles.data ?? [],
     isLoading: sessionLoading || profile.isLoading || roles.isLoading || roles.isFetching,
     has,
     isSignedIn,
     isAdmin: isSignedIn || isAdmin, // keep prior behavior for existing call-sites
     isHost: has("host"),
-    isGuardian,
-    isPureGuardian,
     canViewAllBranches,
     canRegister:
       isSignedIn ||
@@ -122,9 +115,7 @@ export function useCurrentUser() {
       has("register_contractor") ||
       has("register_delivery"),
     canManageBadges: isSignedIn || isAdmin || has("manage_badges"),
-    canManageStudents: isSignedIn || isAdmin || has("school_admin") || has("manage_students"),
-    canCheckInStudent: isSignedIn || isAdmin || has("school_admin") || has("check_in_student") || has("teacher") || has("gate_officer"),
-    canViewStudentReports: isSignedIn || isAdmin || has("school_admin") || has("view_student_reports"),
   };
 }
+
 
