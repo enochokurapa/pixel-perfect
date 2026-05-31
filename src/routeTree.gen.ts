@@ -9,29 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PortalRouteImport } from './routes/portal'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PickupResponseTokenRouteImport } from './routes/pickup-response.$token'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
 import { Route as AuthenticatedAppVisitorsRouteImport } from './routes/_authenticated/app/visitors'
-import { Route as AuthenticatedAppStudentsRouteImport } from './routes/_authenticated/app/students'
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app/settings'
 import { Route as AuthenticatedAppReportsRouteImport } from './routes/_authenticated/app/reports'
 import { Route as AuthenticatedAppRegisterRouteImport } from './routes/_authenticated/app/register'
 import { Route as AuthenticatedAppPreRegisterRouteImport } from './routes/_authenticated/app/pre-register'
-import { Route as AuthenticatedAppPickupRouteImport } from './routes/_authenticated/app/pickup'
 import { Route as AuthenticatedAppBlacklistRouteImport } from './routes/_authenticated/app/blacklist'
 import { Route as AuthenticatedAppBadgesRouteImport } from './routes/_authenticated/app/badges'
-import { Route as AuthenticatedAppAttendanceRouteImport } from './routes/_authenticated/app/attendance'
 import { Route as AuthenticatedAppVisitsIdRouteImport } from './routes/_authenticated/app/visits.$id'
 
-const PortalRoute = PortalRouteImport.update({
-  id: '/portal',
-  path: '/portal',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -46,11 +36,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PickupResponseTokenRoute = PickupResponseTokenRouteImport.update({
-  id: '/pickup-response/$token',
-  path: '/pickup-response/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   id: '/app/',
   path: '/app/',
@@ -60,12 +45,6 @@ const AuthenticatedAppVisitorsRoute =
   AuthenticatedAppVisitorsRouteImport.update({
     id: '/app/visitors',
     path: '/app/visitors',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedAppStudentsRoute =
-  AuthenticatedAppStudentsRouteImport.update({
-    id: '/app/students',
-    path: '/app/students',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAppSettingsRoute =
@@ -91,11 +70,6 @@ const AuthenticatedAppPreRegisterRoute =
     path: '/app/pre-register',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedAppPickupRoute = AuthenticatedAppPickupRouteImport.update({
-  id: '/app/pickup',
-  path: '/app/pickup',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedAppBlacklistRoute =
   AuthenticatedAppBlacklistRouteImport.update({
     id: '/app/blacklist',
@@ -107,12 +81,6 @@ const AuthenticatedAppBadgesRoute = AuthenticatedAppBadgesRouteImport.update({
   path: '/app/badges',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedAppAttendanceRoute =
-  AuthenticatedAppAttendanceRouteImport.update({
-    id: '/app/attendance',
-    path: '/app/attendance',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 const AuthenticatedAppVisitsIdRoute =
   AuthenticatedAppVisitsIdRouteImport.update({
     id: '/app/visits/$id',
@@ -123,17 +91,12 @@ const AuthenticatedAppVisitsIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/portal': typeof PortalRoute
-  '/pickup-response/$token': typeof PickupResponseTokenRoute
-  '/app/attendance': typeof AuthenticatedAppAttendanceRoute
   '/app/badges': typeof AuthenticatedAppBadgesRoute
   '/app/blacklist': typeof AuthenticatedAppBlacklistRoute
-  '/app/pickup': typeof AuthenticatedAppPickupRoute
   '/app/pre-register': typeof AuthenticatedAppPreRegisterRoute
   '/app/register': typeof AuthenticatedAppRegisterRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
-  '/app/students': typeof AuthenticatedAppStudentsRoute
   '/app/visitors': typeof AuthenticatedAppVisitorsRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/visits/$id': typeof AuthenticatedAppVisitsIdRoute
@@ -141,17 +104,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/portal': typeof PortalRoute
-  '/pickup-response/$token': typeof PickupResponseTokenRoute
-  '/app/attendance': typeof AuthenticatedAppAttendanceRoute
   '/app/badges': typeof AuthenticatedAppBadgesRoute
   '/app/blacklist': typeof AuthenticatedAppBlacklistRoute
-  '/app/pickup': typeof AuthenticatedAppPickupRoute
   '/app/pre-register': typeof AuthenticatedAppPreRegisterRoute
   '/app/register': typeof AuthenticatedAppRegisterRoute
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
-  '/app/students': typeof AuthenticatedAppStudentsRoute
   '/app/visitors': typeof AuthenticatedAppVisitorsRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/visits/$id': typeof AuthenticatedAppVisitsIdRoute
@@ -161,17 +119,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/portal': typeof PortalRoute
-  '/pickup-response/$token': typeof PickupResponseTokenRoute
-  '/_authenticated/app/attendance': typeof AuthenticatedAppAttendanceRoute
   '/_authenticated/app/badges': typeof AuthenticatedAppBadgesRoute
   '/_authenticated/app/blacklist': typeof AuthenticatedAppBlacklistRoute
-  '/_authenticated/app/pickup': typeof AuthenticatedAppPickupRoute
   '/_authenticated/app/pre-register': typeof AuthenticatedAppPreRegisterRoute
   '/_authenticated/app/register': typeof AuthenticatedAppRegisterRoute
   '/_authenticated/app/reports': typeof AuthenticatedAppReportsRoute
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
-  '/_authenticated/app/students': typeof AuthenticatedAppStudentsRoute
   '/_authenticated/app/visitors': typeof AuthenticatedAppVisitorsRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/visits/$id': typeof AuthenticatedAppVisitsIdRoute
@@ -181,17 +134,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
-    | '/portal'
-    | '/pickup-response/$token'
-    | '/app/attendance'
     | '/app/badges'
     | '/app/blacklist'
-    | '/app/pickup'
     | '/app/pre-register'
     | '/app/register'
     | '/app/reports'
     | '/app/settings'
-    | '/app/students'
     | '/app/visitors'
     | '/app/'
     | '/app/visits/$id'
@@ -199,17 +147,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
-    | '/portal'
-    | '/pickup-response/$token'
-    | '/app/attendance'
     | '/app/badges'
     | '/app/blacklist'
-    | '/app/pickup'
     | '/app/pre-register'
     | '/app/register'
     | '/app/reports'
     | '/app/settings'
-    | '/app/students'
     | '/app/visitors'
     | '/app'
     | '/app/visits/$id'
@@ -218,17 +161,12 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/login'
-    | '/portal'
-    | '/pickup-response/$token'
-    | '/_authenticated/app/attendance'
     | '/_authenticated/app/badges'
     | '/_authenticated/app/blacklist'
-    | '/_authenticated/app/pickup'
     | '/_authenticated/app/pre-register'
     | '/_authenticated/app/register'
     | '/_authenticated/app/reports'
     | '/_authenticated/app/settings'
-    | '/_authenticated/app/students'
     | '/_authenticated/app/visitors'
     | '/_authenticated/app/'
     | '/_authenticated/app/visits/$id'
@@ -238,19 +176,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
-  PortalRoute: typeof PortalRoute
-  PickupResponseTokenRoute: typeof PickupResponseTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/portal': {
-      id: '/portal'
-      path: '/portal'
-      fullPath: '/portal'
-      preLoaderRoute: typeof PortalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -272,13 +201,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pickup-response/$token': {
-      id: '/pickup-response/$token'
-      path: '/pickup-response/$token'
-      fullPath: '/pickup-response/$token'
-      preLoaderRoute: typeof PickupResponseTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/app/': {
       id: '/_authenticated/app/'
       path: '/app'
@@ -291,13 +213,6 @@ declare module '@tanstack/react-router' {
       path: '/app/visitors'
       fullPath: '/app/visitors'
       preLoaderRoute: typeof AuthenticatedAppVisitorsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/app/students': {
-      id: '/_authenticated/app/students'
-      path: '/app/students'
-      fullPath: '/app/students'
-      preLoaderRoute: typeof AuthenticatedAppStudentsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/app/settings': {
@@ -328,13 +243,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppPreRegisterRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/app/pickup': {
-      id: '/_authenticated/app/pickup'
-      path: '/app/pickup'
-      fullPath: '/app/pickup'
-      preLoaderRoute: typeof AuthenticatedAppPickupRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/app/blacklist': {
       id: '/_authenticated/app/blacklist'
       path: '/app/blacklist'
@@ -349,13 +257,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppBadgesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/app/attendance': {
-      id: '/_authenticated/app/attendance'
-      path: '/app/attendance'
-      fullPath: '/app/attendance'
-      preLoaderRoute: typeof AuthenticatedAppAttendanceRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/app/visits/$id': {
       id: '/_authenticated/app/visits/$id'
       path: '/app/visits/$id'
@@ -367,30 +268,24 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedAppAttendanceRoute: typeof AuthenticatedAppAttendanceRoute
   AuthenticatedAppBadgesRoute: typeof AuthenticatedAppBadgesRoute
   AuthenticatedAppBlacklistRoute: typeof AuthenticatedAppBlacklistRoute
-  AuthenticatedAppPickupRoute: typeof AuthenticatedAppPickupRoute
   AuthenticatedAppPreRegisterRoute: typeof AuthenticatedAppPreRegisterRoute
   AuthenticatedAppRegisterRoute: typeof AuthenticatedAppRegisterRoute
   AuthenticatedAppReportsRoute: typeof AuthenticatedAppReportsRoute
   AuthenticatedAppSettingsRoute: typeof AuthenticatedAppSettingsRoute
-  AuthenticatedAppStudentsRoute: typeof AuthenticatedAppStudentsRoute
   AuthenticatedAppVisitorsRoute: typeof AuthenticatedAppVisitorsRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppVisitsIdRoute: typeof AuthenticatedAppVisitsIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedAppAttendanceRoute: AuthenticatedAppAttendanceRoute,
   AuthenticatedAppBadgesRoute: AuthenticatedAppBadgesRoute,
   AuthenticatedAppBlacklistRoute: AuthenticatedAppBlacklistRoute,
-  AuthenticatedAppPickupRoute: AuthenticatedAppPickupRoute,
   AuthenticatedAppPreRegisterRoute: AuthenticatedAppPreRegisterRoute,
   AuthenticatedAppRegisterRoute: AuthenticatedAppRegisterRoute,
   AuthenticatedAppReportsRoute: AuthenticatedAppReportsRoute,
   AuthenticatedAppSettingsRoute: AuthenticatedAppSettingsRoute,
-  AuthenticatedAppStudentsRoute: AuthenticatedAppStudentsRoute,
   AuthenticatedAppVisitorsRoute: AuthenticatedAppVisitorsRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppVisitsIdRoute: AuthenticatedAppVisitsIdRoute,
@@ -404,8 +299,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
-  PortalRoute: PortalRoute,
-  PickupResponseTokenRoute: PickupResponseTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

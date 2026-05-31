@@ -19,16 +19,7 @@ export type Role =
   | "manage_badges"
   | "pre_register_guest"
   | "pre_register_contractor"
-  | "pre_register_delivery"
-  // School module
-  | "school_admin"
-  | "teacher"
-  | "gate_officer"
-  | "guardian"
-  | "manage_students"
-  | "check_in_student"
-  | "approve_pickup"
-  | "view_student_reports";
+  | "pre_register_delivery";
 
 export type RoleGroup = {
   key: string;
