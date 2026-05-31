@@ -49,6 +49,7 @@ function RegisterPage() {
     { kind: "device", brand: "", serial: "", description: "" },
   ]);
   const [form, setForm] = useState({
+    salutation: "",
     full_name: "",
     phone: "",
     email: "",
@@ -118,6 +119,7 @@ function RegisterPage() {
         full_name: parsed.full_name,
         email: parsed.email,
         company: parsed.company,
+        salutation: form.salutation || null,
         id_type: form.id_type || null,
         id_number: form.id_number || null,
       };
