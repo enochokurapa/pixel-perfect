@@ -105,16 +105,25 @@ export function useCurrentUser() {
     isLoading: sessionLoading || profile.isLoading || roles.isLoading || roles.isFetching,
     has,
     isSignedIn,
-    isAdmin: isSignedIn || isAdmin, // keep prior behavior for existing call-sites
+    isAdmin,
     isHost: has("host"),
     canViewAllBranches,
+    canViewReports: isAdmin || has("view_reports"),
     canRegister:
-      isSignedIn ||
       isAdmin ||
       has("register_guest") ||
       has("register_contractor") ||
       has("register_delivery"),
-    canManageBadges: isSignedIn || isAdmin || has("manage_badges"),
+    canPreRegister:
+      isAdmin ||
+      has("pre_register_guest") ||
+      has("pre_register_contractor") ||
+      has("pre_register_delivery"),
+    canManageBadges: isAdmin || has("manage_badges"),
+    canManageBlacklist: isAdmin || has("manage_blacklist"),
+    canManageStaff: isAdmin || has("manage_staff"),
+    canManageBranches: isAdmin || has("manage_branches"),
+    canCheckout: isAdmin || has("checkout_visitor"),
   };
 }
 
