@@ -520,7 +520,6 @@ export type Database = {
           id_scan_url: string | null
           id_type: string | null
           phone: string
-          salutation: string | null
           updated_at: string
         }
         Insert: {
@@ -533,7 +532,6 @@ export type Database = {
           id_scan_url?: string | null
           id_type?: string | null
           phone: string
-          salutation?: string | null
           updated_at?: string
         }
         Update: {
@@ -546,7 +544,6 @@ export type Database = {
           id_scan_url?: string | null
           id_type?: string | null
           phone?: string
-          salutation?: string | null
           updated_at?: string
         }
         Relationships: []

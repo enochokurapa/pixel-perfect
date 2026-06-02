@@ -212,7 +212,12 @@ function Settings() {
         </p>
       </header>
 
+
+
+      <MyAccountCard />
+
       <BranchesCard branches={branches.data ?? []} />
+
 
       <CreateStaffCard
         branches={branches.data ?? []}
@@ -721,5 +726,82 @@ function Field({
       </Label>
       <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
+  );
+}
+
+function MyAccountCard() {
+  const me = useCurrentUser();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!me.isAdmin) return null;
+
+  const currentEmail = me.profile?.email ?? "";
+
+  const onSave = async () => {
+    const updates: { email?: string; password?: string } = {};
+    if (email.trim() && email.trim() !== currentEmail) updates.email = email.trim();
+    if (password) {
+      if (password.length < 8) {
+        toast.error("Password must be at least 8 characters");
+        return;
+      }
+      updates.password = password;
+    }
+    if (!updates.email && !updates.password) {
+      toast.error("Change email or password before saving");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.updateUser(updates);
+      if (error) throw error;
+      if (updates.email && me.userId) {
+        await supabase.from("profiles").update({ email: updates.email }).eq("id", me.userId);
+      }
+      toast.success("Account updated");
+      setPassword("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>My account</CardTitle>
+        <CardDescription>
+          Update your own sign-in email and password. Current email: {currentEmail || "—"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label>New email</Label>
+          <Input
+            type="email"
+            placeholder={currentEmail}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>New password</Label>
+          <Input
+            type="password"
+            placeholder="Leave blank to keep current"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Button onClick={onSave} disabled={busy}>
+            {busy ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

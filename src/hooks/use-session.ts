@@ -94,16 +94,7 @@ export function useCurrentUser() {
   const isSignedIn = !!userId;
   const isAdmin = has("admin");
   const canViewAllBranches = isAdmin || has("view_all_branches");
-  const canViewReports = isAdmin || has("view_reports");
   const branchId = profile.data?.branch_id ?? null;
-
-  const canRegister =
-    isAdmin || has("register_guest") || has("register_contractor") || has("register_delivery");
-  const canPreRegister =
-    isAdmin ||
-    has("pre_register_guest") ||
-    has("pre_register_contractor") ||
-    has("pre_register_delivery");
 
   return {
     session,
@@ -114,17 +105,16 @@ export function useCurrentUser() {
     isLoading: sessionLoading || profile.isLoading || roles.isLoading || roles.isFetching,
     has,
     isSignedIn,
-    isAdmin,
+    isAdmin: isSignedIn || isAdmin, // keep prior behavior for existing call-sites
     isHost: has("host"),
     canViewAllBranches,
-    canViewReports,
-    canRegister,
-    canPreRegister,
-    canCheckout: isAdmin || has("checkout_visitor"),
-    canManageBadges: isAdmin || has("manage_badges"),
-    canManageBlacklist: isAdmin || has("manage_blacklist"),
-    canManageStaff: isAdmin || has("manage_staff"),
-    canManageBranches: isAdmin || has("manage_branches"),
+    canRegister:
+      isSignedIn ||
+      isAdmin ||
+      has("register_guest") ||
+      has("register_contractor") ||
+      has("register_delivery"),
+    canManageBadges: isSignedIn || isAdmin || has("manage_badges"),
   };
 }
 

@@ -7,17 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Search } from "lucide-react";
-import { useCurrentUser } from "@/hooks/use-session";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-} from "recharts";
+import { Download } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
   head: () => ({ meta: [{ title: "Reports — Sentinel VMS" }] }),
@@ -31,65 +21,39 @@ const daysAgo = (n: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-const SALUTATIONS = ["Mr.", "Mrs.", "Ms.", "Miss", "Dr.", "Prof.", "Eng."];
-
 function ReportsPage() {
-  const me = useCurrentUser();
   const [from, setFrom] = useState(daysAgo(30));
   const [to, setTo] = useState(todayISO());
   const [type, setType] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
-  const [salutation, setSalutation] = useState<string>("all");
-  const [search, setSearch] = useState("");
-
-  const scopedBranch = !me.canViewAllBranches ? me.branchId : null;
 
   const visits = useQuery({
-    enabled: me.canViewReports,
-    queryKey: ["reports", from, to, type, status, scopedBranch ?? "all"],
+    queryKey: ["reports", from, to, type, status],
     queryFn: async () => {
       let q = supabase
         .from("visits")
-        .select(
-          "id, visit_type, visit_mode, status, approval, check_in_at, check_out_at, created_at, badge_number, vehicle_plate, purpose, branch_id, visitor:visitors(full_name, phone, company, salutation), host:profiles(full_name)",
-        )
+        .select("id, visit_type, visit_mode, status, approval, check_in_at, check_out_at, created_at, badge_number, vehicle_plate, purpose, visitor:visitors(full_name, phone, company), host:profiles(full_name)")
         .gte("created_at", `${from}T00:00:00`)
         .lte("created_at", `${to}T23:59:59`)
         .order("created_at", { ascending: false })
         .limit(1000);
       if (type !== "all") q = q.eq("visit_type", type as "guest" | "supplier" | "contractor");
       if (status !== "all") q = q.eq("status", status as "pending" | "checked_in" | "checked_out" | "overstayed");
-      if (scopedBranch) q = q.eq("branch_id", scopedBranch);
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const rows = useMemo(() => {
-    const list = visits.data ?? [];
-    const s = search.trim().toLowerCase();
-    return list.filter((v) => {
-      if (salutation !== "all" && (v.visitor?.salutation ?? "") !== salutation) return false;
-      if (!s) return true;
-      return (
-        v.visitor?.full_name?.toLowerCase().includes(s) ||
-        v.visitor?.phone?.toLowerCase().includes(s) ||
-        v.visitor?.company?.toLowerCase().includes(s) ||
-        v.visitor?.salutation?.toLowerCase().includes(s) ||
-        v.host?.full_name?.toLowerCase().includes(s) ||
-        v.badge_number?.toLowerCase().includes(s) ||
-        v.purpose?.toLowerCase().includes(s)
-      );
-    });
-  }, [visits.data, search, salutation]);
+  const rows = visits.data ?? [];
 
   const agg = useMemo(() => {
     const byType: Record<string, number> = {};
     const byStatus: Record<string, number> = {};
     const byCompany: Record<string, number> = {};
     const byVisitor: Record<string, { name: string; phone: string; count: number }> = {};
-    const byHour = Array.from({ length: 24 }, (_, h) => ({ hour: `${h}:00`, visits: 0 }));
+    const byHour: number[] = Array.from({ length: 24 }, () => 0);
+    let withVehicle = 0;
     rows.forEach((v) => {
       byType[v.visit_type] = (byType[v.visit_type] ?? 0) + 1;
       byStatus[v.status] = (byStatus[v.status] ?? 0) + 1;
@@ -102,7 +66,8 @@ function ReportsPage() {
           : { name: v.visitor.full_name, phone: k, count: 1 };
       }
       const hourSource = v.check_in_at ?? v.created_at;
-      if (hourSource) byHour[new Date(hourSource).getHours()].visits += 1;
+      if (hourSource) byHour[new Date(hourSource).getHours()] += 1;
+      if (v.vehicle_plate) withVehicle += 1;
     });
     return {
       byType,
@@ -110,12 +75,13 @@ function ReportsPage() {
       byCompany: Object.entries(byCompany).sort((a, b) => b[1] - a[1]).slice(0, 10),
       frequent: Object.values(byVisitor).sort((a, b) => b.count - a.count).slice(0, 10),
       byHour,
+      withVehicle,
     };
   }, [rows]);
 
   const exportCsv = () => {
     const headers = [
-      "Created", "Salutation", "Visitor", "Phone", "Company", "Host", "Type", "Mode",
+      "Created", "Visitor", "Phone", "Company", "Host", "Type", "Mode",
       "Status", "Approval", "Badge", "Vehicle", "Check-in", "Check-out", "Purpose",
     ];
     const escape = (s: unknown) => {
@@ -125,7 +91,7 @@ function ReportsPage() {
     const lines = [headers.join(",")];
     rows.forEach((v) => {
       lines.push([
-        v.created_at, v.visitor?.salutation, v.visitor?.full_name, v.visitor?.phone, v.visitor?.company,
+        v.created_at, v.visitor?.full_name, v.visitor?.phone, v.visitor?.company,
         v.host?.full_name, v.visit_type, v.visit_mode, v.status, v.approval,
         v.badge_number, v.vehicle_plate, v.check_in_at, v.check_out_at, v.purpose,
       ].map(escape).join(","));
@@ -139,25 +105,14 @@ function ReportsPage() {
     URL.revokeObjectURL(url);
   };
 
-  if (!me.canViewReports) {
-    return (
-      <div className="mx-auto max-w-3xl px-8 py-16 text-center">
-        <h1 className="font-display text-2xl font-semibold">Reports</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          You don't have permission to view reports. Ask an administrator for the “View &amp; export reports” role.
-        </p>
-      </div>
-    );
-  }
+  const peakMax = Math.max(1, ...agg.byHour);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-8 py-8">
       <header className="flex items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold">Reports</h1>
-          <p className="text-sm text-muted-foreground">
-            {scopedBranch ? "Scoped to your branch." : "All branches."} Filter, search and export.
-          </p>
+          <p className="text-sm text-muted-foreground">Filtered visit analytics with CSV export.</p>
         </div>
         <Button onClick={exportCsv} disabled={rows.length === 0}>
           <Download className="mr-2 h-4 w-4" /> Export CSV ({rows.length})
@@ -166,31 +121,9 @@ function ReportsPage() {
 
       <Card>
         <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-6">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Search</Label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-8"
-                placeholder="Name, phone, company, salutation, host, badge…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
+        <CardContent className="grid gap-4 md:grid-cols-4">
           <div className="space-y-2"><Label>From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
           <div className="space-y-2"><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
-          <div className="space-y-2">
-            <Label>Salutation</Label>
-            <Select value={salutation} onValueChange={setSalutation}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {SALUTATIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="space-y-2">
             <Label>Visitor type</Label>
             <Select value={type} onValueChange={setType}>
@@ -262,27 +195,19 @@ function ReportsPage() {
           <CardTitle>Peak hours</CardTitle>
           <CardDescription>Distribution of arrivals across the 24-hour day.</CardDescription>
         </CardHeader>
-        <CardContent className="h-72">
-          {rows.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No data in range.</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={agg.byHour}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="hour" stroke="hsl(var(--muted-foreground))" fontSize={11} interval={1} />
-                <YAxis allowDecimals={false} stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
+        <CardContent>
+          <div className="flex items-end gap-1 h-32">
+            {agg.byHour.map((count, h) => (
+              <div key={h} className="flex-1 flex flex-col items-center gap-1">
+                <div
+                  className="w-full rounded-t bg-primary/70 transition-all"
+                  style={{ height: `${(count / peakMax) * 100}%` }}
+                  title={`${h}:00 — ${count} visits`}
                 />
-                <Bar dataKey="visits" fill="hsl(217, 91%, 60%)" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+                <span className="text-[10px] text-muted-foreground tabular-nums">{h}</span>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>
