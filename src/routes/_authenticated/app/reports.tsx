@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download } from "lucide-react";
+import { useCurrentUser } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
   head: () => ({ meta: [{ title: "Reports — Sentinel VMS" }] }),
@@ -22,21 +23,26 @@ const daysAgo = (n: number) => {
 };
 
 function ReportsPage() {
+  const me = useCurrentUser();
   const [from, setFrom] = useState(daysAgo(30));
   const [to, setTo] = useState(todayISO());
   const [type, setType] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
 
+  const scopedBranch = !me.canViewAllBranches ? me.branchId : null;
+
   const visits = useQuery({
-    queryKey: ["reports", from, to, type, status],
+    enabled: me.canViewReports,
+    queryKey: ["reports", from, to, type, status, scopedBranch ?? "all"],
     queryFn: async () => {
       let q = supabase
         .from("visits")
-        .select("id, visit_type, visit_mode, status, approval, check_in_at, check_out_at, created_at, badge_number, vehicle_plate, purpose, visitor:visitors(full_name, phone, company), host:profiles(full_name)")
+        .select("id, visit_type, visit_mode, status, approval, check_in_at, check_out_at, created_at, badge_number, vehicle_plate, purpose, branch_id, visitor:visitors(full_name, phone, company), host:profiles(full_name)")
         .gte("created_at", `${from}T00:00:00`)
         .lte("created_at", `${to}T23:59:59`)
         .order("created_at", { ascending: false })
         .limit(1000);
+      if (scopedBranch) q = q.eq("branch_id", scopedBranch);
       if (type !== "all") q = q.eq("visit_type", type as "guest" | "supplier" | "contractor");
       if (status !== "all") q = q.eq("status", status as "pending" | "checked_in" | "checked_out" | "overstayed");
       const { data, error } = await q;
@@ -44,6 +50,18 @@ function ReportsPage() {
       return data ?? [];
     },
   });
+
+  if (!me.canViewReports) {
+    return (
+      <div className="mx-auto max-w-3xl px-8 py-16 text-center">
+        <h1 className="font-display text-2xl font-semibold">Reports</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          You don't have permission to view reports. Ask an admin to grant you the
+          "View &amp; export reports" role.
+        </p>
+      </div>
+    );
+  }
 
   const rows = visits.data ?? [];
 
