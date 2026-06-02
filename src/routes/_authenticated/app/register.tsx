@@ -49,7 +49,6 @@ function RegisterPage() {
     { kind: "device", brand: "", serial: "", description: "" },
   ]);
   const [form, setForm] = useState({
-    salutation: "",
     full_name: "",
     phone: "",
     email: "",
@@ -119,7 +118,6 @@ function RegisterPage() {
         full_name: parsed.full_name,
         email: parsed.email,
         company: parsed.company,
-        salutation: form.salutation || null,
         id_type: form.id_type || null,
         id_number: form.id_number || null,
       };
@@ -314,21 +312,6 @@ function RegisterPage() {
             {duplicateNotice && (
               <p className="text-xs text-amber-600 dark:text-amber-400">{duplicateNotice}</p>
             )}
-          </div>
-          <div className="space-y-2">
-            <Label>Salutation</Label>
-            <Select value={form.salutation} onValueChange={(v) => set("salutation", v)}>
-              <SelectTrigger><SelectValue placeholder="Mr. / Mrs. / Ms. …" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Mr.">Mr.</SelectItem>
-                <SelectItem value="Mrs.">Mrs.</SelectItem>
-                <SelectItem value="Ms.">Ms.</SelectItem>
-                <SelectItem value="Miss">Miss</SelectItem>
-                <SelectItem value="Dr.">Dr.</SelectItem>
-                <SelectItem value="Prof.">Prof.</SelectItem>
-                <SelectItem value="Eng.">Eng.</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           <Field
             label="Full name"
