@@ -210,6 +210,8 @@ function Settings() {
         <p className="text-sm text-muted-foreground">
           Manage branches, staff accounts, roles, and positions.
         </p>
+      </header>
+
 
 
       <MyAccountCard />
