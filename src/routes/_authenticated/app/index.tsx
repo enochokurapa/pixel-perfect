@@ -192,7 +192,7 @@ function Dashboard() {
 
 
 
-  const { dailyData, typeData, statusData } = useMemo(() => {
+  const { dailyData, typeData, statusData, departmentData } = useMemo(() => {
     const rows = chartData.data ?? [];
     const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const days = labels.map((day) => ({ day, visits: 0 }));
@@ -212,9 +212,12 @@ function Dashboard() {
 
     const typeCounts: Record<string, number> = {};
     const statusCounts: Record<string, number> = {};
+    const deptCounts: Record<string, number> = {};
     rows.forEach((r) => {
       typeCounts[r.visit_type] = (typeCounts[r.visit_type] ?? 0) + 1;
       statusCounts[r.status] = (statusCounts[r.status] ?? 0) + 1;
+      const dept = (r as { host?: { department?: string } | null }).host?.department ?? "Unassigned";
+      deptCounts[dept] = (deptCounts[dept] ?? 0) + 1;
     });
     return {
       dailyData: days,
@@ -223,6 +226,10 @@ function Dashboard() {
         name: name.replace("_", " "),
         value,
       })),
+      departmentData: Object.entries(deptCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([name, visits]) => ({ name, visits })),
     };
   }, [chartData.data]);
 
