@@ -17,6 +17,7 @@ import { StatusBadge } from "./index";
 import { exportExcel, exportPdf } from "@/lib/visit-export";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
+import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 
 export const Route = createFileRoute("/_authenticated/app/visitors")({
   head: () => ({ meta: [{ title: "Visitors — Sentinel VMS" }] }),
@@ -25,16 +26,17 @@ export const Route = createFileRoute("/_authenticated/app/visitors")({
 
 function VisitorsPage() {
   const me = useCurrentUser();
+  const branchFilter = useEffectiveBranchFilter();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [type, setType] = useState<string>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  const scopedBranch = !me.canViewAllBranches ? me.branchId : null;
+  void me;
 
   const visits = useQuery({
-    queryKey: ["visits", "all", scopedBranch ?? "all"],
+    queryKey: ["visits", "all", branchFilter],
     queryFn: async () => {
       let query = supabase
         .from("visits")
@@ -43,7 +45,11 @@ function VisitorsPage() {
         )
         .order("created_at", { ascending: false })
         .limit(500);
-      if (scopedBranch) query = query.eq("branch_id", scopedBranch);
+      if (branchFilter.kind === "eq") query = query.eq("branch_id", branchFilter.branchId);
+      else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0)
+        query = query.in("branch_id", branchFilter.branchIds);
+      else if (branchFilter.kind === "in" && branchFilter.branchIds.length === 0)
+        return [];
       const { data, error } = await query;
       if (error) throw error;
       return data;

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as KioskBranchIdRouteImport } from './routes/kiosk.$branchId'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
 import { Route as AuthenticatedAppVisitorsRouteImport } from './routes/_authenticated/app/visitors'
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app/settings'
@@ -34,6 +35,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KioskBranchIdRoute = KioskBranchIdRouteImport.update({
+  id: '/kiosk/$branchId',
+  path: '/kiosk/$branchId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
@@ -91,6 +97,7 @@ const AuthenticatedAppVisitsIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/kiosk/$branchId': typeof KioskBranchIdRoute
   '/app/badges': typeof AuthenticatedAppBadgesRoute
   '/app/blacklist': typeof AuthenticatedAppBlacklistRoute
   '/app/pre-register': typeof AuthenticatedAppPreRegisterRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/kiosk/$branchId': typeof KioskBranchIdRoute
   '/app/badges': typeof AuthenticatedAppBadgesRoute
   '/app/blacklist': typeof AuthenticatedAppBlacklistRoute
   '/app/pre-register': typeof AuthenticatedAppPreRegisterRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
+  '/kiosk/$branchId': typeof KioskBranchIdRoute
   '/_authenticated/app/badges': typeof AuthenticatedAppBadgesRoute
   '/_authenticated/app/blacklist': typeof AuthenticatedAppBlacklistRoute
   '/_authenticated/app/pre-register': typeof AuthenticatedAppPreRegisterRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/kiosk/$branchId'
     | '/app/badges'
     | '/app/blacklist'
     | '/app/pre-register'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/kiosk/$branchId'
     | '/app/badges'
     | '/app/blacklist'
     | '/app/pre-register'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/login'
+    | '/kiosk/$branchId'
     | '/_authenticated/app/badges'
     | '/_authenticated/app/blacklist'
     | '/_authenticated/app/pre-register'
@@ -176,6 +188,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
+  KioskBranchIdRoute: typeof KioskBranchIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -199,6 +212,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kiosk/$branchId': {
+      id: '/kiosk/$branchId'
+      path: '/kiosk/$branchId'
+      fullPath: '/kiosk/$branchId'
+      preLoaderRoute: typeof KioskBranchIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/app/': {
@@ -299,17 +319,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
+  KioskBranchIdRoute: KioskBranchIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

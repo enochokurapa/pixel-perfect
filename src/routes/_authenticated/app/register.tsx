@@ -169,6 +169,7 @@ function RegisterPage() {
           status: "checked_in",
           check_in_at: new Date().toISOString(),
           created_by: me.userId,
+          branch_id: me.branchId,
         })
         .select("id")
         .single();

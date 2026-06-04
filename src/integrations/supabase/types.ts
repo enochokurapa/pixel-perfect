@@ -420,6 +420,38 @@ export type Database = {
         }
         Relationships: []
       }
+      user_branch_roles: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_branch_roles_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -565,6 +597,7 @@ export type Database = {
           feedback: string | null
           host_id: string | null
           id: string
+          kiosk_self_registered: boolean
           overstay_notified_at: string | null
           pre_registered: boolean
           purpose: string
@@ -595,6 +628,7 @@ export type Database = {
           feedback?: string | null
           host_id?: string | null
           id?: string
+          kiosk_self_registered?: boolean
           overstay_notified_at?: string | null
           pre_registered?: boolean
           purpose: string
@@ -625,6 +659,7 @@ export type Database = {
           feedback?: string | null
           host_id?: string | null
           id?: string
+          kiosk_self_registered?: boolean
           overstay_notified_at?: string | null
           pre_registered?: boolean
           purpose?: string
@@ -670,6 +705,10 @@ export type Database = {
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       scan_overstays: { Args: never; Returns: undefined }
+      user_in_branch: {
+        Args: { _branch: string; _user: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
