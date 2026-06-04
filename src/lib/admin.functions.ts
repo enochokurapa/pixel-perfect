@@ -8,6 +8,27 @@ import type { Database } from "@/integrations/supabase/types";
 type DbRole = Database["public"]["Enums"]["app_role"];
 const ROLES = ALL_ROLES as unknown as readonly [Role, ...Role[]];
 
+const branchAssignmentSchema = z.object({
+  branch_id: z.string().uuid(),
+  roles: z.array(z.enum(ROLES)).min(1),
+});
+
+async function syncBranchAssignments(
+  user_id: string,
+  assignments: { branch_id: string; roles: Role[] }[],
+) {
+  await supabaseAdmin.from("user_branch_roles").delete().eq("user_id", user_id);
+  const rows: { user_id: string; branch_id: string; role: DbRole }[] = [];
+  assignments.forEach((a) => {
+    a.roles.forEach((r) => {
+      rows.push({ user_id, branch_id: a.branch_id, role: r as DbRole });
+    });
+  });
+  if (rows.length > 0) {
+    const { error } = await supabaseAdmin.from("user_branch_roles").insert(rows);
+    if (error) throw new Error(error.message);
+  }
+}
 
 export const createStaffMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -22,7 +43,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
         department: z.string().trim().max(120).optional().nullable(),
         branch_id: z.string().uuid().optional().nullable(),
         roles: z.array(z.enum(ROLES)).min(1).max(ROLES.length),
-
+        branch_assignments: z.array(branchAssignmentSchema).optional().default([]),
       })
       .parse(input),
   )
@@ -50,9 +71,10 @@ export const createStaffMember = createServerFn({ method: "POST" })
 
     await supabaseAdmin.from("user_roles").delete().eq("user_id", newUserId);
     const rows = data.roles.map((role) => ({ user_id: newUserId, role: role as DbRole }));
-
     const { error: rErr } = await supabaseAdmin.from("user_roles").insert(rows);
     if (rErr) throw new Error(rErr.message);
+
+    await syncBranchAssignments(newUserId, data.branch_assignments);
 
     return { id: newUserId };
   });
@@ -64,7 +86,6 @@ export const updateStaffRoles = createServerFn({ method: "POST" })
       .object({
         user_id: z.string().uuid(),
         roles: z.array(z.enum(ROLES)).min(1).max(ROLES.length),
-
       })
       .parse(input),
   )
@@ -74,9 +95,23 @@ export const updateStaffRoles = createServerFn({ method: "POST" })
     }
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
     const rows = data.roles.map((role) => ({ user_id: data.user_id, role: role as DbRole }));
-
     const { error } = await supabaseAdmin.from("user_roles").insert(rows);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const updateStaffBranchAssignments = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        user_id: z.string().uuid(),
+        assignments: z.array(branchAssignmentSchema),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    await syncBranchAssignments(data.user_id, data.assignments);
     return { ok: true };
   });
 
@@ -117,7 +152,6 @@ export const setStaffActive = createServerFn({ method: "POST" })
       .update({ is_active: data.is_active })
       .eq("id", data.user_id);
     if (pErr) throw new Error(pErr.message);
-    // Freeze sign-in via Supabase Auth ban_duration
     const { error: aErr } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
       ban_duration: data.is_active ? "none" : "876600h",
     } as never);

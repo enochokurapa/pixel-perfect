@@ -20,9 +20,7 @@ export function useSession() {
       .getSession()
       .then(({ data, error }) => {
         window.clearTimeout(authTimeout);
-        if (error) {
-          void supabase.auth.signOut({ scope: "local" });
-        }
+        if (error) void supabase.auth.signOut({ scope: "local" });
         if (!cancelled) setSession(data.session ?? null);
       })
       .catch(() => {
@@ -31,9 +29,7 @@ export function useSession() {
         if (!cancelled) setSession(null);
       });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       qc.invalidateQueries();
     });
@@ -51,6 +47,7 @@ export function useCurrentUser() {
   const session = useSession();
   const userId = session?.user.id;
   const sessionLoading = session === undefined;
+
   const profile = useQuery({
     enabled: !!userId,
     queryKey: ["me", "profile", userId],
@@ -64,6 +61,7 @@ export function useCurrentUser() {
       return data;
     },
   });
+
   const roles = useQuery({
     enabled: !!userId,
     queryKey: ["me", "roles", userId],
@@ -76,6 +74,20 @@ export function useCurrentUser() {
       return data.map((r) => r.role as AppRole);
     },
   });
+
+  const branchAssignments = useQuery({
+    enabled: !!userId,
+    queryKey: ["me", "branch-assignments", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_branch_roles")
+        .select("branch_id, role")
+        .eq("user_id", userId!);
+      if (error) throw error;
+      return (data ?? []) as { branch_id: string; role: AppRole }[];
+    },
+  });
+
   const branch = useQuery({
     enabled: !!profile.data?.branch_id,
     queryKey: ["me", "branch", profile.data?.branch_id],
@@ -90,19 +102,45 @@ export function useCurrentUser() {
     },
   });
 
-  const has = (r: AppRole) => roles.data?.includes(r) ?? false;
+  const allRoles = roles.data ?? [];
+  const has = (r: AppRole) => allRoles.includes(r);
   const isSignedIn = !!userId;
   const isAdmin = has("admin");
   const canViewAllBranches = isAdmin || has("view_all_branches");
   const branchId = profile.data?.branch_id ?? null;
+
+  // Compute branches user can access; admins / view_all -> empty array meaning "all"
+  const assignedBranchIds = Array.from(
+    new Set((branchAssignments.data ?? []).map((b) => b.branch_id)),
+  );
+  // Fallback: if no explicit assignments, use profile.branch_id
+  const allowedBranchIds: string[] =
+    assignedBranchIds.length > 0
+      ? assignedBranchIds
+      : branchId
+      ? [branchId]
+      : [];
+
+  // role → branches it applies to
+  const rolesByBranch: Record<string, AppRole[]> = {};
+  (branchAssignments.data ?? []).forEach((r) => {
+    rolesByBranch[r.branch_id] = [...(rolesByBranch[r.branch_id] ?? []), r.role];
+  });
 
   return {
     session,
     userId,
     profile: profile.data,
     branchId,
-    roles: roles.data ?? [],
-    isLoading: sessionLoading || profile.isLoading || roles.isLoading || roles.isFetching,
+    roles: allRoles,
+    branchAssignments: branchAssignments.data ?? [],
+    allowedBranchIds,
+    rolesByBranch,
+    isLoading:
+      sessionLoading ||
+      profile.isLoading ||
+      roles.isLoading ||
+      branchAssignments.isLoading,
     has,
     isSignedIn,
     isAdmin,
@@ -126,5 +164,3 @@ export function useCurrentUser() {
     canCheckout: isAdmin || has("checkout_visitor"),
   };
 }
-
-
