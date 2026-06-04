@@ -17,6 +17,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
+import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 import { useMemo, useState } from "react";
 import {
   BarChart,
@@ -30,6 +31,8 @@ import {
   Cell,
   Legend,
   CartesianGrid,
+  LineChart,
+  Line,
 } from "recharts";
 import { TileDetailModal, type TileKey } from "@/components/tile-detail-modal";
 
@@ -42,29 +45,38 @@ const PAGE_SIZE = 6;
 
 function Dashboard() {
   const me = useCurrentUser();
+  const branchFilter = useEffectiveBranchFilter();
   const [page, setPage] = useState(0);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
-  const scopedBranch = !me.canViewAllBranches ? me.branchId : null;
+  const scopedBranch = branchFilter.kind === "eq" ? branchFilter.branchId : null;
+  const scopedIn = branchFilter.kind === "in" ? branchFilter.branchIds : null;
+  const applyBranch = <T extends { eq: (col: string, val: string) => T; in: (col: string, val: string[]) => T }>(
+    q: T,
+  ): T => {
+    if (scopedBranch) return q.eq("branch_id", scopedBranch);
+    if (scopedIn && scopedIn.length > 0) return q.in("branch_id", scopedIn);
+    return q;
+  };
 
   const stats = useQuery({
-    queryKey: ["dashboard", "stats", scopedBranch ?? "all"],
+    queryKey: ["dashboard", "stats", branchFilter],
     queryFn: async () => {
       const now = new Date();
-      const insideQ = supabase
-        .from("visits")
-        .select("id, check_in_at, expected_duration_minutes")
-        .eq("status", "checked_in");
-      const todayQ = supabase
-        .from("visits")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+      const insideQ = applyBranch(
+        supabase
+          .from("visits")
+          .select("id, check_in_at, expected_duration_minutes")
+          .eq("status", "checked_in"),
+      );
+      const todayQ = applyBranch(
+        supabase
+          .from("visits")
+          .select("id", { count: "exact", head: true })
+          .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
+      );
       const assetsQ = supabase
         .from("visit_assets")
         .select("visit_id", { count: "exact", head: true });
-      if (scopedBranch) {
-        insideQ.eq("branch_id", scopedBranch);
-        todayQ.eq("branch_id", scopedBranch);
-      }
       const [insideRows, today, badgesIssued, badgesAvailable, withAssets] = await Promise.all([
         insideQ,
         todayQ,
@@ -96,7 +108,7 @@ function Dashboard() {
 
   // For charts — current week (Mon–Sat)
   const chartData = useQuery({
-    queryKey: ["dashboard", "charts", scopedBranch ?? "all"],
+    queryKey: ["dashboard", "charts", branchFilter],
     queryFn: async () => {
       const now = new Date();
       const dow = now.getDay();
@@ -104,17 +116,80 @@ function Dashboard() {
       const monday = new Date(now);
       monday.setDate(now.getDate() - daysSinceMon);
       monday.setHours(0, 0, 0, 0);
-      let q = supabase
-        .from("visits")
-        .select("created_at, visit_type, status, branch_id")
-        .gte("created_at", monday.toISOString());
-      if (scopedBranch) q = q.eq("branch_id", scopedBranch);
+      const q = applyBranch(
+        supabase
+          .from("visits")
+          .select("created_at, visit_type, status, branch_id, host:profiles(department)")
+          .gte("created_at", monday.toISOString()),
+      );
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     },
     refetchInterval: 60_000,
   });
+
+  // Monthly trend — last 12 months
+  const monthlyTrend = useQuery({
+    queryKey: ["dashboard", "monthly-trend", branchFilter],
+    queryFn: async () => {
+      const start = new Date();
+      start.setMonth(start.getMonth() - 11);
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      const q = applyBranch(
+        supabase
+          .from("visits")
+          .select("created_at, branch_id")
+          .gte("created_at", start.toISOString()),
+      );
+      const { data, error } = await q;
+      if (error) throw error;
+      const buckets: { label: string; key: string; count: number }[] = [];
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(start);
+        d.setMonth(start.getMonth() + i);
+        buckets.push({
+          label: d.toLocaleDateString(undefined, { month: "short", year: "2-digit" }),
+          key: `${d.getFullYear()}-${d.getMonth()}`,
+          count: 0,
+        });
+      }
+      (data ?? []).forEach((r) => {
+        const d = new Date(r.created_at);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        const b = buckets.find((x) => x.key === key);
+        if (b) b.count += 1;
+      });
+      return buckets.map((b) => ({ month: b.label, visits: b.count }));
+    },
+  });
+
+  // Branch comparison — count per branch
+  const branchComparison = useQuery({
+    enabled: me.canViewAllBranches || (scopedIn?.length ?? 0) > 1,
+    queryKey: ["dashboard", "branch-comparison", branchFilter],
+    queryFn: async () => {
+      const start = new Date();
+      start.setDate(start.getDate() - 30);
+      const q = applyBranch(
+        supabase
+          .from("visits")
+          .select("branch_id, branch:branches(name)")
+          .gte("created_at", start.toISOString()),
+      );
+      const { data, error } = await q;
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      (data ?? []).forEach((r) => {
+        const name = (r as { branch?: { name?: string } | null }).branch?.name ?? "Unassigned";
+        map[name] = (map[name] ?? 0) + 1;
+      });
+      return Object.entries(map).map(([name, count]) => ({ name, visits: count }));
+    },
+  });
+
+
 
 
   const { dailyData, typeData, statusData } = useMemo(() => {
