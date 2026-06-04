@@ -90,6 +90,7 @@ function PreRegisterPage() {
         pre_registered: true,
         expected_duration_minutes: duration,
         created_by: me.userId,
+        branch_id: me.branchId,
       }).select("id").single();
       if (vErr) throw vErr;
 

@@ -17,6 +17,8 @@ import { useCurrentUser, useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { NotificationsBell } from "@/components/notifications-bell";
+import { BranchPicker } from "@/components/branch-picker";
+import { BranchScopeProvider } from "@/hooks/use-branch-scope";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthLayout,
@@ -39,7 +41,11 @@ function AuthLayout() {
   }
   if (session === null) return null;
 
-  return <Shell />;
+  return (
+    <BranchScopeProvider>
+      <Shell />
+    </BranchScopeProvider>
+  );
 }
 
 function Shell() {
@@ -125,7 +131,8 @@ function Shell() {
       </aside>
 
       <main className="overflow-auto">
-        <div className="sticky top-0 z-10 flex justify-end border-b border-border/60 bg-background/80 px-6 py-2 backdrop-blur">
+        <div className="sticky top-0 z-10 flex items-center justify-end gap-3 border-b border-border/60 bg-background/80 px-6 py-2 backdrop-blur">
+          <BranchPicker />
           <NotificationsBell />
         </div>
         <Outlet />
