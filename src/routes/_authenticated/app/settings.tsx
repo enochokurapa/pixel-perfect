@@ -21,6 +21,8 @@ import {
   updateStaffRoles,
 } from "@/lib/admin.functions";
 import { ALL_ROLES, ROLE_GROUPS, ROLE_LABELS, type Role } from "@/lib/permissions";
+import { KioskQrCard } from "@/components/kiosk-qr-card";
+import { BranchAssignmentsEditor } from "@/components/branch-assignments";
 
 export const Route = createFileRoute("/_authenticated/app/settings")({
   head: () => ({ meta: [{ title: "Settings — Sentinel VMS" }] }),
@@ -218,6 +220,8 @@ function Settings() {
 
       <BranchesCard branches={branches.data ?? []} />
 
+      <KioskQrCard />
+
 
       <CreateStaffCard
         branches={branches.data ?? []}
@@ -340,6 +344,22 @@ function Settings() {
                                   You can't remove your own Admin role here (locked for safety).
                                 </p>
                               )}
+                            </PopoverContent>
+                          </Popover>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                                Branches
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" className="w-[480px] max-h-[70vh] overflow-y-auto">
+                              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Branch assignments
+                              </div>
+                              <BranchAssignmentsEditor
+                                userId={u.id}
+                                branches={branches.data ?? []}
+                              />
                             </PopoverContent>
                           </Popover>
                         </div>
