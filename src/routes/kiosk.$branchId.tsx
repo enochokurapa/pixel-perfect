@@ -50,6 +50,9 @@ function KioskPage() {
     id_number: "",
     purpose: "",
     host_id: "",
+    arrival_mode: "walk_in" as "walk_in" | "drive_in",
+    vehicle_plate: "",
+    vehicle_type: "",
   });
 
   const submit = useMutation({
