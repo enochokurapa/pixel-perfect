@@ -253,7 +253,9 @@ function KioskPage() {
                 !form.full_name.trim() ||
                 !form.phone.trim() ||
                 !form.host_id ||
-                !form.purpose.trim()
+                !form.purpose.trim() ||
+                (form.arrival_mode === "drive_in" &&
+                  (!form.vehicle_plate.trim() || !form.vehicle_type.trim()))
               }
               onClick={() => submit.mutate()}
             >
