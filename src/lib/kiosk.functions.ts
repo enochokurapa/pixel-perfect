@@ -14,6 +14,9 @@ export const submitKioskRegistration = createServerFn({ method: "POST" })
         id_number: z.string().trim().max(80).optional().or(z.literal("")),
         purpose: z.string().trim().min(2).max(500),
         host_id: z.string().uuid(),
+        arrival_mode: z.enum(["walk_in", "drive_in"]).default("walk_in"),
+        vehicle_plate: z.string().trim().max(20).optional().or(z.literal("")),
+        vehicle_type: z.string().trim().max(40).optional().or(z.literal("")),
       })
       .parse(input),
   )
