@@ -188,6 +188,63 @@ function KioskPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>
+                How are you arriving? <span className="text-destructive">*</span>
+              </Label>
+              <RadioGroup
+                value={form.arrival_mode}
+                onValueChange={(v) => set("arrival_mode", v as "walk_in" | "drive_in")}
+                className="grid grid-cols-2 gap-2"
+              >
+                <label
+                  htmlFor="arr-walk"
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3 text-sm hover:bg-muted/40"
+                >
+                  <RadioGroupItem id="arr-walk" value="walk_in" />
+                  Walk-in
+                </label>
+                <label
+                  htmlFor="arr-drive"
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3 text-sm hover:bg-muted/40"
+                >
+                  <RadioGroupItem id="arr-drive" value="drive_in" />
+                  Drive-in
+                </label>
+              </RadioGroup>
+            </div>
+
+            {form.arrival_mode === "drive_in" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field
+                  label="Vehicle plate"
+                  value={form.vehicle_plate}
+                  onChange={(v) => set("vehicle_plate", v)}
+                  required
+                />
+                <div className="space-y-2">
+                  <Label>
+                    Vehicle type <span className="text-destructive">*</span>
+                  </Label>
+                  <Select value={form.vehicle_type} onValueChange={(v) => set("vehicle_type", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Car">Car</SelectItem>
+                      <SelectItem value="SUV">SUV</SelectItem>
+                      <SelectItem value="Van">Van</SelectItem>
+                      <SelectItem value="Truck">Truck</SelectItem>
+                      <SelectItem value="Motorcycle">Motorcycle</SelectItem>
+                      <SelectItem value="Bicycle">Bicycle</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+
             <Button
               size="lg"
               className="w-full"
