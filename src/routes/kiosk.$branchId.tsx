@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -49,6 +50,9 @@ function KioskPage() {
     id_number: "",
     purpose: "",
     host_id: "",
+    arrival_mode: "walk_in" as "walk_in" | "drive_in",
+    vehicle_plate: "",
+    vehicle_type: "",
   });
 
   const submit = useMutation({
@@ -64,6 +68,9 @@ function KioskPage() {
           id_number: form.id_number.trim(),
           purpose: form.purpose.trim(),
           host_id: form.host_id,
+          arrival_mode: form.arrival_mode,
+          vehicle_plate: form.arrival_mode === "drive_in" ? form.vehicle_plate.trim() : "",
+          vehicle_type: form.arrival_mode === "drive_in" ? form.vehicle_type.trim() : "",
         },
       }),
     onSuccess: () => setDone(true),
@@ -181,6 +188,63 @@ function KioskPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>
+                How are you arriving? <span className="text-destructive">*</span>
+              </Label>
+              <RadioGroup
+                value={form.arrival_mode}
+                onValueChange={(v) => set("arrival_mode", v as "walk_in" | "drive_in")}
+                className="grid grid-cols-2 gap-2"
+              >
+                <label
+                  htmlFor="arr-walk"
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3 text-sm hover:bg-muted/40"
+                >
+                  <RadioGroupItem id="arr-walk" value="walk_in" />
+                  Walk-in
+                </label>
+                <label
+                  htmlFor="arr-drive"
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card p-3 text-sm hover:bg-muted/40"
+                >
+                  <RadioGroupItem id="arr-drive" value="drive_in" />
+                  Drive-in
+                </label>
+              </RadioGroup>
+            </div>
+
+            {form.arrival_mode === "drive_in" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field
+                  label="Vehicle plate"
+                  value={form.vehicle_plate}
+                  onChange={(v) => set("vehicle_plate", v)}
+                  required
+                />
+                <div className="space-y-2">
+                  <Label>
+                    Vehicle type <span className="text-destructive">*</span>
+                  </Label>
+                  <Select value={form.vehicle_type} onValueChange={(v) => set("vehicle_type", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Car">Car</SelectItem>
+                      <SelectItem value="SUV">SUV</SelectItem>
+                      <SelectItem value="Van">Van</SelectItem>
+                      <SelectItem value="Truck">Truck</SelectItem>
+                      <SelectItem value="Motorcycle">Motorcycle</SelectItem>
+                      <SelectItem value="Bicycle">Bicycle</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+
             <Button
               size="lg"
               className="w-full"
@@ -189,7 +253,9 @@ function KioskPage() {
                 !form.full_name.trim() ||
                 !form.phone.trim() ||
                 !form.host_id ||
-                !form.purpose.trim()
+                !form.purpose.trim() ||
+                (form.arrival_mode === "drive_in" &&
+                  (!form.vehicle_plate.trim() || !form.vehicle_type.trim()))
               }
               onClick={() => submit.mutate()}
             >
