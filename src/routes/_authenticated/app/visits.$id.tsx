@@ -167,7 +167,30 @@ function VisitDetail() {
 
   const canStaffEdit = true;
 
-  const approve = () => update.mutate({ approval: "approved" });
+  const approve = async () => {
+    await update.mutateAsync({ approval: "approved" });
+    // Notify front-desk badge issuers at this branch to finalize check-in
+    if (v.branch_id) {
+      const { data: deskStaff } = await supabase
+        .from("user_branch_roles")
+        .select("user_id, role")
+        .eq("branch_id", v.branch_id)
+        .in("role", ["manage_badges", "register_guest", "checkout_visitor"]);
+      const recipients = Array.from(new Set((deskStaff ?? []).map((r) => r.user_id)));
+      if (recipients.length > 0) {
+        await supabase.from("notifications").insert(
+          recipients.map((rid) => ({
+            recipient_id: rid,
+            type: "visit_pre_registered" as const,
+            title: "Visitor approved — issue badge",
+            message: `${v.visitor?.full_name ?? "A visitor"} has been approved by the host. Verify assets, capture details and issue a badge to finalize check-in.`,
+            visit_id: v.id,
+          })),
+        );
+      }
+    }
+    toast.success("Approved. Front desk notified to issue badge.");
+  };
   const reject = (reason: string) =>
     update.mutate({ approval: "not_approved", rejection_reason: reason });
   const checkIn = () =>
