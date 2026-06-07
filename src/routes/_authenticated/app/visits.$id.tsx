@@ -169,7 +169,19 @@ function VisitDetail() {
 
   const approve = async () => {
     await update.mutateAsync({ approval: "approved" });
-    // Notify front-desk badge issuers at this branch to finalize check-in
+    // Compose a rich message with guest name, visit time, and assets to verify
+    const assetList = assets.data ?? [];
+    const assetSummary =
+      assetList.length > 0
+        ? assetList
+            .map((a) => `${a.kind}${a.brand ? ` ${a.brand}` : ""}${a.serial ? ` (S/N ${a.serial})` : ""}`)
+            .join(", ")
+        : "No assets declared";
+    const visitTime = v.check_in_at
+      ? new Date(v.check_in_at).toLocaleString()
+      : new Date().toLocaleString();
+    const msg = `${v.visitor?.full_name ?? "A visitor"} approved by host. Visit time: ${visitTime}. Assets to verify: ${assetSummary}. Verify, capture details and issue badge to finalize check-in.`;
+
     if (v.branch_id) {
       const { data: deskStaff } = await supabase
         .from("user_branch_roles")
@@ -182,8 +194,8 @@ function VisitDetail() {
           recipients.map((rid) => ({
             recipient_id: rid,
             type: "visit_pre_registered" as const,
-            title: "Visitor approved — issue badge",
-            message: `${v.visitor?.full_name ?? "A visitor"} has been approved by the host. Verify assets, capture details and issue a badge to finalize check-in.`,
+            title: `Issue badge: ${v.visitor?.full_name ?? "visitor"}`,
+            message: msg,
             visit_id: v.id,
           })),
         );
@@ -195,6 +207,39 @@ function VisitDetail() {
     update.mutate({ approval: "not_approved", rejection_reason: reason });
   const checkIn = () =>
     update.mutate({ status: "checked_in", check_in_at: new Date().toISOString() });
+
+  const issueBadgeAndCheckIn = async (payload: {
+    badge_number: string;
+    assets_verified: boolean;
+    newAssets: { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string }[];
+  }) => {
+    if (payload.newAssets.length > 0) {
+      const { error: aErr } = await supabase.from("visit_assets").insert(
+        payload.newAssets.map((a) => ({
+          visit_id: id,
+          kind: a.kind,
+          brand: a.brand || null,
+          serial: a.serial || null,
+          description: a.description || null,
+        })),
+      );
+      if (aErr) throw new Error(aErr.message);
+    }
+    await update.mutateAsync({
+      status: "checked_in",
+      check_in_at: new Date().toISOString(),
+      badge_number: payload.badge_number,
+      assets_verified: payload.assets_verified,
+    });
+    if (payload.badge_number) {
+      await supabase
+        .from("badges")
+        .update({ status: "issued" })
+        .eq("badge_number", payload.badge_number);
+    }
+    qc.invalidateQueries();
+  };
+
   const checkOut = async (verification: {
     badge_returned: boolean;
     assets_verified: boolean;
