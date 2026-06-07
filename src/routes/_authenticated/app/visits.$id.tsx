@@ -304,9 +304,18 @@ function VisitDetail() {
               </>
             )}
             {canStaffEdit && v.status === "pending" && v.approval !== "not_approved" && (
-              <Button onClick={checkIn} disabled={update.isPending}>
-                <LogIn className="mr-1 h-4 w-4" /> Check in
-              </Button>
+              v.approval === "approved" || v.pre_registered || v.kiosk_self_registered ? (
+                <IssueBadgeButton
+                  visitorName={v.visitor?.full_name ?? "visitor"}
+                  existingAssets={assets.data ?? []}
+                  onConfirm={issueBadgeAndCheckIn}
+                  disabled={update.isPending || v.approval === "pending"}
+                />
+              ) : (
+                <Button onClick={checkIn} disabled={update.isPending}>
+                  <LogIn className="mr-1 h-4 w-4" /> Check in
+                </Button>
+              )
             )}
             {canStaffEdit && v.status === "checked_in" && (
               <CheckOutButton
