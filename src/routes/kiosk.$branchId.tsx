@@ -16,8 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ShieldCheck, CheckCircle2 } from "lucide-react";
-import { getKioskBranchInfo, submitKioskRegistration } from "@/lib/kiosk.functions";
+import { ShieldCheck, CheckCircle2, Clock, IdCard, XCircle, Loader2 } from "lucide-react";
+import { getKioskBranchInfo, submitKioskRegistration, getKioskVisitStatus } from "@/lib/kiosk.functions";
 
 export const Route = createFileRoute("/kiosk/$branchId")({
   head: () => ({
