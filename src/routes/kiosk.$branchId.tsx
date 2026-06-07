@@ -280,3 +280,146 @@ function Field({
     </div>
   );
 }
+
+function KioskProgress({ visitId, visitorName }: { visitId: string; visitorName: string }) {
+  const statusFn = useServerFn(getKioskVisitStatus);
+  const status = useQuery({
+    queryKey: ["kiosk-visit-status", visitId],
+    queryFn: () => statusFn({ data: { visit_id: visitId } }),
+    refetchInterval: 4000,
+  });
+
+  const d = status.data;
+  const rejected = d?.approval === "not_approved";
+  const approved = d?.approval === "approved";
+  const checkedIn = d?.status === "checked_in";
+  const checkedOut = d?.status === "checked_out";
+
+  const fmt = (iso: string | null | undefined) =>
+    iso ? new Date(iso).toLocaleString() : null;
+
+  const steps = [
+    {
+      key: "submitted",
+      title: "Registration submitted",
+      desc: d?.host_name
+        ? `Your request to see ${d.host_name} has been sent.`
+        : "Your request has been sent.",
+      time: fmt(d?.created_at),
+      state: "done" as const,
+    },
+    {
+      key: "approved",
+      title: rejected ? "Not approved" : "Host approval",
+      desc: rejected
+        ? d?.rejection_reason || "Your host could not approve this visit. Please speak to reception."
+        : approved
+          ? "Your host approved. Reception is preparing your badge."
+          : "Waiting for your host to approve…",
+      time: approved ? fmt(d?.created_at) : null,
+      state: rejected ? ("error" as const) : approved ? ("done" as const) : ("pending" as const),
+    },
+    {
+      key: "checked_in",
+      title: "Badge issued & checked in",
+      desc: checkedOut
+        ? "Visit complete — thank you!"
+        : checkedIn
+          ? d?.badge_number
+            ? `Badge #${d.badge_number} issued. Please proceed.`
+            : "You are checked in. Please proceed."
+          : "Reception will verify any assets, capture your details and issue your badge.",
+      time: fmt(d?.check_in_at),
+      state: rejected
+        ? ("blocked" as const)
+        : checkedIn || checkedOut
+          ? ("done" as const)
+          : ("pending" as const),
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background px-4 py-8">
+      <div className="mx-auto max-w-xl space-y-6">
+        <Card>
+          <CardContent className="space-y-2 p-8 text-center">
+            <div className="mx-auto mb-2 grid h-12 w-12 place-items-center rounded-full bg-primary/10 text-primary">
+              {rejected ? (
+                <XCircle className="h-6 w-6 text-destructive" />
+              ) : checkedIn || checkedOut ? (
+                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+              ) : (
+                <ShieldCheck className="h-6 w-6" />
+              )}
+            </div>
+            <h1 className="font-display text-2xl font-semibold">
+              {rejected
+                ? "Visit not approved"
+                : checkedIn || checkedOut
+                  ? "You're checked in"
+                  : `Thank you, ${visitorName.split(" ")[0] || "visitor"}`}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {rejected
+                ? "Please speak to reception for assistance."
+                : approved && !checkedIn
+                  ? "Approved — please wait while reception issues your badge."
+                  : checkedIn || checkedOut
+                    ? "Please proceed as directed."
+                    : "Please take a seat — we'll update this screen as your visit progresses."}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Your visit progress</CardTitle>
+            <CardDescription>This page updates automatically.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {steps.map((s, i) => (
+              <div key={s.key} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`grid h-8 w-8 place-items-center rounded-full border ${
+                      s.state === "done"
+                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
+                        : s.state === "error"
+                          ? "border-destructive bg-destructive/10 text-destructive"
+                          : s.state === "blocked"
+                            ? "border-muted bg-muted text-muted-foreground"
+                            : "border-primary/40 bg-primary/5 text-primary"
+                    }`}
+                  >
+                    {s.state === "done" ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : s.state === "error" ? (
+                      <XCircle className="h-4 w-4" />
+                    ) : s.state === "pending" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Clock className="h-4 w-4" />
+                    )}
+                  </div>
+                  {i < steps.length - 1 && <div className="my-1 h-8 w-px bg-border" />}
+                </div>
+                <div className="flex-1 pb-2">
+                  <div className="text-sm font-medium">{s.title}</div>
+                  <div className="text-xs text-muted-foreground">{s.desc}</div>
+                  {s.time && (
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">{s.time}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <div className="text-center text-xs text-muted-foreground">
+          Your reference: <span className="font-mono">{visitId.slice(0, 8).toUpperCase()}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
