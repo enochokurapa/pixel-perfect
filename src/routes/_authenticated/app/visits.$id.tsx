@@ -169,7 +169,19 @@ function VisitDetail() {
 
   const approve = async () => {
     await update.mutateAsync({ approval: "approved" });
-    // Notify front-desk badge issuers at this branch to finalize check-in
+    // Compose a rich message with guest name, visit time, and assets to verify
+    const assetList = assets.data ?? [];
+    const assetSummary =
+      assetList.length > 0
+        ? assetList
+            .map((a) => `${a.kind}${a.brand ? ` ${a.brand}` : ""}${a.serial ? ` (S/N ${a.serial})` : ""}`)
+            .join(", ")
+        : "No assets declared";
+    const visitTime = v.check_in_at
+      ? new Date(v.check_in_at).toLocaleString()
+      : new Date().toLocaleString();
+    const msg = `${v.visitor?.full_name ?? "A visitor"} approved by host. Visit time: ${visitTime}. Assets to verify: ${assetSummary}. Verify, capture details and issue badge to finalize check-in.`;
+
     if (v.branch_id) {
       const { data: deskStaff } = await supabase
         .from("user_branch_roles")
@@ -182,8 +194,8 @@ function VisitDetail() {
           recipients.map((rid) => ({
             recipient_id: rid,
             type: "visit_pre_registered" as const,
-            title: "Visitor approved — issue badge",
-            message: `${v.visitor?.full_name ?? "A visitor"} has been approved by the host. Verify assets, capture details and issue a badge to finalize check-in.`,
+            title: `Issue badge: ${v.visitor?.full_name ?? "visitor"}`,
+            message: msg,
             visit_id: v.id,
           })),
         );
@@ -195,6 +207,39 @@ function VisitDetail() {
     update.mutate({ approval: "not_approved", rejection_reason: reason });
   const checkIn = () =>
     update.mutate({ status: "checked_in", check_in_at: new Date().toISOString() });
+
+  const issueBadgeAndCheckIn = async (payload: {
+    badge_number: string;
+    assets_verified: boolean;
+    newAssets: { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string }[];
+  }) => {
+    if (payload.newAssets.length > 0) {
+      const { error: aErr } = await supabase.from("visit_assets").insert(
+        payload.newAssets.map((a) => ({
+          visit_id: id,
+          kind: a.kind,
+          brand: a.brand || null,
+          serial: a.serial || null,
+          description: a.description || null,
+        })),
+      );
+      if (aErr) throw new Error(aErr.message);
+    }
+    await update.mutateAsync({
+      status: "checked_in",
+      check_in_at: new Date().toISOString(),
+      badge_number: payload.badge_number,
+      assets_verified: payload.assets_verified,
+    });
+    if (payload.badge_number) {
+      await supabase
+        .from("badges")
+        .update({ status: "issued" })
+        .eq("badge_number", payload.badge_number);
+    }
+    qc.invalidateQueries();
+  };
+
   const checkOut = async (verification: {
     badge_returned: boolean;
     assets_verified: boolean;
@@ -259,9 +304,18 @@ function VisitDetail() {
               </>
             )}
             {canStaffEdit && v.status === "pending" && v.approval !== "not_approved" && (
-              <Button onClick={checkIn} disabled={update.isPending}>
-                <LogIn className="mr-1 h-4 w-4" /> Check in
-              </Button>
+              v.approval === "approved" || v.pre_registered || v.kiosk_self_registered ? (
+                <IssueBadgeButton
+                  visitorName={v.visitor?.full_name ?? "visitor"}
+                  existingAssets={assets.data ?? []}
+                  onConfirm={issueBadgeAndCheckIn}
+                  disabled={update.isPending || v.approval === "pending"}
+                />
+              ) : (
+                <Button onClick={checkIn} disabled={update.isPending}>
+                  <LogIn className="mr-1 h-4 w-4" /> Check in
+                </Button>
+              )
             )}
             {canStaffEdit && v.status === "checked_in" && (
               <CheckOutButton
@@ -698,5 +752,190 @@ function FeedbackCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function IssueBadgeButton({
+  visitorName,
+  existingAssets,
+  onConfirm,
+  disabled,
+}: {
+  visitorName: string;
+  existingAssets: VisitAsset[];
+  onConfirm: (p: {
+    badge_number: string;
+    assets_verified: boolean;
+    newAssets: { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string }[];
+  }) => Promise<void>;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [badgeNumber, setBadgeNumber] = useState("");
+  const [assetsVerified, setAssetsVerified] = useState(false);
+  const [hasAssets, setHasAssets] = useState<"no" | "yes">(existingAssets.length > 0 ? "yes" : "no");
+  type NewAsset = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
+  const [newAssets, setNewAssets] = useState<NewAsset[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const availableBadges = useQuery({
+    queryKey: ["badges", "available"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("badges")
+        .select("badge_number")
+        .eq("status", "available")
+        .order("badge_number");
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
+
+  const confirm = async () => {
+    if (!badgeNumber) {
+      toast.error("Please assign a badge.");
+      return;
+    }
+    if (!assetsVerified) {
+      toast.error("Please confirm assets have been verified (or that none were brought in).");
+      return;
+    }
+    const cleaned = newAssets
+      .map((a) => ({ ...a, brand: a.brand.trim(), serial: a.serial.trim(), description: a.description.trim() }))
+      .filter((a) => a.brand || a.serial || a.description);
+    if (hasAssets === "yes" && existingAssets.length === 0 && cleaned.length === 0) {
+      toast.error("Record at least one asset, or switch to 'No assets'.");
+      return;
+    }
+    for (const [i, a] of cleaned.entries()) {
+      if (!a.brand || !a.serial) {
+        toast.error(`Asset #${i + 1}: brand and serial are required.`);
+        return;
+      }
+    }
+    setBusy(true);
+    try {
+      await onConfirm({ badge_number: badgeNumber, assets_verified: true, newAssets: cleaned });
+      toast.success("Badge issued. Visitor checked in.");
+      setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button disabled={disabled}>
+          <LogIn className="mr-1 h-4 w-4" /> Verify & issue badge
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Issue badge — {visitorName}</DialogTitle>
+          <DialogDescription>
+            Verify the visitor's assets, assign a badge and complete check-in.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>Badge number <span className="text-destructive">*</span></Label>
+            <Select value={badgeNumber} onValueChange={setBadgeNumber}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select an available badge" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableBadges.data?.length === 0 && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No badges available</div>
+                )}
+                {availableBadges.data?.map((b) => (
+                  <SelectItem key={b.badge_number} value={b.badge_number}>#{b.badge_number}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Is the visitor bringing any assets? <span className="text-destructive">*</span></Label>
+            <Select value={hasAssets} onValueChange={(v) => setHasAssets(v as "yes" | "no")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no">No assets</SelectItem>
+                <SelectItem value="yes">Yes — capture below</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {existingAssets.length > 0 && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 text-xs">
+              <div className="mb-1 font-medium text-foreground">Previously declared assets ({existingAssets.length}):</div>
+              <ul className="space-y-0.5 text-muted-foreground">
+                {existingAssets.map((a) => (
+                  <li key={a.id}>• {a.kind} — {a.brand ?? "?"} {a.serial ? `(S/N ${a.serial})` : ""} {a.description ?? ""}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {hasAssets === "yes" && (
+            <div className="space-y-2">
+              <Label className="text-xs">Add / verify assets</Label>
+              {newAssets.map((a, i) => (
+                <div key={i} className="grid gap-2 rounded-md border p-2 md:grid-cols-12">
+                  <div className="space-y-1 md:col-span-3">
+                    <Label className="text-[10px]">Type</Label>
+                    <Select
+                      value={a.kind}
+                      onValueChange={(v) => setNewAssets((arr) => arr.map((x, j) => (i === j ? { ...x, kind: v as NewAsset["kind"] } : x)))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="laptop">Laptop</SelectItem>
+                        <SelectItem value="device">Device</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1 md:col-span-3">
+                    <Label className="text-[10px]">Brand *</Label>
+                    <Input value={a.brand} onChange={(e) => setNewAssets((arr) => arr.map((x, j) => (i === j ? { ...x, brand: e.target.value } : x)))} />
+                  </div>
+                  <div className="space-y-1 md:col-span-3">
+                    <Label className="text-[10px]">Serial *</Label>
+                    <Input value={a.serial} onChange={(e) => setNewAssets((arr) => arr.map((x, j) => (i === j ? { ...x, serial: e.target.value } : x)))} />
+                  </div>
+                  <div className="space-y-1 md:col-span-3">
+                    <Label className="text-[10px]">Description</Label>
+                    <Input value={a.description} onChange={(e) => setNewAssets((arr) => arr.map((x, j) => (i === j ? { ...x, description: e.target.value } : x)))} />
+                  </div>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={() => setNewAssets((arr) => [...arr, { kind: "device", brand: "", serial: "", description: "" }])}>
+                + Add asset
+              </Button>
+            </div>
+          )}
+
+          <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer">
+            <Checkbox checked={assetsVerified} onCheckedChange={(c) => setAssetsVerified(c === true)} className="mt-0.5" />
+            <div>
+              <div className="text-sm font-medium">Assets verified <span className="text-destructive">*</span></div>
+              <div className="text-xs text-muted-foreground">
+                I have physically verified the visitor's assets against the list above (or confirmed none were brought in).
+              </div>
+            </div>
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
+          <Button onClick={confirm} disabled={busy}>
+            {busy ? "Issuing badge…" : "Issue badge & check in"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

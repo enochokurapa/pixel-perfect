@@ -123,7 +123,6 @@ export const getKioskBranchInfo = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!branch) throw new Error("Branch not found");
 
-    // Hosts = staff assigned to this branch via user_branch_roles, or whose profile.branch_id matches
     const { data: assigned } = await supabaseAdmin
       .from("user_branch_roles")
       .select("user_id")
@@ -152,4 +151,38 @@ export const getKioskBranchInfo = createServerFn({ method: "GET" })
     const hosts = Array.from(map.values());
 
     return { branch, hosts };
+  });
+
+export const getKioskVisitStatus = createServerFn({ method: "GET" })
+  .inputValidator((input) => z.object({ visit_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: visit, error } = await supabaseAdmin
+      .from("visits")
+      .select("id, approval, status, created_at, check_in_at, check_out_at, badge_number, rejection_reason, host_id")
+      .eq("id", data.visit_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!visit) throw new Error("Visit not found");
+
+    let host_name: string | null = null;
+    if (visit.host_id) {
+      const { data: host } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name")
+        .eq("id", visit.host_id)
+        .maybeSingle();
+      host_name = host?.full_name ?? null;
+    }
+
+    return {
+      approval: visit.approval,
+      status: visit.status,
+      created_at: visit.created_at,
+      check_in_at: visit.check_in_at,
+      check_out_at: visit.check_out_at,
+      badge_number: visit.badge_number,
+      rejection_reason: visit.rejection_reason,
+      host_name,
+    };
   });
