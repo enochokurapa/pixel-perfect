@@ -40,7 +40,7 @@ function KioskPage() {
     retry: false,
   });
 
-  const [done, setDone] = useState(false);
+  const [submittedVisitId, setSubmittedVisitId] = useState<string | null>(null);
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
@@ -73,7 +73,7 @@ function KioskPage() {
           vehicle_type: form.arrival_mode === "drive_in" ? form.vehicle_type.trim() : "",
         },
       }),
-    onSuccess: () => setDone(true),
+    onSuccess: (res) => setSubmittedVisitId(res.visit_id),
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
@@ -95,21 +95,10 @@ function KioskPage() {
     );
   }
 
-  if (done) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-background px-6">
-        <Card className="w-full max-w-md text-center">
-          <CardContent className="space-y-3 p-10">
-            <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-500" />
-            <h1 className="font-display text-2xl font-semibold">You're registered</h1>
-            <p className="text-sm text-muted-foreground">
-              Your host has been notified. Please take a seat — reception will issue your badge shortly.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  if (submittedVisitId) {
+    return <KioskProgress visitId={submittedVisitId} visitorName={form.full_name} />;
   }
+
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
