@@ -16,10 +16,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   createStaffMember,
   deleteStaffMember,
+  moveStaffToBranch,
   resetStaffPassword,
   setStaffActive,
   updateStaffRoles,
 } from "@/lib/admin.functions";
+
 import { ALL_ROLES, ROLE_GROUPS, ROLE_LABELS, type Role } from "@/lib/permissions";
 import { KioskQrCard } from "@/components/kiosk-qr-card";
 import { BranchAssignmentsEditor } from "@/components/branch-assignments";
@@ -102,6 +104,19 @@ function Settings() {
   const deleteFn = useServerFn(deleteStaffMember);
   const resetFn = useServerFn(resetStaffPassword);
   const setActiveFn = useServerFn(setStaffActive);
+  const moveBranchFn = useServerFn(moveStaffToBranch);
+
+  const moveBranchMut = useMutation({
+    mutationFn: (p: { user_id: string; to_branch_id: string; from_branch_id: string | null }) =>
+      moveBranchFn({ data: p }),
+    onSuccess: () => {
+      toast.success("Staff moved to new branch");
+      qc.invalidateQueries({ queryKey: ["staff"] });
+      qc.invalidateQueries({ queryKey: ["user-branch-roles"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
 
   const [activeFilter, setActiveFilter] = useState<"active" | "inactive" | "all">("active");
 
@@ -362,6 +377,31 @@ function Settings() {
                               />
                             </PopoverContent>
                           </Popover>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+                                Move to…
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" className="w-[320px] space-y-3">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Move staff to another branch
+                              </div>
+                              <MoveBranchControl
+                                branches={branches.data ?? []}
+                                currentBranchId={u.branch_id ?? null}
+                                busy={moveBranchMut.isPending}
+                                onMove={(toId) =>
+                                  moveBranchMut.mutateAsync({
+                                    user_id: u.id,
+                                    to_branch_id: toId,
+                                    from_branch_id: u.branch_id ?? null,
+                                  })
+                                }
+                              />
+                            </PopoverContent>
+                          </Popover>
+
                         </div>
                       </td>
                       <td className="px-5 py-3 align-top">
@@ -500,6 +540,52 @@ function BranchesCard({ branches }: { branches: Branch[] }) {
     </Card>
   );
 }
+function MoveBranchControl({
+  branches,
+  currentBranchId,
+  busy,
+  onMove,
+}: {
+  branches: Branch[];
+  currentBranchId: string | null;
+  busy: boolean;
+  onMove: (toBranchId: string) => Promise<unknown>;
+}) {
+  const [target, setTarget] = useState<string>("");
+  const options = branches.filter((b) => b.id !== currentBranchId);
+  const current = branches.find((b) => b.id === currentBranchId);
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-muted-foreground">
+        Current branch: <span className="font-medium">{current?.name ?? "— None —"}</span>
+      </p>
+      <select
+        value={target}
+        onChange={(e) => setTarget(e.target.value)}
+        className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs"
+      >
+        <option value="">Select destination branch…</option>
+        {options.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.name}
+          </option>
+        ))}
+      </select>
+      <p className="text-[10px] text-muted-foreground">
+        Roles assigned at the current branch will be carried over to the new branch.
+      </p>
+      <Button
+        size="sm"
+        className="w-full h-8 text-xs"
+        disabled={!target || busy}
+        onClick={() => target && onMove(target)}
+      >
+        {busy ? "Moving…" : "Move staff"}
+      </Button>
+    </div>
+  );
+}
+
 
 function BranchPositionEditor({
   branches,

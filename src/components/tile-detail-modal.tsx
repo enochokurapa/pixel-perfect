@@ -91,13 +91,26 @@ export function TileDetailModal({
         start.setHours(0, 0, 0, 0);
         query = query.gte("created_at", start.toISOString());
       } else if (tile === "withAssets") {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        let inToday = supabase
+          .from("visits")
+          .select("id")
+          .gte("check_in_at", todayStart.toISOString())
+          .not("check_in_at", "is", null);
+        if (branchId) inToday = inToday.eq("branch_id", branchId);
+        const { data: todayVisits } = await inToday;
+        const todayIds = (todayVisits ?? []).map((v) => v.id);
+        if (todayIds.length === 0) return [];
         const { data: assetRows } = await supabase
           .from("visit_assets")
-          .select("visit_id");
+          .select("visit_id")
+          .in("visit_id", todayIds);
         const ids = Array.from(new Set((assetRows ?? []).map((a) => a.visit_id)));
         if (ids.length === 0) return [];
         query = query.in("id", ids);
       }
+
 
       const { data, error } = await query;
       if (error) throw error;
