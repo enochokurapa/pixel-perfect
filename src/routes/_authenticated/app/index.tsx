@@ -74,10 +74,16 @@ function Dashboard() {
           .select("id", { count: "exact", head: true })
           .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
       );
-      const assetsQ = supabase
-        .from("visit_assets")
-        .select("visit_id", { count: "exact", head: true });
-      const [insideRows, today, badgesIssued, badgesAvailable, withAssets] = await Promise.all([
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayAssetsVisitsQ = applyBranch(
+        supabase
+          .from("visits")
+          .select("id")
+          .gte("check_in_at", todayStart.toISOString())
+          .not("check_in_at", "is", null),
+      );
+      const [insideRows, today, badgesIssued, badgesAvailable, todayInVisits] = await Promise.all([
         insideQ,
         todayQ,
         supabase.from("badges").select("id", { count: "exact", head: true }).eq("status", "issued"),
@@ -85,7 +91,7 @@ function Dashboard() {
           .from("badges")
           .select("id", { count: "exact", head: true })
           .eq("status", "available"),
-        assetsQ,
+        todayAssetsVisitsQ,
       ]);
       const inside = insideRows.data ?? [];
       const overstay = inside.filter((v) => {
@@ -94,14 +100,25 @@ function Dashboard() {
           new Date(v.check_in_at).getTime() + (v.expected_duration_minutes ?? 180) * 60_000;
         return due < now.getTime();
       }).length;
+      // Count today's checked-in visits that have at least one asset
+      const todayVisitIds = (todayInVisits.data ?? []).map((v) => v.id);
+      let withAssetsCount = 0;
+      if (todayVisitIds.length > 0) {
+        const { data: assetRows } = await supabase
+          .from("visit_assets")
+          .select("visit_id")
+          .in("visit_id", todayVisitIds);
+        withAssetsCount = new Set((assetRows ?? []).map((a) => a.visit_id)).size;
+      }
       return {
         inside: inside.length,
         today: today.count ?? 0,
         overstay,
         badgesIssued: badgesIssued.count ?? 0,
         badgesUnissued: badgesAvailable.count ?? 0,
-        withAssets: withAssets.count ?? 0,
+        withAssets: withAssetsCount,
       };
+
     },
     refetchInterval: 60_000,
   });
