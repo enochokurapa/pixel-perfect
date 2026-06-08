@@ -540,6 +540,52 @@ function BranchesCard({ branches }: { branches: Branch[] }) {
     </Card>
   );
 }
+function MoveBranchControl({
+  branches,
+  currentBranchId,
+  busy,
+  onMove,
+}: {
+  branches: Branch[];
+  currentBranchId: string | null;
+  busy: boolean;
+  onMove: (toBranchId: string) => Promise<unknown>;
+}) {
+  const [target, setTarget] = useState<string>("");
+  const options = branches.filter((b) => b.id !== currentBranchId);
+  const current = branches.find((b) => b.id === currentBranchId);
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-muted-foreground">
+        Current branch: <span className="font-medium">{current?.name ?? "— None —"}</span>
+      </p>
+      <select
+        value={target}
+        onChange={(e) => setTarget(e.target.value)}
+        className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs"
+      >
+        <option value="">Select destination branch…</option>
+        {options.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.name}
+          </option>
+        ))}
+      </select>
+      <p className="text-[10px] text-muted-foreground">
+        Roles assigned at the current branch will be carried over to the new branch.
+      </p>
+      <Button
+        size="sm"
+        className="w-full h-8 text-xs"
+        disabled={!target || busy}
+        onClick={() => target && onMove(target)}
+      >
+        {busy ? "Moving…" : "Move staff"}
+      </Button>
+    </div>
+  );
+}
+
 
 function BranchPositionEditor({
   branches,
