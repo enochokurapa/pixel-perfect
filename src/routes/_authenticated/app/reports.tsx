@@ -79,18 +79,8 @@ function ReportsPage() {
     },
   });
 
-  if (!me.canViewReports) {
-    return (
-      <div className="mx-auto max-w-3xl px-8 py-16 text-center">
-        <h1 className="font-display text-2xl font-semibold">Reports</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          You don't have permission to view reports.
-        </p>
-      </div>
-    );
-  }
-
   const rows = visits.data ?? [];
+
 
   const agg = useMemo(() => {
     const byType: Record<string, number> = {};
