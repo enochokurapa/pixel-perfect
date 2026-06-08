@@ -16,10 +16,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   createStaffMember,
   deleteStaffMember,
+  moveStaffToBranch,
   resetStaffPassword,
   setStaffActive,
   updateStaffRoles,
 } from "@/lib/admin.functions";
+
 import { ALL_ROLES, ROLE_GROUPS, ROLE_LABELS, type Role } from "@/lib/permissions";
 import { KioskQrCard } from "@/components/kiosk-qr-card";
 import { BranchAssignmentsEditor } from "@/components/branch-assignments";
