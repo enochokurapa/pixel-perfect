@@ -60,14 +60,23 @@ export function NotificationsBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("relative", unread > 0 && "animate-pulse text-destructive")}
+          aria-label={unread > 0 ? `${unread} unread notifications` : "Notifications"}
+        >
+          <Bell className={cn("h-4 w-4", unread > 0 && "fill-destructive/20")} />
           {unread > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
-              {unread > 9 ? "9+" : unread}
-            </span>
+            <>
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+                {unread > 9 ? "9+" : unread}
+              </span>
+              <span className="absolute -right-0.5 -top-0.5 h-4 w-4 animate-ping rounded-full bg-destructive/60" />
+            </>
           )}
         </Button>
+
       </PopoverTrigger>
       <PopoverContent align="end" className="w-96 p-0">
         <div className="flex items-center justify-between border-b px-4 py-3">
