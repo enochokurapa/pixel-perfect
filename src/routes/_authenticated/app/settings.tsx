@@ -377,6 +377,31 @@ function Settings() {
                               />
                             </PopoverContent>
                           </Popover>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+                                Move to…
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" className="w-[320px] space-y-3">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Move staff to another branch
+                              </div>
+                              <MoveBranchControl
+                                branches={branches.data ?? []}
+                                currentBranchId={u.branch_id ?? null}
+                                busy={moveBranchMut.isPending}
+                                onMove={(toId) =>
+                                  moveBranchMut.mutateAsync({
+                                    user_id: u.id,
+                                    to_branch_id: toId,
+                                    from_branch_id: u.branch_id ?? null,
+                                  })
+                                }
+                              />
+                            </PopoverContent>
+                          </Popover>
+
                         </div>
                       </td>
                       <td className="px-5 py-3 align-top">
