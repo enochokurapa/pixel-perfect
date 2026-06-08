@@ -104,6 +104,19 @@ function Settings() {
   const deleteFn = useServerFn(deleteStaffMember);
   const resetFn = useServerFn(resetStaffPassword);
   const setActiveFn = useServerFn(setStaffActive);
+  const moveBranchFn = useServerFn(moveStaffToBranch);
+
+  const moveBranchMut = useMutation({
+    mutationFn: (p: { user_id: string; to_branch_id: string; from_branch_id: string | null }) =>
+      moveBranchFn({ data: p }),
+    onSuccess: () => {
+      toast.success("Staff moved to new branch");
+      qc.invalidateQueries({ queryKey: ["staff"] });
+      qc.invalidateQueries({ queryKey: ["user-branch-roles"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
 
   const [activeFilter, setActiveFilter] = useState<"active" | "inactive" | "all">("active");
 
