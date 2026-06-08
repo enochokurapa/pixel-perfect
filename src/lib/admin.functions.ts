@@ -211,18 +211,22 @@ export const moveStaffToBranch = createServerFn({ method: "POST" })
       .eq("branch_id", sourceBranch);
     if (delErr) throw new Error(delErr.message);
 
-    // 4. Insert the same roles for the destination branch (deduped)
+    // 4. Insert the same roles for the destination branch (skip roles already present there)
     const uniqueRoles = Array.from(new Set(rolesToCarry));
-    const rows = uniqueRoles.map((role) => ({
-      user_id: data.user_id,
-      branch_id: data.to_branch_id,
-      role,
-    }));
-    // Upsert-style: ignore duplicates if the user already has the role there
-    const { error: insErr } = await supabaseAdmin
+    const { data: destExisting } = await supabaseAdmin
       .from("user_branch_roles")
-      .upsert(rows, { onConflict: "user_id,branch_id,role", ignoreDuplicates: true });
-    if (insErr) throw new Error(insErr.message);
+      .select("role")
+      .eq("user_id", data.user_id)
+      .eq("branch_id", data.to_branch_id);
+    const alreadyHas = new Set((destExisting ?? []).map((r) => r.role as DbRole));
+    const rows = uniqueRoles
+      .filter((r) => !alreadyHas.has(r))
+      .map((role) => ({ user_id: data.user_id, branch_id: data.to_branch_id, role }));
+    if (rows.length > 0) {
+      const { error: insErr } = await supabaseAdmin.from("user_branch_roles").insert(rows);
+      if (insErr) throw new Error(insErr.message);
+    }
+
 
     return { ok: true, moved_from: sourceBranch, roles: uniqueRoles };
   });
