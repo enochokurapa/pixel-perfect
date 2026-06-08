@@ -158,3 +158,72 @@ export const setStaffActive = createServerFn({ method: "POST" })
     if (aErr) throw new Error(aErr.message);
     return { ok: true };
   });
+
+export const moveStaffToBranch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        user_id: z.string().uuid(),
+        to_branch_id: z.string().uuid(),
+        from_branch_id: z.string().uuid().optional().nullable(),
+        carry_roles: z.boolean().optional().default(true),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    // 1. Set primary branch on profile
+    const { error: pErr } = await supabaseAdmin
+      .from("profiles")
+      .update({ branch_id: data.to_branch_id })
+      .eq("id", data.user_id);
+    if (pErr) throw new Error(pErr.message);
+
+    if (!data.carry_roles) return { ok: true };
+
+    // 2. Collect the user's per-branch role assignments
+    const { data: existing, error: rErr } = await supabaseAdmin
+      .from("user_branch_roles")
+      .select("branch_id, role")
+      .eq("user_id", data.user_id);
+    if (rErr) throw new Error(rErr.message);
+
+    const sourceBranch =
+      data.from_branch_id ??
+      (existing && existing.length > 0 ? existing[0].branch_id : null);
+
+    if (!sourceBranch) {
+      // No previous assignments to carry — nothing else to do
+      return { ok: true };
+    }
+
+    const rolesToCarry = (existing ?? [])
+      .filter((r) => r.branch_id === sourceBranch)
+      .map((r) => r.role as DbRole);
+
+    if (rolesToCarry.length === 0) return { ok: true };
+
+    // 3. Remove the source branch assignments
+    const { error: delErr } = await supabaseAdmin
+      .from("user_branch_roles")
+      .delete()
+      .eq("user_id", data.user_id)
+      .eq("branch_id", sourceBranch);
+    if (delErr) throw new Error(delErr.message);
+
+    // 4. Insert the same roles for the destination branch (deduped)
+    const uniqueRoles = Array.from(new Set(rolesToCarry));
+    const rows = uniqueRoles.map((role) => ({
+      user_id: data.user_id,
+      branch_id: data.to_branch_id,
+      role,
+    }));
+    // Upsert-style: ignore duplicates if the user already has the role there
+    const { error: insErr } = await supabaseAdmin
+      .from("user_branch_roles")
+      .upsert(rows, { onConflict: "user_id,branch_id,role", ignoreDuplicates: true });
+    if (insErr) throw new Error(insErr.message);
+
+    return { ok: true, moved_from: sourceBranch, roles: uniqueRoles };
+  });
+
