@@ -63,15 +63,44 @@ function RegisterPage() {
     id_number: "",
   });
 
+  const branchFilter = useEffectiveBranchFilter();
   const hosts = useQuery({
-    queryKey: ["hosts"],
+    queryKey: ["hosts", branchFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, position")
-        .order("full_name");
-      if (error) throw error;
-      return data;
+      let allowedIds: string[] | null = null;
+      if (branchFilter.kind === "eq") allowedIds = [branchFilter.branchId];
+      else if (branchFilter.kind === "in") allowedIds = branchFilter.branchIds;
+      if (allowedIds && allowedIds.length === 0) return [];
+      if (!allowedIds) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, full_name, position")
+          .order("full_name");
+        if (error) throw error;
+        return data ?? [];
+      }
+      const [primary, assigned] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, position").in("branch_id", allowedIds),
+        supabase.from("user_branch_roles").select("user_id").in("branch_id", allowedIds),
+      ]);
+      if (primary.error) throw primary.error;
+      if (assigned.error) throw assigned.error;
+      const primaryIds = new Set((primary.data ?? []).map((p) => p.id));
+      const extraIds = Array.from(new Set((assigned.data ?? []).map((r) => r.user_id))).filter(
+        (id) => !primaryIds.has(id),
+      );
+      let extra: { id: string; full_name: string; position: string | null }[] = [];
+      if (extraIds.length > 0) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, full_name, position")
+          .in("id", extraIds);
+        if (error) throw error;
+        extra = data ?? [];
+      }
+      return [...(primary.data ?? []), ...extra].sort((a, b) =>
+        (a.full_name ?? "").localeCompare(b.full_name ?? ""),
+      );
     },
   });
 
