@@ -30,10 +30,22 @@ export function KioskQrCard() {
     }
   }, [branches.data, branchId]);
 
-  const kioskUrl =
-    typeof window !== "undefined" && branchId
-      ? `${window.location.origin}/kiosk/${branchId}`
-      : "";
+  // Build a publicly-accessible kiosk URL.
+  // Lovable preview URLs (id-preview--<id>.lovable.app) require a Lovable
+  // account to access, which breaks visitor self-registration. Rewrite
+  // them to the stable public published URL (project--<id>.lovable.app)
+  // so visitors without a Lovable account can open the kiosk.
+  const publicOrigin = (() => {
+    if (typeof window === "undefined") return "";
+    const host = window.location.hostname;
+    const preview = host.match(/^id-preview--([0-9a-f-]+)\.lovable\.app$/i);
+    if (preview) return `https://project--${preview[1]}.lovable.app`;
+    const projDev = host.match(/^project--([0-9a-f-]+)-dev\.lovable\.app$/i);
+    if (projDev) return `https://project--${projDev[1]}.lovable.app`;
+    return window.location.origin;
+  })();
+
+  const kioskUrl = publicOrigin && branchId ? `${publicOrigin}/kiosk/${branchId}` : "";
 
   useEffect(() => {
     if (!kioskUrl) return;
