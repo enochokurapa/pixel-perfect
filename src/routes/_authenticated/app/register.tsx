@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/hooks/use-session";
+import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 import { toast } from "sonner";
 import { z } from "zod";
 
