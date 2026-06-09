@@ -77,8 +77,10 @@ export function KioskQrCard() {
           <QrCode className="h-4 w-4" /> Visitor self-registration QR
         </CardTitle>
         <CardDescription>
-          Print and display this QR at reception. Visitors scan it to self-register.
-          The selected host is notified for approval, and front desk receives a sign-in alert.
+          Print and display this QR at reception. Visitors scan it to self-register —
+          no Lovable account required. The selected host is notified for approval,
+          and front desk receives a sign-in alert. Publish the app once so the
+          public URL is live for scanners.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
