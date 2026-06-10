@@ -24,7 +24,7 @@ function BadgesPage() {
   const branchScope = useBranchScope();
   const branchFilter = useEffectiveBranchFilter();
   const [newBadge, setNewBadge] = useState("");
-  const targetBranchId = branchFilter.kind === "eq" ? branchFilter.branchId : branchScope.availableBranches[0]?.id ?? "";
+  const targetBranchId = branchFilter.kind === "eq" ? branchFilter.branchId : "";
 
   const badges = useQuery({
     queryKey: ["badges", "all", branchFilter],
@@ -81,9 +81,9 @@ function BadgesPage() {
             className="max-w-xs"
           />
           {branchFilter.kind !== "eq" && (
-            <span className="self-center text-xs text-muted-foreground">Adding to {branchScope.availableBranches[0]?.name ?? "first branch"}</span>
+            <span className="self-center text-xs text-muted-foreground">Select one branch to add badges.</span>
           )}
-          <Button onClick={() => add.mutate()} disabled={add.isPending}>
+          <Button onClick={() => add.mutate()} disabled={add.isPending || !targetBranchId}>
             Add
           </Button>
         </CardContent>
