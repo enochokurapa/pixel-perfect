@@ -159,6 +159,7 @@ function Settings() {
       department?: string | null;
       branch_id?: string | null;
       roles: Role[];
+      branch_assignments?: { branch_id: string; roles: Role[] }[];
     }) => createFn({ data: payload }),
     onSuccess: () => {
       toast.success("Staff member created");
@@ -648,6 +649,7 @@ function CreateStaffCard({
     department?: string | null;
     branch_id?: string | null;
     roles: Role[];
+    branch_assignments?: { branch_id: string; roles: Role[] }[];
   }) => Promise<unknown>;
   busy: boolean;
   branches: Branch[];
@@ -676,6 +678,7 @@ function CreateStaffCard({
       department: department.trim() || null,
       branch_id: branchId || null,
       roles,
+      branch_assignments: branchId ? [{ branch_id: branchId, roles: roles.filter((r) => r !== "admin") }] : [],
     });
     setName("");
     setEmail("");
