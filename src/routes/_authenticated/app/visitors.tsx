@@ -41,7 +41,7 @@ function VisitorsPage() {
       let query = supabase
         .from("visits")
         .select(
-          "id, status, purpose, check_in_at, check_out_at, created_at, visit_type, badge_number, vehicle_plate, branch_id, visitor:visitors(full_name, company, phone, email), host:profiles(full_name)",
+          "id, status, approval, purpose, check_in_at, check_out_at, created_at, visit_type, badge_number, vehicle_plate, branch_id, host_name, visitor:visitors(full_name, company, phone, email), host:profiles(full_name)",
         )
         .order("created_at", { ascending: false })
         .limit(500);
@@ -68,7 +68,8 @@ function VisitorsPage() {
           v.badge_number?.toLowerCase().includes(s);
         if (!match) return false;
       }
-      if (status !== "all" && v.status !== status) return false;
+      if (status === "rejected" && v.approval !== "not_approved") return false;
+      if (status !== "all" && status !== "rejected" && v.status !== status) return false;
       if (type !== "all" && v.visit_type !== type) return false;
       if (from && new Date(v.created_at) < new Date(from)) return false;
       if (to && new Date(v.created_at) > new Date(to + "T23:59:59")) return false;
@@ -82,14 +83,14 @@ function VisitorsPage() {
       Company: v.visitor?.company ?? "",
       Phone: v.visitor?.phone ?? "",
       Email: v.visitor?.email ?? "",
-      Host: v.host?.full_name ?? "",
+      Host: v.host?.full_name ?? v.host_name ?? "",
       Purpose: v.purpose,
       Type: v.visit_type,
       Badge: v.badge_number ?? "",
       Vehicle: v.vehicle_plate ?? "",
       "Check-in": v.check_in_at ? new Date(v.check_in_at).toLocaleString() : "",
       "Check-out": v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "",
-      Status: v.status,
+      Status: v.approval === "not_approved" ? "Rejected" : v.status,
     }));
 
   const resetFilters = () => {
@@ -137,6 +138,7 @@ function VisitorsPage() {
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
                 <SelectItem value="checked_in">Checked in</SelectItem>
                 <SelectItem value="checked_out">Checked out</SelectItem>
               </SelectContent>
@@ -203,7 +205,7 @@ function VisitorsPage() {
                         {v.visitor?.company ?? v.visitor?.phone}
                       </div>
                     </td>
-                    <td className="px-5 py-3">{v.host?.full_name ?? "—"}</td>
+                    <td className="px-5 py-3">{v.host?.full_name ?? v.host_name ?? "—"}</td>
                     <td className="px-5 py-3 max-w-xs truncate">{v.purpose}</td>
                     <td className="px-5 py-3 capitalize">{v.visit_type}</td>
                     <td className="px-5 py-3">{v.badge_number ? `#${v.badge_number}` : "—"}</td>
@@ -214,7 +216,7 @@ function VisitorsPage() {
                       {v.check_out_at ? new Date(v.check_out_at).toLocaleString() : "—"}
                     </td>
                     <td className="px-5 py-3">
-                      <StatusBadge status={v.status} />
+                      <StatusBadge status={v.status} approval={v.approval} />
                     </td>
                     <td className="px-5 py-3 text-right">
                       <Button size="sm" variant="outline" asChild>
