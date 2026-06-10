@@ -134,6 +134,7 @@ export function useCurrentUser() {
     userId,
     profile: profile.data,
     branchId,
+    globalRoles: explicitRoles,
     roles: allRoles,
     branchAssignments: branchAssignments.data ?? [],
     allowedBranchIds,
