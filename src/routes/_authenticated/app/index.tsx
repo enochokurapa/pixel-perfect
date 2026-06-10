@@ -360,7 +360,7 @@ function Dashboard() {
         <StatCard label="With assets" value={stats.data?.withAssets} icon={Laptop} tone="default" onClick={() => setOpenTile("withAssets")} />
       </section>
 
-      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} />
+      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} branchIds={visibleBranchIds.length > 0 ? visibleBranchIds : null} />
 
       {(branchDashboards.data?.length ?? 0) > 1 && (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
