@@ -17,7 +17,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
-import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { useBranchScope, useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 import { useMemo, useState } from "react";
 import {
   BarChart,
@@ -45,6 +45,7 @@ const PAGE_SIZE = 6;
 
 function Dashboard() {
   const me = useCurrentUser();
+  const branchScope = useBranchScope();
   const branchFilter = useEffectiveBranchFilter();
   const [page, setPage] = useState(0);
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
@@ -86,11 +87,8 @@ function Dashboard() {
       const [insideRows, today, badgesIssued, badgesAvailable, todayInVisits] = await Promise.all([
         insideQ,
         todayQ,
-        supabase.from("badges").select("id", { count: "exact", head: true }).eq("status", "issued"),
-        supabase
-          .from("badges")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "available"),
+        applyBranch(supabase.from("badges").select("id", { count: "exact", head: true }).eq("status", "issued")),
+        applyBranch(supabase.from("badges").select("id", { count: "exact", head: true }).eq("status", "available")),
         todayAssetsVisitsQ,
       ]);
       const inside = insideRows.data ?? [];
@@ -206,6 +204,38 @@ function Dashboard() {
     },
   });
 
+  const visibleBranchIds = branchFilter.kind === "eq"
+    ? [branchFilter.branchId]
+    : branchFilter.kind === "in"
+      ? branchFilter.branchIds
+      : branchScope.availableBranches.map((b) => b.id);
+  const branchDashboards = useQuery({
+    enabled: visibleBranchIds.length > 1,
+    queryKey: ["dashboard", "branch-cards", visibleBranchIds],
+    queryFn: async () => {
+      const [{ data: visits }, { data: badges }] = await Promise.all([
+        supabase.from("visits").select("branch_id, status, check_in_at, expected_duration_minutes").in("branch_id", visibleBranchIds),
+        supabase.from("badges").select("branch_id, status").in("branch_id", visibleBranchIds),
+      ]);
+      const now = Date.now();
+      return visibleBranchIds.map((id) => {
+        const branch = branchScope.availableBranches.find((b) => b.id === id);
+        const branchVisits = (visits ?? []).filter((v) => v.branch_id === id);
+        const inside = branchVisits.filter((v) => v.status === "checked_in");
+        const overstay = inside.filter((v) => v.check_in_at && new Date(v.check_in_at).getTime() + (v.expected_duration_minutes ?? 180) * 60_000 < now).length;
+        const branchBadges = (badges ?? []).filter((b) => b.branch_id === id);
+        return {
+          id,
+          name: branch?.name ?? "Branch",
+          today: branchVisits.filter((v) => new Date(v.check_in_at ?? "").toDateString() === new Date().toDateString()).length,
+          inside: inside.length,
+          overstay,
+          availableBadges: branchBadges.filter((b) => b.status === "available").length,
+        };
+      });
+    },
+  });
+
 
 
 
@@ -251,28 +281,26 @@ function Dashboard() {
   }, [chartData.data]);
 
   const totalCount = useQuery({
-    queryKey: ["dashboard", "recent-count"],
+    queryKey: ["dashboard", "recent-count", branchFilter],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("visits")
-        .select("id", { count: "exact", head: true });
+      const { count, error } = await applyBranch(supabase.from("visits").select("id", { count: "exact", head: true }));
       if (error) throw error;
       return count ?? 0;
     },
   });
 
   const recent = useQuery({
-    queryKey: ["dashboard", "recent", page],
+    queryKey: ["dashboard", "recent", page, branchFilter],
     queryFn: async () => {
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
-      const { data, error } = await supabase
+      const { data, error } = await applyBranch(supabase
         .from("visits")
         .select(
-          "id, status, purpose, check_in_at, created_at, visit_type, badge_number, visitor:visitors(full_name, company), host:profiles(full_name)",
+          "id, status, approval, purpose, check_in_at, created_at, visit_type, badge_number, host_name, visitor:visitors(full_name, company), host:profiles(full_name)",
         )
         .order("created_at", { ascending: false })
-        .range(from, to);
+        .range(from, to));
       if (error) throw error;
       return data;
     },
@@ -281,7 +309,7 @@ function Dashboard() {
   const pendingApprovals = useQuery({
     queryKey: ["dashboard", "pending-approvals"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await applyBranch(supabase
         .from("visits")
         .select(
           "id, purpose, created_at, visitor:visitors(full_name, company), host:profiles(full_name)",
@@ -289,7 +317,7 @@ function Dashboard() {
         .eq("approval", "pending")
         .eq("pre_registered", true)
         .order("created_at", { ascending: false })
-        .limit(8);
+        .limit(8));
       if (error) throw error;
       return data;
     },
@@ -332,8 +360,25 @@ function Dashboard() {
         <StatCard label="With assets" value={stats.data?.withAssets} icon={Laptop} tone="default" onClick={() => setOpenTile("withAssets")} />
       </section>
 
-      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} />
+      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} branchIds={visibleBranchIds.length > 0 ? visibleBranchIds : null} />
 
+      {(branchDashboards.data?.length ?? 0) > 1 && (
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {branchDashboards.data?.map((b) => (
+            <Card key={b.id}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{b.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-4 gap-2 text-center text-xs">
+                <MiniStat label="Inside" value={b.inside} />
+                <MiniStat label="Today" value={b.today} />
+                <MiniStat label="Overstay" value={b.overstay} />
+                <MiniStat label="Badges" value={b.availableBadges} />
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      )}
 
       <section className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -560,12 +605,12 @@ function Dashboard() {
                         ) : null}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Host: {v.host?.full_name ?? "—"} · {v.purpose}
+                        Host: {v.host?.full_name ?? v.host_name ?? "—"} · {v.purpose}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       {v.badge_number && <Badge variant="outline">#{v.badge_number}</Badge>}
-                      <StatusBadge status={v.status} />
+                      <StatusBadge status={v.status} approval={v.approval} />
                     </div>
                   </Link>
                 ))}
@@ -637,7 +682,23 @@ function StatCard({
   );
 }
 
-export function StatusBadge({ status }: { status: string }) {
+function MiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md bg-muted/40 px-2 py-2">
+      <div className="font-display text-lg font-semibold tabular-nums">{value}</div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+export function StatusBadge({ status, approval }: { status: string; approval?: string | null }) {
+  if (approval === "not_approved") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive">
+        Rejected
+      </span>
+    );
+  }
   const map: Record<string, { label: string; cls: string }> = {
     pending: { label: "Pending", cls: "bg-muted text-muted-foreground" },
     checked_in: { label: "Inside", cls: "bg-success/15 text-success" },

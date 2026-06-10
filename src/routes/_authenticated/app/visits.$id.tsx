@@ -50,7 +50,7 @@ function downloadExcel(v: any, assetList: VisitAsset[]) {
     { Field: "Company", Value: v.visitor?.company ?? "" },
     { Field: "ID type", Value: v.visitor?.id_type ?? "" },
     { Field: "ID number", Value: v.visitor?.id_number ?? "" },
-    { Field: "Host", Value: v.host?.full_name ?? "" },
+    { Field: "Host", Value: v.host?.full_name ?? v.host_name ?? "" },
     { Field: "Purpose", Value: v.purpose ?? "" },
     { Field: "Visit type", Value: v.visit_type ?? "" },
     { Field: "Visit mode", Value: v.visit_mode ?? "" },
@@ -82,7 +82,7 @@ function downloadPdf(v: any, assetList: VisitAsset[]) {
     ["ID number", v.visitor?.id_number ?? "—"],
   ];
   const visit: [string, string][] = [
-    ["Host", v.host?.full_name ?? "—"],
+    ["Host", v.host?.full_name ?? v.host_name ?? "—"],
     ["Purpose", v.purpose ?? "—"],
     ["Visit type", v.visit_type ?? "—"],
     ["Visit mode", v.visit_mode ?? "—"],
@@ -231,11 +231,12 @@ function VisitDetail() {
       badge_number: payload.badge_number,
       assets_verified: payload.assets_verified,
     });
-    if (payload.badge_number) {
+    if (payload.badge_number && v.branch_id) {
       await supabase
         .from("badges")
         .update({ status: "issued" })
-        .eq("badge_number", payload.badge_number);
+        .eq("badge_number", payload.badge_number)
+        .eq("branch_id", v.branch_id);
     }
     qc.invalidateQueries();
   };
@@ -252,11 +253,12 @@ function VisitDetail() {
       assets_verified: verification.assets_verified,
       checkout_notes: verification.checkout_notes || null,
     });
-    if (v.badge_number) {
+    if (v.badge_number && v.branch_id) {
       await supabase
         .from("badges")
         .update({ status: "available" })
-        .eq("badge_number", v.badge_number);
+        .eq("badge_number", v.badge_number)
+        .eq("branch_id", v.branch_id);
       qc.invalidateQueries();
     }
   };
@@ -276,7 +278,7 @@ function VisitDetail() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="font-display text-3xl font-semibold">{v.visitor?.full_name}</h1>
-              <StatusBadge status={v.status} />
+              <StatusBadge status={v.status} approval={v.approval} />
               {v.pre_registered && (
                 <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                   Pre-registered · {v.approval}
@@ -308,6 +310,7 @@ function VisitDetail() {
                 <IssueBadgeButton
                   visitorName={v.visitor?.full_name ?? "visitor"}
                   existingAssets={assets.data ?? []}
+                  branchId={v.branch_id ?? null}
                   onConfirm={issueBadgeAndCheckIn}
                   disabled={update.isPending || v.approval === "pending"}
                 />
@@ -335,7 +338,7 @@ function VisitDetail() {
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2 text-sm">
             <Info label="Purpose" value={v.purpose} />
-            <Info label="Host" value={v.host?.full_name ?? "—"} />
+            <Info label="Host" value={v.host?.full_name ?? v.host_name ?? "—"} />
             <Info label="Visit type" value={v.visit_type} className="capitalize" />
             <Info label="Visit mode" value={v.visit_mode.replace("_", " ")} className="capitalize" />
             <Info label="Badge" value={v.badge_number ? `#${v.badge_number}` : "—"} />
@@ -758,11 +761,13 @@ function FeedbackCard({
 function IssueBadgeButton({
   visitorName,
   existingAssets,
+  branchId,
   onConfirm,
   disabled,
 }: {
   visitorName: string;
   existingAssets: VisitAsset[];
+  branchId: string | null;
   onConfirm: (p: {
     badge_number: string;
     assets_verified: boolean;
@@ -779,17 +784,18 @@ function IssueBadgeButton({
   const [busy, setBusy] = useState(false);
 
   const availableBadges = useQuery({
-    queryKey: ["badges", "available"],
+    queryKey: ["badges", "available", branchId],
+    enabled: open && !!branchId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("badges")
         .select("badge_number")
         .eq("status", "available")
+        .eq("branch_id", branchId!)
         .order("badge_number");
       if (error) throw error;
       return data;
     },
-    enabled: open,
   });
 
   const confirm = async () => {

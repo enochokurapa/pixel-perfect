@@ -36,6 +36,7 @@ type VisitRow = {
   check_out_at: string | null;
   created_at: string;
   badge_number: string | null;
+  host_name: string | null;
   vehicle_plate: string | null;
   expected_duration_minutes: number;
   purpose: string;
@@ -61,7 +62,7 @@ function ReportsPage() {
       let q = supabase
         .from("visits")
         .select(
-          "id, visit_type, visit_mode, status, approval, pre_registered, kiosk_self_registered, check_in_at, check_out_at, created_at, badge_number, vehicle_plate, expected_duration_minutes, purpose, branch_id, visitor:visitors(full_name, phone, company), host:profiles(full_name, department), branch:branches(name)",
+          "id, visit_type, visit_mode, status, approval, pre_registered, kiosk_self_registered, check_in_at, check_out_at, created_at, badge_number, host_name, vehicle_plate, expected_duration_minutes, purpose, branch_id, visitor:visitors(full_name, phone, company), host:profiles(full_name, department), branch:branches(name)",
         )
         .gte("created_at", `${from}T00:00:00`)
         .lte("created_at", `${to}T23:59:59`)
@@ -72,7 +73,8 @@ function ReportsPage() {
         q = q.in("branch_id", branchFilter.branchIds);
       else if (branchFilter.kind === "in") return [] as VisitRow[];
       if (type !== "all") q = q.eq("visit_type", type as "guest" | "supplier" | "contractor");
-      if (status !== "all") q = q.eq("status", status as "pending" | "checked_in" | "checked_out" | "overstayed");
+      if (status === "rejected") q = q.eq("approval", "not_approved");
+      else if (status !== "all") q = q.eq("status", status as "pending" | "checked_in" | "checked_out" | "overstayed");
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as unknown as VisitRow[];
@@ -100,16 +102,18 @@ function ReportsPage() {
     let preReg = 0;
     rows.forEach((v) => {
       byType[v.visit_type] = (byType[v.visit_type] ?? 0) + 1;
-      byStatus[v.status] = (byStatus[v.status] ?? 0) + 1;
+      const displayStatus = v.approval === "not_approved" ? "rejected" : v.status;
+      byStatus[displayStatus] = (byStatus[displayStatus] ?? 0) + 1;
       const c = v.visitor?.company ?? "Unknown";
       byCompany[c] = (byCompany[c] ?? 0) + 1;
-      if (v.host?.full_name) {
-        const k = v.host.full_name;
+      const hostName = v.host?.full_name ?? v.host_name;
+      if (hostName) {
+        const k = hostName;
         byHost[k] = byHost[k]
           ? { ...byHost[k], count: byHost[k].count + 1 }
-          : { name: k, dept: v.host.department ?? null, count: 1 };
+          : { name: k, dept: v.host?.department ?? null, count: 1 };
       }
-      const dept = v.host?.department ?? "Unassigned";
+      const dept = v.host?.department ?? (v.host_name ? "Manual host" : "Unassigned");
       byDept[dept] = (byDept[dept] ?? 0) + 1;
       if (v.visitor?.phone) {
         const k = v.visitor.phone;
@@ -219,7 +223,7 @@ function ReportsPage() {
       ["Created", "Visitor", "Phone", "Company", "Host", "Department", "Branch", "Type", "Mode", "Pre-registered", "Status", "Approval", "Badge", "Vehicle", "Check-in", "Check-out", "Purpose"],
       rows.map((v) => [
         v.created_at, v.visitor?.full_name, v.visitor?.phone, v.visitor?.company,
-        v.host?.full_name, v.host?.department, v.branch?.name,
+        v.host?.full_name ?? v.host_name, v.host?.department, v.branch?.name,
         v.visit_type, v.visit_mode, v.pre_registered ? "Yes" : "No",
         v.status, v.approval, v.badge_number, v.vehicle_plate,
         v.check_in_at, v.check_out_at, v.purpose,
@@ -266,6 +270,7 @@ function ReportsPage() {
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
                 <SelectItem value="checked_in">Checked-in</SelectItem>
                 <SelectItem value="checked_out">Checked-out</SelectItem>
                 <SelectItem value="overstayed">Overstayed</SelectItem>
@@ -476,6 +481,7 @@ function VisitTable({
                   <th className="px-4 py-2 text-left">Host</th>
                   <th className="px-4 py-2 text-left">Branch</th>
                   <th className="px-4 py-2 text-left">When</th>
+                  <th className="px-4 py-2 text-left">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -483,11 +489,12 @@ function VisitTable({
                   <tr key={r.id}>
                     <td className="px-4 py-2">{r.visitor?.full_name ?? "—"}</td>
                     <td className="px-4 py-2 text-muted-foreground">{r.visitor?.company ?? "—"}</td>
-                    <td className="px-4 py-2">{r.host?.full_name ?? "—"}</td>
+                    <td className="px-4 py-2">{r.host?.full_name ?? r.host_name ?? "—"}</td>
                     <td className="px-4 py-2 text-muted-foreground">{r.branch?.name ?? "—"}</td>
                     <td className="px-4 py-2 text-xs text-muted-foreground">
                       {new Date(r.check_in_at ?? r.created_at).toLocaleString()}
                     </td>
+                    <td className="px-4 py-2 capitalize">{r.approval === "not_approved" ? "Rejected" : r.status.replace("_", " ")}</td>
                   </tr>
                 ))}
               </tbody>

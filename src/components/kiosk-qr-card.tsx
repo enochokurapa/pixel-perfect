@@ -39,9 +39,9 @@ export function KioskQrCard() {
     if (typeof window === "undefined") return "";
     const host = window.location.hostname;
     const preview = host.match(/^id-preview--([0-9a-f-]+)\.lovable\.app$/i);
-    if (preview) return `https://project--${preview[1]}.lovable.app`;
+    if (preview) return `https://project--${preview[1]}-dev.lovable.app`;
     const projDev = host.match(/^project--([0-9a-f-]+)-dev\.lovable\.app$/i);
-    if (projDev) return `https://project--${projDev[1]}.lovable.app`;
+    if (projDev) return `https://project--${projDev[1]}-dev.lovable.app`;
     return window.location.origin;
   })();
 

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/hooks/use-session";
-import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { useBranchScope } from "@/hooks/use-branch-scope";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -31,20 +31,32 @@ const schema = z.object({
   company: z.string().trim().min(1, "Company / Origin is required").max(120),
   purpose: z.string().trim().min(2).max(500),
   badge_number: z.string().trim().max(40),
-  host_id: z.string().uuid({ message: "Host is required" }),
+  host_id: z.string().uuid().optional().or(z.literal("")),
+  host_name: z.string().trim().max(120).optional().or(z.literal("")),
 });
+
+type VisitorType = "guest" | "supplier" | "contractor" | "delivery";
+type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
+const TYPE_OPTIONS: { value: VisitorType; label: string; role: "register_guest" | "register_contractor" | "register_delivery" }[] = [
+  { value: "guest", label: "Guest", role: "register_guest" },
+  { value: "contractor", label: "Contractor", role: "register_contractor" },
+  { value: "delivery", label: "Delivery", role: "register_delivery" },
+  { value: "supplier", label: "Supplier", role: "register_delivery" },
+];
 
 function RegisterPage() {
   const me = useCurrentUser();
+  const branchScope = useBranchScope();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor" | "delivery">("guest");
+  const [visitType, setVisitType] = useState<VisitorType>("guest");
   const [visitMode, setVisitMode] = useState<"walk_in" | "drive_in">("walk_in");
   const [hostId, setHostId] = useState<string>("");
+  const [manualHostName, setManualHostName] = useState("");
+  const [registrationBranchId, setRegistrationBranchId] = useState("");
   const [idScanFile, setIdScanFile] = useState<File | null>(null);
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
-  type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
   const [hasAssets, setHasAssets] = useState<"no" | "yes">("no");
   const [assets, setAssets] = useState<AssetRow[]>([
     { kind: "device", brand: "", serial: "", description: "" },
@@ -63,22 +75,25 @@ function RegisterPage() {
     id_number: "",
   });
 
-  const branchFilter = useEffectiveBranchFilter();
+  useEffect(() => {
+    if (registrationBranchId) return;
+    const preferred = branchScope.activeBranchIds?.length === 1 ? branchScope.activeBranchIds[0] : me.branchId;
+    if (preferred) setRegistrationBranchId(preferred);
+    else if (branchScope.availableBranches.length === 1) setRegistrationBranchId(branchScope.availableBranches[0].id);
+  }, [branchScope.activeBranchIds, branchScope.availableBranches, me.branchId, registrationBranchId]);
+
+  const canUseType = (role: "register_guest" | "register_contractor" | "register_delivery") =>
+    me.isAdmin || me.globalRoles.includes(role) || (!!registrationBranchId && (me.rolesByBranch[registrationBranchId] ?? []).includes(role));
+  const allowedTypes = useMemo(() => TYPE_OPTIONS.filter((o) => canUseType(o.role)), [me.globalRoles, me.rolesByBranch, me.isAdmin, registrationBranchId]);
+  useEffect(() => {
+    if (allowedTypes.length > 0 && !allowedTypes.some((o) => o.value === visitType)) setVisitType(allowedTypes[0].value);
+  }, [allowedTypes, visitType]);
+
   const hosts = useQuery({
-    queryKey: ["hosts", branchFilter],
+    queryKey: ["hosts", registrationBranchId],
+    enabled: !!registrationBranchId,
     queryFn: async () => {
-      let allowedIds: string[] | null = null;
-      if (branchFilter.kind === "eq") allowedIds = [branchFilter.branchId];
-      else if (branchFilter.kind === "in") allowedIds = branchFilter.branchIds;
-      if (allowedIds && allowedIds.length === 0) return [];
-      if (!allowedIds) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, full_name, position")
-          .order("full_name");
-        if (error) throw error;
-        return data ?? [];
-      }
+      const allowedIds = [registrationBranchId];
       const [primary, assigned] = await Promise.all([
         supabase.from("profiles").select("id, full_name, position").in("branch_id", allowedIds),
         supabase.from("user_branch_roles").select("user_id").in("branch_id", allowedIds),
@@ -105,12 +120,14 @@ function RegisterPage() {
   });
 
   const availableBadges = useQuery({
-    queryKey: ["badges", "available"],
+    queryKey: ["badges", "available", registrationBranchId],
+    enabled: !!registrationBranchId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("badges")
         .select("badge_number")
         .eq("status", "available")
+        .eq("branch_id", registrationBranchId)
         .order("badge_number");
       if (error) throw error;
       return data;
@@ -119,7 +136,12 @@ function RegisterPage() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const parsed = schema.parse({ ...form, host_id: hostId });
+      if (!registrationBranchId) throw new Error("Select the branch for this registration.");
+      if (allowedTypes.length === 0) throw new Error("You do not have rights to register any visitor type at this branch.");
+      const parsed = schema.parse({ ...form, host_id: hostId, host_name: manualHostName });
+      if (!parsed.host_id && !parsed.host_name?.trim()) {
+        throw new Error("Select a host or type the host name.");
+      }
 
       // Validate assets only if visitor declared bringing assets
       let cleanAssets: AssetRow[] = [];
@@ -187,7 +209,8 @@ function RegisterPage() {
         .from("visits")
         .insert({
           visitor_id: visitorId,
-          host_id: parsed.host_id,
+          host_id: parsed.host_id || null,
+          host_name: parsed.host_id ? hosts.data?.find((h) => h.id === parsed.host_id)?.full_name ?? null : parsed.host_name?.trim() || null,
           visit_type: visitType,
           visit_mode: visitMode,
           purpose: parsed.purpose,
@@ -199,7 +222,7 @@ function RegisterPage() {
           status: "checked_in",
           check_in_at: new Date().toISOString(),
           created_by: me.userId,
-          branch_id: me.branchId,
+          branch_id: registrationBranchId,
         })
         .select("id")
         .single();
@@ -223,7 +246,8 @@ function RegisterPage() {
         await supabase
           .from("badges")
           .update({ status: "issued" })
-          .eq("badge_number", parsed.badge_number);
+          .eq("badge_number", parsed.badge_number)
+          .eq("branch_id", registrationBranchId);
       }
       return visit.id;
     },
@@ -259,10 +283,20 @@ function RegisterPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="guest">Guest</SelectItem>
-                <SelectItem value="supplier">Supplier</SelectItem>
-                <SelectItem value="contractor">Contractor</SelectItem>
-                <SelectItem value="delivery">Delivery</SelectItem>
+                {allowedTypes.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Branch <span className="text-destructive">*</span></Label>
+            <Select value={registrationBranchId} onValueChange={(v) => { setRegistrationBranchId(v); setHostId(""); setManualHostName(""); set("badge_number", ""); }}>
+              <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+              <SelectContent>
+                {branchScope.availableBranches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -314,7 +348,7 @@ function RegisterPage() {
                 if (!phone) return;
                 const { data: existing } = await supabase
                   .from("visitors")
-                  .select("full_name, email, company")
+                  .select("id, full_name, email, company")
                   .eq("phone", phone)
                   .maybeSingle();
                 if (existing) {
@@ -327,6 +361,37 @@ function RegisterPage() {
                   setDuplicateNotice(
                     `Returning visitor — details auto-filled from previous visit (${existing.full_name}).`,
                   );
+                  const { data: priorVisits } = await supabase
+                    .from("visits")
+                    .select("id")
+                    .eq("visitor_id", existing.id)
+                    .order("created_at", { ascending: false })
+                    .limit(10);
+                  const priorIds = (priorVisits ?? []).map((v) => v.id);
+                  if (priorIds.length > 0) {
+                    const { data: priorAssets } = await supabase
+                      .from("visit_assets")
+                      .select("kind, brand, serial, description")
+                      .in("visit_id", priorIds)
+                      .order("created_at", { ascending: false })
+                      .limit(6);
+                    const unique = Array.from(
+                      new Map(
+                        (priorAssets ?? [])
+                          .filter((a) => a.brand || a.serial || a.description)
+                          .map((a) => [`${a.kind}-${a.brand ?? ""}-${a.serial ?? ""}`, a]),
+                      ).values(),
+                    );
+                    if (unique.length > 0) {
+                      setHasAssets("yes");
+                      setAssets(unique.map((a) => ({
+                        kind: a.kind as AssetRow["kind"],
+                        brand: a.brand ?? "",
+                        serial: a.serial ?? "",
+                        description: a.description ?? "",
+                      })));
+                    }
+                  }
                   toast.info(`Returning visitor: ${existing.full_name}`);
                 } else {
                   setDuplicateNotice(null);
@@ -373,9 +438,9 @@ function RegisterPage() {
 
           <div className="space-y-2">
             <Label>
-              Host <span className="text-destructive">*</span>
+              Host in system
             </Label>
-            <Select value={hostId} onValueChange={setHostId}>
+            <Select value={hostId} onValueChange={(v) => { setHostId(v); setManualHostName(""); }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select host" />
               </SelectTrigger>
@@ -389,6 +454,14 @@ function RegisterPage() {
               </SelectContent>
             </Select>
           </div>
+          <Field
+            label="Or type host name"
+            value={manualHostName}
+            onChange={(v) => {
+              setManualHostName(v);
+              if (v.trim()) setHostId("");
+            }}
+          />
 
           <div className="space-y-2">
             <Label>Badge number</Label>

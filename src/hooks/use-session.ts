@@ -102,7 +102,9 @@ export function useCurrentUser() {
     },
   });
 
-  const allRoles = roles.data ?? [];
+  const explicitRoles = roles.data ?? [];
+  const branchRoleList = (branchAssignments.data ?? []).map((r) => r.role as AppRole);
+  const allRoles = Array.from(new Set([...explicitRoles, ...branchRoleList]));
   const has = (r: AppRole) => allRoles.includes(r);
   const isSignedIn = !!userId;
   const isAdmin = has("admin");
@@ -132,6 +134,7 @@ export function useCurrentUser() {
     userId,
     profile: profile.data,
     branchId,
+    globalRoles: explicitRoles,
     roles: allRoles,
     branchAssignments: branchAssignments.data ?? [],
     allowedBranchIds,

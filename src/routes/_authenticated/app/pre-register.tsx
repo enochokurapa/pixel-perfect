@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-session";
-import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { useBranchScope } from "@/hooks/use-branch-scope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,13 +24,24 @@ const schema = z.object({
   purpose: z.string().trim().min(2).max(500),
 });
 
+type VisitorType = "guest" | "supplier" | "contractor" | "delivery";
+const TYPE_OPTIONS: { value: VisitorType; label: string; role: "pre_register_guest" | "pre_register_contractor" | "pre_register_delivery" }[] = [
+  { value: "guest", label: "Guest", role: "pre_register_guest" },
+  { value: "contractor", label: "Contractor", role: "pre_register_contractor" },
+  { value: "delivery", label: "Delivery", role: "pre_register_delivery" },
+  { value: "supplier", label: "Supplier", role: "pre_register_delivery" },
+];
+
 function PreRegisterPage() {
   const me = useCurrentUser();
+  const branchScope = useBranchScope();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor" | "delivery">("guest");
+  const [visitType, setVisitType] = useState<VisitorType>("guest");
   const [hostId, setHostId] = useState<string>(me.userId ?? "");
+  const [manualHostName, setManualHostName] = useState("");
+  const [registrationBranchId, setRegistrationBranchId] = useState("");
   const [duration, setDuration] = useState(180);
   const [form, setForm] = useState({ full_name: "", phone: "", email: "", company: "", purpose: "" });
   type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
@@ -39,25 +50,24 @@ function PreRegisterPage() {
     { kind: "device", brand: "", serial: "", description: "" },
   ]);
 
-  const branchFilter = useEffectiveBranchFilter();
+  useEffect(() => {
+    if (registrationBranchId) return;
+    const preferred = branchScope.activeBranchIds?.length === 1 ? branchScope.activeBranchIds[0] : me.branchId;
+    if (preferred) setRegistrationBranchId(preferred);
+    else if (branchScope.availableBranches.length === 1) setRegistrationBranchId(branchScope.availableBranches[0].id);
+  }, [branchScope.activeBranchIds, branchScope.availableBranches, me.branchId, registrationBranchId]);
+  const canUseType = (role: "pre_register_guest" | "pre_register_contractor" | "pre_register_delivery") =>
+    me.isAdmin || me.globalRoles.includes(role) || (!!registrationBranchId && (me.rolesByBranch[registrationBranchId] ?? []).includes(role));
+  const allowedTypes = useMemo(() => TYPE_OPTIONS.filter((o) => canUseType(o.role)), [me.globalRoles, me.rolesByBranch, me.isAdmin, registrationBranchId]);
+  useEffect(() => {
+    if (allowedTypes.length > 0 && !allowedTypes.some((o) => o.value === visitType)) setVisitType(allowedTypes[0].value);
+  }, [allowedTypes, visitType]);
+
   const hosts = useQuery({
-    queryKey: ["hosts", branchFilter],
+    queryKey: ["hosts", registrationBranchId],
+    enabled: !!registrationBranchId,
     queryFn: async () => {
-      // Resolve allowed branch ids for the host filter.
-      let allowedIds: string[] | null = null; // null = no restriction
-      if (branchFilter.kind === "eq") allowedIds = [branchFilter.branchId];
-      else if (branchFilter.kind === "in") allowedIds = branchFilter.branchIds;
-
-      if (allowedIds && allowedIds.length === 0) return [];
-
-      if (!allowedIds) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, full_name, position")
-          .order("full_name");
-        if (error) throw error;
-        return data ?? [];
-      }
+      const allowedIds = [registrationBranchId];
 
       const [primary, assigned] = await Promise.all([
         supabase.from("profiles").select("id, full_name, position").in("branch_id", allowedIds),
@@ -90,6 +100,9 @@ function PreRegisterPage() {
   const submit = useMutation({
     mutationFn: async () => {
       const parsed = schema.parse(form);
+      if (!registrationBranchId) throw new Error("Select the branch for this visit.");
+      if (allowedTypes.length === 0) throw new Error("You do not have rights to pre-register any visitor type at this branch.");
+      if (!hostId && !manualHostName.trim()) throw new Error("Select a host or type the host name.");
 
       let cleanAssets: AssetRow[] = [];
       if (hasAssets === "yes") {
@@ -120,7 +133,8 @@ function PreRegisterPage() {
 
       const { data: visit, error: vErr } = await supabase.from("visits").insert({
         visitor_id: visitorId,
-        host_id: hostId || me.userId,
+        host_id: hostId || null,
+        host_name: hostId ? hosts.data?.find((h) => h.id === hostId)?.full_name ?? null : manualHostName.trim(),
         visit_type: visitType,
         visit_mode: "walk_in",
         purpose: parsed.purpose,
@@ -130,7 +144,7 @@ function PreRegisterPage() {
         pre_registered: true,
         expected_duration_minutes: duration,
         created_by: me.userId,
-        branch_id: me.branchId,
+        branch_id: registrationBranchId,
       }).select("id").single();
       if (vErr) throw vErr;
 
@@ -183,10 +197,20 @@ function PreRegisterPage() {
             <Select value={visitType} onValueChange={(v: any) => setVisitType(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="guest">Guest</SelectItem>
-                <SelectItem value="supplier">Supplier</SelectItem>
-                <SelectItem value="contractor">Contractor</SelectItem>
-                <SelectItem value="delivery">Delivery</SelectItem>
+                {allowedTypes.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Branch</Label>
+            <Select value={registrationBranchId} onValueChange={(v) => { setRegistrationBranchId(v); setHostId(""); setManualHostName(""); }}>
+              <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+              <SelectContent>
+                {branchScope.availableBranches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -196,7 +220,7 @@ function PreRegisterPage() {
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Host</Label>
-            <Select value={hostId} onValueChange={setHostId}>
+            <Select value={hostId} onValueChange={(v) => { setHostId(v); setManualHostName(""); }}>
               <SelectTrigger><SelectValue placeholder="Select host" /></SelectTrigger>
               <SelectContent>
                 {hosts.data?.map((h) => (
@@ -204,6 +228,7 @@ function PreRegisterPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Input placeholder="Or type host name" value={manualHostName} onChange={(e) => { setManualHostName(e.target.value); if (e.target.value.trim()) setHostId(""); }} />
           </div>
         </CardContent>
       </Card>
