@@ -120,12 +120,14 @@ function RegisterPage() {
   });
 
   const availableBadges = useQuery({
-    queryKey: ["badges", "available"],
+    queryKey: ["badges", "available", registrationBranchId],
+    enabled: !!registrationBranchId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("badges")
         .select("badge_number")
         .eq("status", "available")
+        .eq("branch_id", registrationBranchId)
         .order("badge_number");
       if (error) throw error;
       return data;
@@ -134,7 +136,12 @@ function RegisterPage() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const parsed = schema.parse({ ...form, host_id: hostId });
+      if (!registrationBranchId) throw new Error("Select the branch for this registration.");
+      if (allowedTypes.length === 0) throw new Error("You do not have rights to register any visitor type at this branch.");
+      const parsed = schema.parse({ ...form, host_id: hostId, host_name: manualHostName });
+      if (!parsed.host_id && !parsed.host_name?.trim()) {
+        throw new Error("Select a host or type the host name.");
+      }
 
       // Validate assets only if visitor declared bringing assets
       let cleanAssets: AssetRow[] = [];
@@ -202,7 +209,8 @@ function RegisterPage() {
         .from("visits")
         .insert({
           visitor_id: visitorId,
-          host_id: parsed.host_id,
+          host_id: parsed.host_id || null,
+          host_name: parsed.host_id ? hosts.data?.find((h) => h.id === parsed.host_id)?.full_name ?? null : parsed.host_name?.trim() || null,
           visit_type: visitType,
           visit_mode: visitMode,
           purpose: parsed.purpose,
@@ -214,7 +222,7 @@ function RegisterPage() {
           status: "checked_in",
           check_in_at: new Date().toISOString(),
           created_by: me.userId,
-          branch_id: me.branchId,
+          branch_id: registrationBranchId,
         })
         .select("id")
         .single();
@@ -238,7 +246,8 @@ function RegisterPage() {
         await supabase
           .from("badges")
           .update({ status: "issued" })
-          .eq("badge_number", parsed.badge_number);
+          .eq("badge_number", parsed.badge_number)
+          .eq("branch_id", registrationBranchId);
       }
       return visit.id;
     },
@@ -274,10 +283,20 @@ function RegisterPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="guest">Guest</SelectItem>
-                <SelectItem value="supplier">Supplier</SelectItem>
-                <SelectItem value="contractor">Contractor</SelectItem>
-                <SelectItem value="delivery">Delivery</SelectItem>
+                {allowedTypes.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Branch <span className="text-destructive">*</span></Label>
+            <Select value={registrationBranchId} onValueChange={(v) => { setRegistrationBranchId(v); setHostId(""); setManualHostName(""); set("badge_number", ""); }}>
+              <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+              <SelectContent>
+                {branchScope.availableBranches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
