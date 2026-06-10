@@ -11,7 +11,10 @@ type Ctx = {
   availableBranches: Branch[];
   /** Currently selected branch ID, or null = "All branches" */
   activeBranchId: string | null;
+  /** Selected branch IDs; null = all permitted branches */
+  activeBranchIds: string[] | null;
   setActiveBranchId: (id: string | null) => void;
+  setActiveBranchIds: (ids: string[] | null) => void;
   /** If active=null, show data from all branches the user is allowed to see */
   canChooseAll: boolean;
   isLoading: boolean;
@@ -43,36 +46,44 @@ export function BranchScopeProvider({ children }: { children: ReactNode }) {
 
   const canChooseAll = me.canViewAllBranches;
 
-  const [activeBranchId, setActive] = useState<string | null>(() => {
+  const [activeBranchIds, setActive] = useState<string[] | null>(() => {
     if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(STORAGE_KEY);
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (!saved) return null;
+    return saved.split(",").filter(Boolean);
   });
+  const activeBranchId = activeBranchIds?.length === 1 ? activeBranchIds[0] : null;
 
   // Clamp invalid selection (changed branches, no longer permitted, etc.)
   useEffect(() => {
     if (availableBranches.length === 0) return;
-    if (activeBranchId === null && canChooseAll) return;
-    const stillValid = availableBranches.some((b) => b.id === activeBranchId);
-    if (!stillValid) {
-      const next = canChooseAll ? null : availableBranches[0].id;
+    if (activeBranchIds === null && canChooseAll) return;
+    const valid = (activeBranchIds ?? []).filter((id) => availableBranches.some((b) => b.id === id));
+    if (valid.length !== (activeBranchIds ?? []).length || valid.length === 0) {
+      const next = canChooseAll ? null : [availableBranches[0].id];
       setActive(next);
     }
-  }, [availableBranches, canChooseAll, activeBranchId]);
+  }, [availableBranches, canChooseAll, activeBranchIds]);
 
-  const setActiveBranchId = (id: string | null) => {
-    setActive(id);
+  const setActiveBranchIds = (ids: string[] | null) => {
+    const next = ids && ids.length > 0 ? ids : null;
+    setActive(next);
     if (typeof window !== "undefined") {
-      if (id === null) window.localStorage.removeItem(STORAGE_KEY);
-      else window.localStorage.setItem(STORAGE_KEY, id);
+      if (next === null) window.localStorage.removeItem(STORAGE_KEY);
+      else window.localStorage.setItem(STORAGE_KEY, next.join(","));
     }
   };
+
+  const setActiveBranchId = (id: string | null) => setActiveBranchIds(id ? [id] : null);
 
   return (
     <BranchScopeContext.Provider
       value={{
         availableBranches,
         activeBranchId,
+        activeBranchIds,
         setActiveBranchId,
+        setActiveBranchIds,
         canChooseAll,
         isLoading: allBranches.isLoading || me.isLoading,
       }}
@@ -95,8 +106,9 @@ export function useBranchScope() {
  * - If "All" + restricted user → their list of allowed ids (use .in())
  */
 export function useEffectiveBranchFilter() {
-  const { activeBranchId, availableBranches, canChooseAll } = useBranchScope();
-  if (activeBranchId) return { kind: "eq" as const, branchId: activeBranchId };
+  const { activeBranchIds, availableBranches, canChooseAll } = useBranchScope();
+  if (activeBranchIds?.length === 1) return { kind: "eq" as const, branchId: activeBranchIds[0] };
+  if (activeBranchIds && activeBranchIds.length > 1) return { kind: "in" as const, branchIds: activeBranchIds };
   if (canChooseAll) return { kind: "all" as const };
   return { kind: "in" as const, branchIds: availableBranches.map((b) => b.id) };
 }
