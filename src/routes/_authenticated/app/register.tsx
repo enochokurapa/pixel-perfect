@@ -83,8 +83,8 @@ function RegisterPage() {
   }, [branchScope.activeBranchIds, branchScope.availableBranches, me.branchId, registrationBranchId]);
 
   const canUseType = (role: "register_guest" | "register_contractor" | "register_delivery") =>
-    me.isAdmin || me.roles.includes(role) || (!!registrationBranchId && (me.rolesByBranch[registrationBranchId] ?? []).includes(role));
-  const allowedTypes = useMemo(() => TYPE_OPTIONS.filter((o) => canUseType(o.role)), [me.roles, me.rolesByBranch, me.isAdmin, registrationBranchId]);
+    me.isAdmin || me.globalRoles.includes(role) || (!!registrationBranchId && (me.rolesByBranch[registrationBranchId] ?? []).includes(role));
+  const allowedTypes = useMemo(() => TYPE_OPTIONS.filter((o) => canUseType(o.role)), [me.globalRoles, me.rolesByBranch, me.isAdmin, registrationBranchId]);
   useEffect(() => {
     if (allowedTypes.length > 0 && !allowedTypes.some((o) => o.value === visitType)) setVisitType(allowedTypes[0].value);
   }, [allowedTypes, visitType]);
