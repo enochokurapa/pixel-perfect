@@ -50,7 +50,7 @@ function downloadExcel(v: any, assetList: VisitAsset[]) {
     { Field: "Company", Value: v.visitor?.company ?? "" },
     { Field: "ID type", Value: v.visitor?.id_type ?? "" },
     { Field: "ID number", Value: v.visitor?.id_number ?? "" },
-    { Field: "Host", Value: v.host?.full_name ?? "" },
+    { Field: "Host", Value: v.host?.full_name ?? v.host_name ?? "" },
     { Field: "Purpose", Value: v.purpose ?? "" },
     { Field: "Visit type", Value: v.visit_type ?? "" },
     { Field: "Visit mode", Value: v.visit_mode ?? "" },
@@ -82,7 +82,7 @@ function downloadPdf(v: any, assetList: VisitAsset[]) {
     ["ID number", v.visitor?.id_number ?? "—"],
   ];
   const visit: [string, string][] = [
-    ["Host", v.host?.full_name ?? "—"],
+    ["Host", v.host?.full_name ?? v.host_name ?? "—"],
     ["Purpose", v.purpose ?? "—"],
     ["Visit type", v.visit_type ?? "—"],
     ["Visit mode", v.visit_mode ?? "—"],
@@ -235,7 +235,8 @@ function VisitDetail() {
       await supabase
         .from("badges")
         .update({ status: "issued" })
-        .eq("badge_number", payload.badge_number);
+        .eq("badge_number", payload.badge_number)
+        .eq("branch_id", v.branch_id);
     }
     qc.invalidateQueries();
   };
@@ -256,7 +257,8 @@ function VisitDetail() {
       await supabase
         .from("badges")
         .update({ status: "available" })
-        .eq("badge_number", v.badge_number);
+        .eq("badge_number", v.badge_number)
+        .eq("branch_id", v.branch_id);
       qc.invalidateQueries();
     }
   };
@@ -336,7 +338,7 @@ function VisitDetail() {
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2 text-sm">
             <Info label="Purpose" value={v.purpose} />
-            <Info label="Host" value={v.host?.full_name ?? "—"} />
+            <Info label="Host" value={v.host?.full_name ?? v.host_name ?? "—"} />
             <Info label="Visit type" value={v.visit_type} className="capitalize" />
             <Info label="Visit mode" value={v.visit_mode.replace("_", " ")} className="capitalize" />
             <Info label="Badge" value={v.badge_number ? `#${v.badge_number}` : "—"} />
