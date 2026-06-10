@@ -682,7 +682,23 @@ function StatCard({
   );
 }
 
-export function StatusBadge({ status }: { status: string }) {
+function MiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md bg-muted/40 px-2 py-2">
+      <div className="font-display text-lg font-semibold tabular-nums">{value}</div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+export function StatusBadge({ status, approval }: { status: string; approval?: string | null }) {
+  if (approval === "not_approved") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive">
+        Rejected
+      </span>
+    );
+  }
   const map: Record<string, { label: string; cls: string }> = {
     pending: { label: "Pending", cls: "bg-muted text-muted-foreground" },
     checked_in: { label: "Inside", cls: "bg-success/15 text-success" },
