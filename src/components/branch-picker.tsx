@@ -35,7 +35,8 @@ export function BranchPicker() {
       ? availableBranches.find((b) => b.id === selected[0])?.name ?? "1 branch"
       : `${selected.length} branches`;
     const toggle = (id: string, on: boolean) => {
-      const next = on ? [...new Set([...selected, id])] : selected.filter((x) => x !== id);
+      const base = activeBranchIds === null ? availableBranches.map((b) => b.id) : selected;
+      const next = on ? [...new Set([...base, id])] : base.filter((x) => x !== id);
       setActiveBranchIds(next.length === availableBranches.length || next.length === 0 ? null : next);
     };
     return (
