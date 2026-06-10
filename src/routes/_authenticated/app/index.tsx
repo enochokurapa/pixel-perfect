@@ -362,6 +362,23 @@ function Dashboard() {
 
       <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} />
 
+      {(branchDashboards.data?.length ?? 0) > 1 && (
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {branchDashboards.data?.map((b) => (
+            <Card key={b.id}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{b.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-4 gap-2 text-center text-xs">
+                <MiniStat label="Inside" value={b.inside} />
+                <MiniStat label="Today" value={b.today} />
+                <MiniStat label="Overstay" value={b.overstay} />
+                <MiniStat label="Badges" value={b.availableBadges} />
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      )}
 
       <section className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -588,12 +605,12 @@ function Dashboard() {
                         ) : null}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Host: {v.host?.full_name ?? "—"} · {v.purpose}
+                        Host: {v.host?.full_name ?? v.host_name ?? "—"} · {v.purpose}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       {v.badge_number && <Badge variant="outline">#{v.badge_number}</Badge>}
-                      <StatusBadge status={v.status} />
+                      <StatusBadge status={v.status} approval={v.approval} />
                     </div>
                   </Link>
                 ))}
