@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-session";
-import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { useBranchScope } from "@/hooks/use-branch-scope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,13 +24,24 @@ const schema = z.object({
   purpose: z.string().trim().min(2).max(500),
 });
 
+type VisitorType = "guest" | "supplier" | "contractor" | "delivery";
+const TYPE_OPTIONS: { value: VisitorType; label: string; role: "pre_register_guest" | "pre_register_contractor" | "pre_register_delivery" }[] = [
+  { value: "guest", label: "Guest", role: "pre_register_guest" },
+  { value: "contractor", label: "Contractor", role: "pre_register_contractor" },
+  { value: "delivery", label: "Delivery", role: "pre_register_delivery" },
+  { value: "supplier", label: "Supplier", role: "pre_register_delivery" },
+];
+
 function PreRegisterPage() {
   const me = useCurrentUser();
+  const branchScope = useBranchScope();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [visitType, setVisitType] = useState<"guest" | "supplier" | "contractor" | "delivery">("guest");
+  const [visitType, setVisitType] = useState<VisitorType>("guest");
   const [hostId, setHostId] = useState<string>(me.userId ?? "");
+  const [manualHostName, setManualHostName] = useState("");
+  const [registrationBranchId, setRegistrationBranchId] = useState("");
   const [duration, setDuration] = useState(180);
   const [form, setForm] = useState({ full_name: "", phone: "", email: "", company: "", purpose: "" });
   type AssetRow = { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string };
@@ -39,25 +50,24 @@ function PreRegisterPage() {
     { kind: "device", brand: "", serial: "", description: "" },
   ]);
 
-  const branchFilter = useEffectiveBranchFilter();
+  useEffect(() => {
+    if (registrationBranchId) return;
+    const preferred = branchScope.activeBranchIds?.length === 1 ? branchScope.activeBranchIds[0] : me.branchId;
+    if (preferred) setRegistrationBranchId(preferred);
+    else if (branchScope.availableBranches.length === 1) setRegistrationBranchId(branchScope.availableBranches[0].id);
+  }, [branchScope.activeBranchIds, branchScope.availableBranches, me.branchId, registrationBranchId]);
+  const canUseType = (role: "pre_register_guest" | "pre_register_contractor" | "pre_register_delivery") =>
+    me.isAdmin || me.globalRoles.includes(role) || (!!registrationBranchId && (me.rolesByBranch[registrationBranchId] ?? []).includes(role));
+  const allowedTypes = useMemo(() => TYPE_OPTIONS.filter((o) => canUseType(o.role)), [me.globalRoles, me.rolesByBranch, me.isAdmin, registrationBranchId]);
+  useEffect(() => {
+    if (allowedTypes.length > 0 && !allowedTypes.some((o) => o.value === visitType)) setVisitType(allowedTypes[0].value);
+  }, [allowedTypes, visitType]);
+
   const hosts = useQuery({
-    queryKey: ["hosts", branchFilter],
+    queryKey: ["hosts", registrationBranchId],
+    enabled: !!registrationBranchId,
     queryFn: async () => {
-      // Resolve allowed branch ids for the host filter.
-      let allowedIds: string[] | null = null; // null = no restriction
-      if (branchFilter.kind === "eq") allowedIds = [branchFilter.branchId];
-      else if (branchFilter.kind === "in") allowedIds = branchFilter.branchIds;
-
-      if (allowedIds && allowedIds.length === 0) return [];
-
-      if (!allowedIds) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, full_name, position")
-          .order("full_name");
-        if (error) throw error;
-        return data ?? [];
-      }
+      const allowedIds = [registrationBranchId];
 
       const [primary, assigned] = await Promise.all([
         supabase.from("profiles").select("id, full_name, position").in("branch_id", allowedIds),
