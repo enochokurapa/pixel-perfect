@@ -59,6 +59,7 @@ export type Database = {
       badges: {
         Row: {
           badge_number: string
+          branch_id: string | null
           created_at: string
           id: string
           notes: string | null
@@ -66,6 +67,7 @@ export type Database = {
         }
         Insert: {
           badge_number: string
+          branch_id?: string | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -73,12 +75,21 @@ export type Database = {
         }
         Update: {
           badge_number?: string
+          branch_id?: string | null
           created_at?: string
           id?: string
           notes?: string | null
           status?: Database["public"]["Enums"]["badge_status"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "badges_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       blacklist: {
         Row: {
@@ -596,6 +607,7 @@ export type Database = {
           expected_duration_minutes: number
           feedback: string | null
           host_id: string | null
+          host_name: string | null
           id: string
           kiosk_self_registered: boolean
           overstay_notified_at: string | null
@@ -627,6 +639,7 @@ export type Database = {
           expected_duration_minutes?: number
           feedback?: string | null
           host_id?: string | null
+          host_name?: string | null
           id?: string
           kiosk_self_registered?: boolean
           overstay_notified_at?: string | null
@@ -658,6 +671,7 @@ export type Database = {
           expected_duration_minutes?: number
           feedback?: string | null
           host_id?: string | null
+          host_name?: string | null
           id?: string
           kiosk_self_registered?: boolean
           overstay_notified_at?: string | null
