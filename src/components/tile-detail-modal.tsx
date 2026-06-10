@@ -45,15 +45,17 @@ export function TileDetailModal({
   tile,
   onClose,
   branchId,
+  branchIds,
 }: {
   tile: TileKey | null;
   onClose: () => void;
   branchId?: string | null;
+  branchIds?: string[] | null;
 }) {
   const open = tile !== null;
 
   const q = useQuery({
-    queryKey: ["tile-detail", tile, branchId ?? "all"],
+    queryKey: ["tile-detail", tile, branchId ?? branchIds?.join(",") ?? "all"],
     enabled: open,
     queryFn: async () => {
 
@@ -61,11 +63,14 @@ export function TileDetailModal({
       const now = Date.now();
       if (tile === "badgesIssued" || tile === "badgesUnissued") {
         const status = tile === "badgesIssued" ? "issued" : "available";
-        const { data, error } = await supabase
+        let bq = supabase
           .from("badges")
           .select("badge_number, status, notes, created_at")
           .eq("status", status)
           .order("badge_number");
+        if (branchId) bq = bq.eq("branch_id", branchId);
+        else if (branchIds && branchIds.length > 0) bq = bq.in("branch_id", branchIds);
+        const { data, error } = await bq;
         if (error) throw error;
         return (data ?? []).map((b) => ({
           kind: "badge" as const,
@@ -82,6 +87,7 @@ export function TileDetailModal({
         )
         .order("created_at", { ascending: false });
       if (branchId) query = query.eq("branch_id", branchId);
+      else if (branchIds && branchIds.length > 0) query = query.in("branch_id", branchIds);
 
 
       if (tile === "inside" || tile === "overstay") {
@@ -99,6 +105,7 @@ export function TileDetailModal({
           .gte("check_in_at", todayStart.toISOString())
           .not("check_in_at", "is", null);
         if (branchId) inToday = inToday.eq("branch_id", branchId);
+        else if (branchIds && branchIds.length > 0) inToday = inToday.in("branch_id", branchIds);
         const { data: todayVisits } = await inToday;
         const todayIds = (todayVisits ?? []).map((v) => v.id);
         if (todayIds.length === 0) return [];
