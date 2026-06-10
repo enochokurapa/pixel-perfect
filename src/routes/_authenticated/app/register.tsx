@@ -348,7 +348,7 @@ function RegisterPage() {
                 if (!phone) return;
                 const { data: existing } = await supabase
                   .from("visitors")
-                  .select("full_name, email, company")
+                  .select("id, full_name, email, company")
                   .eq("phone", phone)
                   .maybeSingle();
                 if (existing) {
@@ -361,6 +361,37 @@ function RegisterPage() {
                   setDuplicateNotice(
                     `Returning visitor — details auto-filled from previous visit (${existing.full_name}).`,
                   );
+                  const { data: priorVisits } = await supabase
+                    .from("visits")
+                    .select("id")
+                    .eq("visitor_id", existing.id)
+                    .order("created_at", { ascending: false })
+                    .limit(10);
+                  const priorIds = (priorVisits ?? []).map((v) => v.id);
+                  if (priorIds.length > 0) {
+                    const { data: priorAssets } = await supabase
+                      .from("visit_assets")
+                      .select("kind, brand, serial, description")
+                      .in("visit_id", priorIds)
+                      .order("created_at", { ascending: false })
+                      .limit(6);
+                    const unique = Array.from(
+                      new Map(
+                        (priorAssets ?? [])
+                          .filter((a) => a.brand || a.serial || a.description)
+                          .map((a) => [`${a.kind}-${a.brand ?? ""}-${a.serial ?? ""}`, a]),
+                      ).values(),
+                    );
+                    if (unique.length > 0) {
+                      setHasAssets("yes");
+                      setAssets(unique.map((a) => ({
+                        kind: a.kind as AssetRow["kind"],
+                        brand: a.brand ?? "",
+                        serial: a.serial ?? "",
+                        description: a.description ?? "",
+                      })));
+                    }
+                  }
                   toast.info(`Returning visitor: ${existing.full_name}`);
                 } else {
                   setDuplicateNotice(null);
