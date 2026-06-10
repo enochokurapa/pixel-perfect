@@ -111,7 +111,7 @@ function ReportsPage() {
         const k = hostName;
         byHost[k] = byHost[k]
           ? { ...byHost[k], count: byHost[k].count + 1 }
-          : { name: k, dept: v.host.department ?? null, count: 1 };
+          : { name: k, dept: v.host?.department ?? null, count: 1 };
       }
       const dept = v.host?.department ?? (v.host_name ? "Manual host" : "Unassigned");
       byDept[dept] = (byDept[dept] ?? 0) + 1;
