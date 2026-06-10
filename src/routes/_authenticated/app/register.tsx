@@ -438,7 +438,7 @@ function RegisterPage() {
 
           <div className="space-y-2">
             <Label>
-              Host <span className="text-destructive">*</span>
+              Host in system
             </Label>
             <Select value={hostId} onValueChange={setHostId}>
               <SelectTrigger>
@@ -454,6 +454,14 @@ function RegisterPage() {
               </SelectContent>
             </Select>
           </div>
+          <Field
+            label="Or type host name"
+            value={manualHostName}
+            onChange={(v) => {
+              setManualHostName(v);
+              if (v.trim()) setHostId("");
+            }}
+          />
 
           <div className="space-y-2">
             <Label>Badge number</Label>
