@@ -270,6 +270,7 @@ function ReportsPage() {
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
                 <SelectItem value="checked_in">Checked-in</SelectItem>
                 <SelectItem value="checked_out">Checked-out</SelectItem>
                 <SelectItem value="overstayed">Overstayed</SelectItem>
@@ -480,6 +481,7 @@ function VisitTable({
                   <th className="px-4 py-2 text-left">Host</th>
                   <th className="px-4 py-2 text-left">Branch</th>
                   <th className="px-4 py-2 text-left">When</th>
+                  <th className="px-4 py-2 text-left">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -487,11 +489,12 @@ function VisitTable({
                   <tr key={r.id}>
                     <td className="px-4 py-2">{r.visitor?.full_name ?? "—"}</td>
                     <td className="px-4 py-2 text-muted-foreground">{r.visitor?.company ?? "—"}</td>
-                    <td className="px-4 py-2">{r.host?.full_name ?? "—"}</td>
+                    <td className="px-4 py-2">{r.host?.full_name ?? r.host_name ?? "—"}</td>
                     <td className="px-4 py-2 text-muted-foreground">{r.branch?.name ?? "—"}</td>
                     <td className="px-4 py-2 text-xs text-muted-foreground">
                       {new Date(r.check_in_at ?? r.created_at).toLocaleString()}
                     </td>
+                    <td className="px-4 py-2 capitalize">{r.approval === "not_approved" ? "Rejected" : r.status.replace("_", " ")}</td>
                   </tr>
                 ))}
               </tbody>
