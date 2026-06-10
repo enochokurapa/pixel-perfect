@@ -100,6 +100,9 @@ function PreRegisterPage() {
   const submit = useMutation({
     mutationFn: async () => {
       const parsed = schema.parse(form);
+      if (!registrationBranchId) throw new Error("Select the branch for this visit.");
+      if (allowedTypes.length === 0) throw new Error("You do not have rights to pre-register any visitor type at this branch.");
+      if (!hostId && !manualHostName.trim()) throw new Error("Select a host or type the host name.");
 
       let cleanAssets: AssetRow[] = [];
       if (hasAssets === "yes") {
@@ -130,7 +133,8 @@ function PreRegisterPage() {
 
       const { data: visit, error: vErr } = await supabase.from("visits").insert({
         visitor_id: visitorId,
-        host_id: hostId || me.userId,
+        host_id: hostId || null,
+        host_name: hostId ? hosts.data?.find((h) => h.id === hostId)?.full_name ?? null : manualHostName.trim(),
         visit_type: visitType,
         visit_mode: "walk_in",
         purpose: parsed.purpose,
@@ -140,7 +144,7 @@ function PreRegisterPage() {
         pre_registered: true,
         expected_duration_minutes: duration,
         created_by: me.userId,
-        branch_id: me.branchId,
+        branch_id: registrationBranchId,
       }).select("id").single();
       if (vErr) throw vErr;
 
@@ -193,10 +197,20 @@ function PreRegisterPage() {
             <Select value={visitType} onValueChange={(v: any) => setVisitType(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="guest">Guest</SelectItem>
-                <SelectItem value="supplier">Supplier</SelectItem>
-                <SelectItem value="contractor">Contractor</SelectItem>
-                <SelectItem value="delivery">Delivery</SelectItem>
+                {allowedTypes.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Branch</Label>
+            <Select value={registrationBranchId} onValueChange={(v) => { setRegistrationBranchId(v); setHostId(""); setManualHostName(""); }}>
+              <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+              <SelectContent>
+                {branchScope.availableBranches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -206,7 +220,7 @@ function PreRegisterPage() {
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Host</Label>
-            <Select value={hostId} onValueChange={setHostId}>
+            <Select value={hostId} onValueChange={(v) => { setHostId(v); setManualHostName(""); }}>
               <SelectTrigger><SelectValue placeholder="Select host" /></SelectTrigger>
               <SelectContent>
                 {hosts.data?.map((h) => (
@@ -214,6 +228,7 @@ function PreRegisterPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Input placeholder="Or type host name" value={manualHostName} onChange={(e) => { setManualHostName(e.target.value); if (e.target.value.trim()) setHostId(""); }} />
           </div>
         </CardContent>
       </Card>
