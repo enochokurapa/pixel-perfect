@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useBranchScope, useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 
 type BadgeRow = {
   id: string;
@@ -20,12 +21,19 @@ export const Route = createFileRoute("/_authenticated/app/badges")({
 
 function BadgesPage() {
   const qc = useQueryClient();
+  const branchScope = useBranchScope();
+  const branchFilter = useEffectiveBranchFilter();
   const [newBadge, setNewBadge] = useState("");
+  const targetBranchId = branchFilter.kind === "eq" ? branchFilter.branchId : branchScope.availableBranches[0]?.id ?? "";
 
   const badges = useQuery({
-    queryKey: ["badges", "all"],
+    queryKey: ["badges", "all", branchFilter],
     queryFn: async () => {
-      const { data, error } = await supabase.from("badges").select("*").order("badge_number");
+      let q = supabase.from("badges").select("*").order("badge_number");
+      if (branchFilter.kind === "eq") q = q.eq("branch_id", branchFilter.branchId);
+      else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0) q = q.in("branch_id", branchFilter.branchIds);
+      else if (branchFilter.kind === "in") return [];
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -34,7 +42,8 @@ function BadgesPage() {
   const add = useMutation({
     mutationFn: async () => {
       if (!newBadge.trim()) throw new Error("Badge number required");
-      const { error } = await supabase.from("badges").insert({ badge_number: newBadge.trim() });
+      if (!targetBranchId) throw new Error("Select one branch before adding a badge.");
+      const { error } = await supabase.from("badges").insert({ badge_number: newBadge.trim(), branch_id: targetBranchId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -56,7 +65,7 @@ function BadgesPage() {
       <header>
         <h1 className="font-display text-3xl font-semibold">Badges</h1>
         <p className="text-sm text-muted-foreground">
-          Inventory of physical badges and their current status.
+          Inventory of physical badges for the active branch selection.
         </p>
       </header>
 
@@ -71,6 +80,9 @@ function BadgesPage() {
             onChange={(e) => setNewBadge(e.target.value)}
             className="max-w-xs"
           />
+          {branchFilter.kind !== "eq" && (
+            <span className="self-center text-xs text-muted-foreground">Adding to {branchScope.availableBranches[0]?.name ?? "first branch"}</span>
+          )}
           <Button onClick={() => add.mutate()} disabled={add.isPending}>
             Add
           </Button>
