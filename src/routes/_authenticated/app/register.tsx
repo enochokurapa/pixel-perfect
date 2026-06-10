@@ -440,7 +440,7 @@ function RegisterPage() {
             <Label>
               Host in system
             </Label>
-            <Select value={hostId} onValueChange={setHostId}>
+            <Select value={hostId} onValueChange={(v) => { setHostId(v); setManualHostName(""); }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select host" />
               </SelectTrigger>
