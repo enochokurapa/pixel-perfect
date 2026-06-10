@@ -231,7 +231,7 @@ function VisitDetail() {
       badge_number: payload.badge_number,
       assets_verified: payload.assets_verified,
     });
-    if (payload.badge_number) {
+    if (payload.badge_number && v.branch_id) {
       await supabase
         .from("badges")
         .update({ status: "issued" })
@@ -253,7 +253,7 @@ function VisitDetail() {
       assets_verified: verification.assets_verified,
       checkout_notes: verification.checkout_notes || null,
     });
-    if (v.badge_number) {
+    if (v.badge_number && v.branch_id) {
       await supabase
         .from("badges")
         .update({ status: "available" })
