@@ -31,17 +31,14 @@ export function KioskQrCard() {
   }, [branches.data, branchId]);
 
   // Build a publicly-accessible kiosk URL.
-  // Lovable preview URLs (id-preview--<id>.lovable.app) require a Lovable
-  // account to access, which breaks visitor self-registration. Rewrite
-  // them to the stable public published URL (project--<id>.lovable.app)
-  // so visitors without a Lovable account can open the kiosk.
+  // Preview URLs require a Lovable account, so the QR must always point to
+  // the published production URL (project--<id>.lovable.app), which anyone
+  // can open. The app must be published once for this link to be live.
   const publicOrigin = (() => {
     if (typeof window === "undefined") return "";
     const host = window.location.hostname;
-    const preview = host.match(/^id-preview--([0-9a-f-]+)\.lovable\.app$/i);
-    if (preview) return `https://project--${preview[1]}-dev.lovable.app`;
-    const projDev = host.match(/^project--([0-9a-f-]+)-dev\.lovable\.app$/i);
-    if (projDev) return `https://project--${projDev[1]}-dev.lovable.app`;
+    const m = host.match(/^(?:id-preview|project)--([0-9a-f-]+)(?:-dev)?\.lovable\.app$/i);
+    if (m) return `https://project--${m[1]}.lovable.app`;
     return window.location.origin;
   })();
 
