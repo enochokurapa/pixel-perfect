@@ -13,6 +13,7 @@ import {
   BadgeCheck,
   UserPlus,
   BadgeMinus,
+  CalendarClock,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -70,14 +71,24 @@ function Dashboard() {
           .select("id, check_in_at, expected_duration_minutes")
           .eq("status", "checked_in"),
       );
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
       const todayQ = applyBranch(
         supabase
           .from("visits")
           .select("id", { count: "exact", head: true })
-          .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
+          .gte("check_in_at", todayStart.toISOString())
+          .not("check_in_at", "is", null),
       );
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      const preRegQ = applyBranch(
+        supabase
+          .from("visits")
+          .select("id", { count: "exact", head: true })
+          .eq("pre_registered", true)
+          .eq("status", "pending")
+          .neq("approval", "not_approved")
+          .is("check_in_at", null),
+      );
       const todayAssetsVisitsQ = applyBranch(
         supabase
           .from("visits")
@@ -85,12 +96,13 @@ function Dashboard() {
           .gte("check_in_at", todayStart.toISOString())
           .not("check_in_at", "is", null),
       );
-      const [insideRows, today, badgesIssued, badgesAvailable, todayInVisits] = await Promise.all([
+      const [insideRows, today, badgesIssued, badgesAvailable, todayInVisits, preRegPending] = await Promise.all([
         insideQ,
         todayQ,
         applyBranch(supabase.from("badges").select("id", { count: "exact", head: true }).eq("status", "issued")),
         applyBranch(supabase.from("badges").select("id", { count: "exact", head: true }).eq("status", "available")),
         todayAssetsVisitsQ,
+        preRegQ,
       ]);
       const inside = insideRows.data ?? [];
       const overstay = inside.filter((v) => {
@@ -116,7 +128,9 @@ function Dashboard() {
         badgesIssued: badgesIssued.count ?? 0,
         badgesUnissued: badgesAvailable.count ?? 0,
         withAssets: withAssetsCount,
+        preReg: preRegPending.count ?? 0,
       };
+
 
     },
     refetchInterval: 60_000,
@@ -352,13 +366,14 @@ function Dashboard() {
         </div>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Visitors inside" value={stats.data?.inside} icon={Users} tone="info" onClick={() => setOpenTile("inside")} />
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <StatCard label="Pre-registered (pending)" value={stats.data?.preReg} icon={CalendarClock} tone="info" onClick={() => setOpenTile("preReg")} />
         <StatCard label="Today's visits" value={stats.data?.today} icon={LogIn} tone="default" onClick={() => setOpenTile("today")} />
+        <StatCard label="Visitors inside" value={stats.data?.inside} icon={Users} tone="info" onClick={() => setOpenTile("inside")} />
         <StatCard label="Overstayed" value={stats.data?.overstay} icon={AlertTriangle} tone="warning" onClick={() => setOpenTile("overstay")} />
         <StatCard label="Badges issued" value={stats.data?.badgesIssued} icon={BadgeCheck} tone="default" onClick={() => setOpenTile("badgesIssued")} />
         <StatCard label="Unissued badges" value={stats.data?.badgesUnissued} icon={BadgeMinus} tone="info" onClick={() => setOpenTile("badgesUnissued")} />
-        <StatCard label="With assets" value={stats.data?.withAssets} icon={Laptop} tone="default" onClick={() => setOpenTile("withAssets")} />
+        <StatCard label="With assets (today)" value={stats.data?.withAssets} icon={Laptop} tone="default" onClick={() => setOpenTile("withAssets")} />
       </section>
 
       <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} branchIds={visibleBranchIds.length > 0 ? visibleBranchIds : null} />
