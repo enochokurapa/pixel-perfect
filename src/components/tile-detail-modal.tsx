@@ -21,7 +21,8 @@ export type TileKey =
   | "overstay"
   | "badgesIssued"
   | "badgesUnissued"
-  | "withAssets";
+  | "withAssets"
+  | "preReg";
 
 const TITLES: Record<TileKey, string> = {
   inside: "Visitors currently inside",
@@ -30,6 +31,7 @@ const TITLES: Record<TileKey, string> = {
   badgesIssued: "Badges currently issued",
   badgesUnissued: "Unissued (available) badges",
   withAssets: "Visits with assets",
+  preReg: "Pre-registered — awaiting approval or arrival",
 };
 
 function fmtDuration(ms: number) {
@@ -95,7 +97,13 @@ export function TileDetailModal({
       } else if (tile === "today") {
         const start = new Date();
         start.setHours(0, 0, 0, 0);
-        query = query.gte("created_at", start.toISOString());
+        query = query.gte("check_in_at", start.toISOString()).not("check_in_at", "is", null);
+      } else if (tile === "preReg") {
+        query = query
+          .eq("pre_registered", true)
+          .eq("status", "pending")
+          .neq("approval", "not_approved")
+          .is("check_in_at", null);
       } else if (tile === "withAssets") {
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
