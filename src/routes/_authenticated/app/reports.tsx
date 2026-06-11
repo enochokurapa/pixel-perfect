@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Download } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
 import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { exportExcel, exportPdf, type ExportRow } from "@/lib/visit-export";
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
   head: () => ({ meta: [{ title: "Reports — Sentinel VMS" }] }),
@@ -44,6 +45,46 @@ type VisitRow = {
   visitor: { full_name: string; phone: string; company: string | null } | null;
   host: { full_name: string; department: string | null } | null;
   branch: { name: string } | null;
+};
+
+const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleString() : "");
+
+const toVisitExportRows = (rows: VisitRow[]): ExportRow[] =>
+  rows.map((v) => ({
+    Created: fmtDate(v.created_at),
+    Visitor: v.visitor?.full_name ?? "",
+    Phone: v.visitor?.phone ?? "",
+    Company: v.visitor?.company ?? "",
+    Host: v.host?.full_name ?? v.host_name ?? "",
+    Department: v.host?.department ?? "",
+    Branch: v.branch?.name ?? "",
+    Type: v.visit_type,
+    Mode: v.visit_mode,
+    "Pre-registered": v.pre_registered ? "Yes" : "No",
+    Status: v.approval === "not_approved" ? "rejected" : v.status,
+    Approval: v.approval,
+    Badge: v.badge_number ?? "",
+    Vehicle: v.vehicle_plate ?? "",
+    "Check-in": fmtDate(v.check_in_at),
+    "Check-out": fmtDate(v.check_out_at),
+    Purpose: v.purpose,
+  }));
+
+const csvExport = (filename: string, data: ExportRow[]) => {
+  const headers = data.length ? Object.keys(data[0]) : [];
+  const escape = (s: unknown) => {
+    const str = s == null ? "" : String(s);
+    return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+  };
+  const lines = [headers.join(",")];
+  data.forEach((row) => lines.push(headers.map((h) => escape(row[h])).join(",")));
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 };
 
 function ReportsPage() {
@@ -201,34 +242,19 @@ function ReportsPage() {
   }
 
 
-  const exportRows = (filename: string, headers: string[], data: unknown[][]) => {
-    const escape = (s: unknown) => {
-      const str = s == null ? "" : String(s);
-      return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-    };
-    const lines = [headers.join(",")];
-    data.forEach((row) => lines.push(row.map(escape).join(",")));
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const fullExportRows = toVisitExportRows(rows);
+  const baseName = `visits_${from}_to_${to}`;
 
-  const exportFull = () =>
-    exportRows(
-      `visits_${from}_to_${to}.csv`,
-      ["Created", "Visitor", "Phone", "Company", "Host", "Department", "Branch", "Type", "Mode", "Pre-registered", "Status", "Approval", "Badge", "Vehicle", "Check-in", "Check-out", "Purpose"],
-      rows.map((v) => [
-        v.created_at, v.visitor?.full_name, v.visitor?.phone, v.visitor?.company,
-        v.host?.full_name ?? v.host_name, v.host?.department, v.branch?.name,
-        v.visit_type, v.visit_mode, v.pre_registered ? "Yes" : "No",
-        v.status, v.approval, v.badge_number, v.vehicle_plate,
-        v.check_in_at, v.check_out_at, v.purpose,
-      ]),
-    );
+  const blacklistExportRows: ExportRow[] = (blacklistedVisitors.data ?? []).map((b) => {
+    const v = (b as { visitor?: { full_name: string; phone: string; company: string | null } | null }).visitor;
+    return {
+      Visitor: v?.full_name ?? "",
+      Phone: v?.phone ?? "",
+      Company: v?.company ?? "",
+      Reason: (b as { reason: string }).reason,
+      Since: fmtDate((b as { created_at: string }).created_at),
+    };
+  });
 
   const peakMax = Math.max(1, ...agg.byHour);
 
