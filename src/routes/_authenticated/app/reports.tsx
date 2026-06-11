@@ -267,9 +267,17 @@ function ReportsPage() {
             {rows.length} visits in selected range · scoped to active branch.
           </p>
         </div>
-        <Button onClick={exportFull} disabled={rows.length === 0}>
-          <Download className="mr-2 h-4 w-4" /> Export full CSV
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => csvExport(`${baseName}.csv`, fullExportRows)} disabled={rows.length === 0}>
+            <Download className="mr-2 h-4 w-4" /> CSV
+          </Button>
+          <Button variant="outline" onClick={() => exportExcel(baseName, fullExportRows, "Visits")} disabled={rows.length === 0}>
+            <Download className="mr-2 h-4 w-4" /> Excel
+          </Button>
+          <Button onClick={() => exportPdf(baseName, `Visits report ${from} to ${to}`, fullExportRows)} disabled={rows.length === 0}>
+            <Download className="mr-2 h-4 w-4" /> PDF
+          </Button>
+        </div>
       </header>
 
       <Card>
@@ -364,15 +372,7 @@ function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="now" className="space-y-4 pt-4">
-          <VisitTable
-            title={`Currently inside (${inside.length})`}
-            rows={inside}
-            onExport={() => exportRows(
-              "currently_inside.csv",
-              ["Visitor", "Company", "Host", "Branch", "Check-in", "Badge"],
-              inside.map((v) => [v.visitor?.full_name, v.visitor?.company, v.host?.full_name, v.branch?.name, v.check_in_at, v.badge_number]),
-            )}
-          />
+          <VisitTable title={`Currently inside (${inside.length})`} rows={inside} filename="currently_inside" />
         </TabsContent>
 
         <TabsContent value="vehicles" className="space-y-4 pt-4">
@@ -383,39 +383,23 @@ function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="exceptions" className="space-y-4 pt-4">
-          <VisitTable
-            title={`Overstayed visitors (${overstayed.length})`}
-            rows={overstayed}
-            onExport={() => exportRows(
-              "overstayed.csv",
-              ["Visitor", "Host", "Check-in", "Expected mins"],
-              overstayed.map((v) => [v.visitor?.full_name, v.host?.full_name, v.check_in_at, v.expected_duration_minutes]),
-            )}
-          />
-          <VisitTable
-            title={`Unapproved entries (${unapproved.length})`}
-            rows={unapproved}
-            onExport={() => exportRows(
-              "unapproved.csv",
-              ["Visitor", "Host", "Created", "Approval"],
-              unapproved.map((v) => [v.visitor?.full_name, v.host?.full_name, v.created_at, v.approval]),
-            )}
-          />
-          <VisitTable
-            title={`Missed visitor appointments (${missed.length})`}
-            rows={missed}
-            onExport={() => exportRows(
-              "missed.csv",
-              ["Visitor", "Host", "Scheduled"],
-              missed.map((v) => [v.visitor?.full_name, v.host?.full_name, v.created_at]),
-            )}
-          />
+          <VisitTable title={`Overstayed visitors (${overstayed.length})`} rows={overstayed} filename="overstayed" />
+          <VisitTable title={`Unapproved entries (${unapproved.length})`} rows={unapproved} filename="unapproved" />
+          <VisitTable title={`Missed visitor appointments (${missed.length})`} rows={missed} filename="missed_appointments" />
         </TabsContent>
 
         <TabsContent value="blacklist" className="space-y-4 pt-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Blacklisted visitors ({blacklistedVisitors.data?.length ?? 0})</CardTitle>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" disabled={blacklistExportRows.length === 0} onClick={() => exportExcel("blacklist", blacklistExportRows, "Blacklist")}>
+                  <Download className="mr-1 h-3.5 w-3.5" /> Excel
+                </Button>
+                <Button size="sm" variant="outline" disabled={blacklistExportRows.length === 0} onClick={() => exportPdf("blacklist", "Blacklisted visitors", blacklistExportRows)}>
+                  <Download className="mr-1 h-3.5 w-3.5" /> PDF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
@@ -480,19 +464,28 @@ function ListCard({ title, rows }: { title: string; rows: [string, number][] }) 
 function VisitTable({
   title,
   rows,
-  onExport,
+  filename,
 }: {
   title: string;
   rows: VisitRow[];
-  onExport: () => void;
+  filename: string;
 }) {
+  const exportData = toVisitExportRows(rows);
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">{title}</CardTitle>
-        <Button size="sm" variant="outline" onClick={onExport} disabled={rows.length === 0}>
-          <Download className="mr-1 h-3.5 w-3.5" /> CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => csvExport(`${filename}.csv`, exportData)} disabled={rows.length === 0}>
+            <Download className="mr-1 h-3.5 w-3.5" /> CSV
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => exportExcel(filename, exportData, title.replace(/\(.*\)/, "").trim().slice(0, 30) || "Report")} disabled={rows.length === 0}>
+            <Download className="mr-1 h-3.5 w-3.5" /> Excel
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => exportPdf(filename, title, exportData)} disabled={rows.length === 0}>
+            <Download className="mr-1 h-3.5 w-3.5" /> PDF
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {rows.length === 0 ? (
