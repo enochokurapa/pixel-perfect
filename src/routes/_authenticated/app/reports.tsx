@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Download } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
 import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { exportExcel, exportPdf, type ExportRow } from "@/lib/visit-export";
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
   head: () => ({ meta: [{ title: "Reports — Sentinel VMS" }] }),
@@ -44,6 +45,46 @@ type VisitRow = {
   visitor: { full_name: string; phone: string; company: string | null } | null;
   host: { full_name: string; department: string | null } | null;
   branch: { name: string } | null;
+};
+
+const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleString() : "");
+
+const toVisitExportRows = (rows: VisitRow[]): ExportRow[] =>
+  rows.map((v) => ({
+    Created: fmtDate(v.created_at),
+    Visitor: v.visitor?.full_name ?? "",
+    Phone: v.visitor?.phone ?? "",
+    Company: v.visitor?.company ?? "",
+    Host: v.host?.full_name ?? v.host_name ?? "",
+    Department: v.host?.department ?? "",
+    Branch: v.branch?.name ?? "",
+    Type: v.visit_type,
+    Mode: v.visit_mode,
+    "Pre-registered": v.pre_registered ? "Yes" : "No",
+    Status: v.approval === "not_approved" ? "rejected" : v.status,
+    Approval: v.approval,
+    Badge: v.badge_number ?? "",
+    Vehicle: v.vehicle_plate ?? "",
+    "Check-in": fmtDate(v.check_in_at),
+    "Check-out": fmtDate(v.check_out_at),
+    Purpose: v.purpose,
+  }));
+
+const csvExport = (filename: string, data: ExportRow[]) => {
+  const headers = data.length ? Object.keys(data[0]) : [];
+  const escape = (s: unknown) => {
+    const str = s == null ? "" : String(s);
+    return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+  };
+  const lines = [headers.join(",")];
+  data.forEach((row) => lines.push(headers.map((h) => escape(row[h])).join(",")));
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 };
 
 function ReportsPage() {
@@ -201,34 +242,19 @@ function ReportsPage() {
   }
 
 
-  const exportRows = (filename: string, headers: string[], data: unknown[][]) => {
-    const escape = (s: unknown) => {
-      const str = s == null ? "" : String(s);
-      return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-    };
-    const lines = [headers.join(",")];
-    data.forEach((row) => lines.push(row.map(escape).join(",")));
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const fullExportRows = toVisitExportRows(rows);
+  const baseName = `visits_${from}_to_${to}`;
 
-  const exportFull = () =>
-    exportRows(
-      `visits_${from}_to_${to}.csv`,
-      ["Created", "Visitor", "Phone", "Company", "Host", "Department", "Branch", "Type", "Mode", "Pre-registered", "Status", "Approval", "Badge", "Vehicle", "Check-in", "Check-out", "Purpose"],
-      rows.map((v) => [
-        v.created_at, v.visitor?.full_name, v.visitor?.phone, v.visitor?.company,
-        v.host?.full_name ?? v.host_name, v.host?.department, v.branch?.name,
-        v.visit_type, v.visit_mode, v.pre_registered ? "Yes" : "No",
-        v.status, v.approval, v.badge_number, v.vehicle_plate,
-        v.check_in_at, v.check_out_at, v.purpose,
-      ]),
-    );
+  const blacklistExportRows: ExportRow[] = (blacklistedVisitors.data ?? []).map((b) => {
+    const v = (b as { visitor?: { full_name: string; phone: string; company: string | null } | null }).visitor;
+    return {
+      Visitor: v?.full_name ?? "",
+      Phone: v?.phone ?? "",
+      Company: v?.company ?? "",
+      Reason: (b as { reason: string }).reason,
+      Since: fmtDate((b as { created_at: string }).created_at),
+    };
+  });
 
   const peakMax = Math.max(1, ...agg.byHour);
 
@@ -241,9 +267,17 @@ function ReportsPage() {
             {rows.length} visits in selected range · scoped to active branch.
           </p>
         </div>
-        <Button onClick={exportFull} disabled={rows.length === 0}>
-          <Download className="mr-2 h-4 w-4" /> Export full CSV
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => csvExport(`${baseName}.csv`, fullExportRows)} disabled={rows.length === 0}>
+            <Download className="mr-2 h-4 w-4" /> CSV
+          </Button>
+          <Button variant="outline" onClick={() => exportExcel(baseName, fullExportRows, "Visits")} disabled={rows.length === 0}>
+            <Download className="mr-2 h-4 w-4" /> Excel
+          </Button>
+          <Button onClick={() => exportPdf(baseName, `Visits report ${from} to ${to}`, fullExportRows)} disabled={rows.length === 0}>
+            <Download className="mr-2 h-4 w-4" /> PDF
+          </Button>
+        </div>
       </header>
 
       <Card>
@@ -338,15 +372,7 @@ function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="now" className="space-y-4 pt-4">
-          <VisitTable
-            title={`Currently inside (${inside.length})`}
-            rows={inside}
-            onExport={() => exportRows(
-              "currently_inside.csv",
-              ["Visitor", "Company", "Host", "Branch", "Check-in", "Badge"],
-              inside.map((v) => [v.visitor?.full_name, v.visitor?.company, v.host?.full_name, v.branch?.name, v.check_in_at, v.badge_number]),
-            )}
-          />
+          <VisitTable title={`Currently inside (${inside.length})`} rows={inside} filename="currently_inside" />
         </TabsContent>
 
         <TabsContent value="vehicles" className="space-y-4 pt-4">
@@ -357,39 +383,23 @@ function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="exceptions" className="space-y-4 pt-4">
-          <VisitTable
-            title={`Overstayed visitors (${overstayed.length})`}
-            rows={overstayed}
-            onExport={() => exportRows(
-              "overstayed.csv",
-              ["Visitor", "Host", "Check-in", "Expected mins"],
-              overstayed.map((v) => [v.visitor?.full_name, v.host?.full_name, v.check_in_at, v.expected_duration_minutes]),
-            )}
-          />
-          <VisitTable
-            title={`Unapproved entries (${unapproved.length})`}
-            rows={unapproved}
-            onExport={() => exportRows(
-              "unapproved.csv",
-              ["Visitor", "Host", "Created", "Approval"],
-              unapproved.map((v) => [v.visitor?.full_name, v.host?.full_name, v.created_at, v.approval]),
-            )}
-          />
-          <VisitTable
-            title={`Missed visitor appointments (${missed.length})`}
-            rows={missed}
-            onExport={() => exportRows(
-              "missed.csv",
-              ["Visitor", "Host", "Scheduled"],
-              missed.map((v) => [v.visitor?.full_name, v.host?.full_name, v.created_at]),
-            )}
-          />
+          <VisitTable title={`Overstayed visitors (${overstayed.length})`} rows={overstayed} filename="overstayed" />
+          <VisitTable title={`Unapproved entries (${unapproved.length})`} rows={unapproved} filename="unapproved" />
+          <VisitTable title={`Missed visitor appointments (${missed.length})`} rows={missed} filename="missed_appointments" />
         </TabsContent>
 
         <TabsContent value="blacklist" className="space-y-4 pt-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Blacklisted visitors ({blacklistedVisitors.data?.length ?? 0})</CardTitle>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" disabled={blacklistExportRows.length === 0} onClick={() => exportExcel("blacklist", blacklistExportRows, "Blacklist")}>
+                  <Download className="mr-1 h-3.5 w-3.5" /> Excel
+                </Button>
+                <Button size="sm" variant="outline" disabled={blacklistExportRows.length === 0} onClick={() => exportPdf("blacklist", "Blacklisted visitors", blacklistExportRows)}>
+                  <Download className="mr-1 h-3.5 w-3.5" /> PDF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
@@ -454,19 +464,28 @@ function ListCard({ title, rows }: { title: string; rows: [string, number][] }) 
 function VisitTable({
   title,
   rows,
-  onExport,
+  filename,
 }: {
   title: string;
   rows: VisitRow[];
-  onExport: () => void;
+  filename: string;
 }) {
+  const exportData = toVisitExportRows(rows);
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">{title}</CardTitle>
-        <Button size="sm" variant="outline" onClick={onExport} disabled={rows.length === 0}>
-          <Download className="mr-1 h-3.5 w-3.5" /> CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => csvExport(`${filename}.csv`, exportData)} disabled={rows.length === 0}>
+            <Download className="mr-1 h-3.5 w-3.5" /> CSV
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => exportExcel(filename, exportData, title.replace(/\(.*\)/, "").trim().slice(0, 30) || "Report")} disabled={rows.length === 0}>
+            <Download className="mr-1 h-3.5 w-3.5" /> Excel
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => exportPdf(filename, title, exportData)} disabled={rows.length === 0}>
+            <Download className="mr-1 h-3.5 w-3.5" /> PDF
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {rows.length === 0 ? (

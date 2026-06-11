@@ -55,7 +55,8 @@ function Dashboard() {
     q: T,
   ): T => {
     if (scopedBranch) return q.eq("branch_id", scopedBranch);
-    if (scopedIn && scopedIn.length > 0) return q.in("branch_id", scopedIn);
+    // Strict: an empty allowed-branch list must return no rows, never all rows
+    if (scopedIn) return q.in("branch_id", scopedIn);
     return q;
   };
 
