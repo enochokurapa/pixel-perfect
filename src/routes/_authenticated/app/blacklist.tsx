@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/hooks/use-session";
 import { ShieldAlert } from "lucide-react";
@@ -18,16 +18,46 @@ type BlacklistEntry = {
   visitor: { full_name: string; phone: string; company: string | null } | null;
 };
 
+type BlacklistSearch = {
+  phone?: string;
+  name?: string;
+  company?: string;
+  visitorId?: string;
+};
+
 export const Route = createFileRoute("/_authenticated/app/blacklist")({
   head: () => ({ meta: [{ title: "Blacklist — Sentinel VMS" }] }),
+  validateSearch: (s: Record<string, unknown>): BlacklistSearch => ({
+    phone: typeof s.phone === "string" ? s.phone : undefined,
+    name: typeof s.name === "string" ? s.name : undefined,
+    company: typeof s.company === "string" ? s.company : undefined,
+    visitorId: typeof s.visitorId === "string" ? s.visitorId : undefined,
+  }),
   component: BlacklistPage,
 });
 
 function BlacklistPage() {
   const me = useCurrentUser();
   const qc = useQueryClient();
-  const [phone, setPhone] = useState("");
+  const search = useSearch({ from: "/_authenticated/app/blacklist" }) as BlacklistSearch;
+  const [phone, setPhone] = useState(search.phone ?? "");
+  const [name, setName] = useState(search.name ?? "");
+  const [company, setCompany] = useState(search.company ?? "");
+  const [visitorId, setVisitorId] = useState(search.visitorId ?? "");
   const [reason, setReason] = useState("");
+  const prefilledRef = useRef(false);
+
+  useEffect(() => {
+    if (prefilledRef.current) return;
+    if (search.phone || search.name || search.visitorId) {
+      setPhone(search.phone ?? "");
+      setName(search.name ?? "");
+      setCompany(search.company ?? "");
+      setVisitorId(search.visitorId ?? "");
+      prefilledRef.current = true;
+      toast.info(`Prefilled blacklist form for ${search.name ?? search.phone ?? "visitor"}`);
+    }
+  }, [search]);
 
   const entries = useQuery({
     queryKey: ["blacklist"],
@@ -35,39 +65,40 @@ function BlacklistPage() {
       const { data, error } = await supabase
         .from("blacklist")
         .select(
-          "id, reason, active, created_at, visitor:visitors(full_name, phone, company), created_by_profile:profiles!blacklist_created_by_fkey(full_name)",
+          "id, reason, active, created_at, visitor:visitors(full_name, phone, company)",
         )
         .order("created_at", { ascending: false });
-      if (error) {
-        // fallback without the joined profile if FK alias not present
-        const r = await supabase
-          .from("blacklist")
-          .select("id, reason, active, created_at, visitor:visitors(full_name, phone, company)")
-          .order("created_at", { ascending: false });
-        if (r.error) throw r.error;
-        return r.data as BlacklistEntry[];
-      }
+      if (error) throw error;
       return data as BlacklistEntry[];
     },
   });
 
   const add = useMutation({
     mutationFn: async () => {
-      if (!phone.trim() || !reason.trim()) throw new Error("Phone and reason are required");
-      const { data: v } = await supabase
-        .from("visitors")
-        .select("id")
-        .eq("phone", phone.trim())
-        .maybeSingle();
-      if (!v) throw new Error("No visitor found with that phone number");
+      if (!reason.trim()) throw new Error("Reason is required");
+      let vid = visitorId.trim();
+      if (!vid) {
+        if (!phone.trim()) throw new Error("Phone or visitor is required");
+        const { data: v } = await supabase
+          .from("visitors")
+          .select("id")
+          .eq("phone", phone.trim())
+          .maybeSingle();
+        if (!v) throw new Error("No visitor found with that phone number");
+        vid = v.id;
+      }
       const { error } = await supabase
         .from("blacklist")
-        .insert({ visitor_id: v.id, reason: reason.trim(), created_by: me.userId });
+        .insert({ visitor_id: vid, reason: reason.trim(), created_by: me.userId });
       if (error) throw error;
     },
     onSuccess: () => {
       setPhone("");
+      setName("");
+      setCompany("");
+      setVisitorId("");
       setReason("");
+      prefilledRef.current = false;
       toast.success("Added to blacklist");
       qc.invalidateQueries({ queryKey: ["blacklist"] });
     },
@@ -86,6 +117,8 @@ function BlacklistPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
+  const prefilled = Boolean(visitorId || name);
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-8 py-8">
       <header>
@@ -99,13 +132,24 @@ function BlacklistPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add entry</CardTitle>
+          <CardTitle>{prefilled ? `Add ${name || phone || "visitor"} to blacklist` : "Add entry"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {prefilled && (
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+              <div className="font-medium">{name || "Visitor"}</div>
+              <div className="text-xs text-muted-foreground">
+                {phone}{company ? ` · ${company}` : ""}
+              </div>
+            </div>
+          )}
           <Input
             placeholder="Visitor phone number (must exist)"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => {
+              setPhone(e.target.value);
+              setVisitorId("");
+            }}
           />
           <Textarea
             placeholder="Reason (required)"
@@ -113,9 +157,26 @@ function BlacklistPage() {
             onChange={(e) => setReason(e.target.value)}
             rows={2}
           />
-          <Button onClick={() => add.mutate()} disabled={add.isPending}>
-            Add to blacklist
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => add.mutate()} disabled={add.isPending}>
+              Add to blacklist
+            </Button>
+            {prefilled && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setPhone("");
+                  setName("");
+                  setCompany("");
+                  setVisitorId("");
+                  setReason("");
+                  prefilledRef.current = false;
+                }}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
