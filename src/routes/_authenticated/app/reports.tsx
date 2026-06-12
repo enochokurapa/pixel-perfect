@@ -220,14 +220,18 @@ function ReportsPage() {
       }
       if (v.approval === "pending") { approvalRequired += 1; approvalPending += 1; }
       else if (v.approval === "approved") { approvalRequired += 1; approvalApproved += 1; }
-      else if (v.approval === "not_approved") { approvalRequired += 1; approvalRejected += 1; }
+      else if (v.approval === "not_approved") {
+        approvalRequired += 1; approvalRejected += 1;
+        const rr = v.rejection_reason?.trim() || "Unspecified";
+        byRejectionReason[rr] = (byRejectionReason[rr] ?? 0) + 1;
+      }
       if (v.approval === "approved" && v.check_in_at) {
         totalApprovalWaitMin += (new Date(v.check_in_at).getTime() - new Date(v.created_at).getTime()) / 60000;
         approvalWaitSamples += 1;
       }
+      if (v.badge_number && v.badge_returned) badgeReturned += 1;
     });
-    // badge_returned summary needs full row scan separately
-    rows.forEach((v) => { if (v.badge_number && (v as unknown as { badge_returned?: boolean }).badge_returned) badgeReturned += 1; });
+
     const uniqueVisitors = Object.keys(visitorVisits).length;
     const returningVisitors = Object.values(visitorVisits).filter((n) => n > 1).length;
     return {
