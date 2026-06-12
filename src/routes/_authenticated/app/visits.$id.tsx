@@ -402,7 +402,15 @@ function VisitDetail() {
               <Info label="ID scan" value="On file" />
             )}
             <Button asChild variant="outline" size="sm" className="mt-2 w-full">
-              <Link to="/app/blacklist">
+              <Link
+                to="/app/blacklist"
+                search={{
+                  phone: v.visitor?.phone ?? "",
+                  name: v.visitor?.full_name ?? "",
+                  company: v.visitor?.company ?? "",
+                  visitorId: v.visitor_id ?? "",
+                }}
+              >
                 <ShieldAlert className="mr-1 h-3.5 w-3.5" /> Manage blacklist
               </Link>
             </Button>
