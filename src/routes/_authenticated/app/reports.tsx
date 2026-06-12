@@ -377,16 +377,32 @@ function ReportsPage() {
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="now">Currently inside</TabsTrigger>
+          <TabsTrigger value="operations">Operations</TabsTrigger>
+          <TabsTrigger value="approvals">Approvals</TabsTrigger>
           <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
           <TabsTrigger value="exceptions">Exceptions</TabsTrigger>
           <TabsTrigger value="blacklist">Blacklist</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 pt-4">
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <Kpi label="Total visits" value={rows.length} />
+            <Kpi label="Unique visitors" value={agg.uniqueVisitors} />
+            <Kpi label="Returning visitors" value={agg.returningVisitors} hint={agg.uniqueVisitors ? `${Math.round((agg.returningVisitors / agg.uniqueVisitors) * 100)}% of unique` : undefined} />
+            <Kpi label="Walk-in vs Pre-reg" value={`${agg.walkIn} / ${agg.preReg}`} />
+            <Kpi label="Kiosk self-registered" value={agg.kioskSelf} />
+            <Kpi label="Avg visit duration" value={fmtMinutes(agg.avgDurationMin)} hint={`${agg.checkedOut} completed`} />
+            <Kpi label="Avg approval wait" value={fmtMinutes(agg.avgApprovalWaitMin)} hint={`${agg.approvalApproved} approved`} />
+            <Kpi label="No-shows (pre-reg)" value={agg.noShow} />
+            <Kpi label="Badges issued" value={agg.badgeIssued} hint={`${agg.badgeReturned} returned`} />
+            <Kpi label="Assets verified" value={agg.assetsVerifiedCount} />
+            <Kpi label="Vehicle entries" value={agg.vehicleCount} />
+            <Kpi label="Currently inside" value={inside.length} hint={`${overstayed.length} overstayed`} />
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ListCard title="By visitor type" rows={Object.entries(agg.byType).map(([k, v]) => [k, v])} />
             <ListCard title="By status" rows={Object.entries(agg.byStatus).map(([k, v]) => [k.replace("_", " "), v])} />
-            <ListCard title="Walk-ins vs Pre-registered" rows={[["Walk-in", agg.walkIn], ["Pre-registered", agg.preReg]]} />
+            <ListCard title="By visit mode" rows={Object.entries(agg.byMode).map(([k, v]) => [k.replace("_", " "), v])} />
             <ListCard title="Visits per branch" rows={agg.byBranch} />
           </div>
           <Card>
@@ -417,6 +433,10 @@ function ReportsPage() {
             <ListCard title="Visitors per week" rows={agg.byWeek.map(([k, v]) => [`Wk of ${k}`, v])} />
             <ListCard title="Visitors per month" rows={agg.byMonth} />
           </div>
+          <ListCard
+            title="Visitors by day-of-week"
+            rows={["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d, i) => [d, agg.byDow[i]])}
+          />
         </TabsContent>
 
         <TabsContent value="people" className="space-y-4 pt-4">
@@ -432,6 +452,45 @@ function ReportsPage() {
           <VisitTable title={`Currently inside (${inside.length})`} rows={inside} filename="currently_inside" />
         </TabsContent>
 
+        <TabsContent value="operations" className="space-y-4 pt-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <ListCard title="Visit purposes" rows={agg.byPurpose} />
+            <ListCard
+              title="Badge utilization"
+              rows={[
+                ["Issued", agg.badgeIssued],
+                ["Returned", agg.badgeReturned],
+                ["Outstanding", Math.max(0, agg.badgeIssued - agg.badgeReturned)],
+              ]}
+            />
+            <ListCard
+              title="Asset verification"
+              rows={[
+                ["Verified", agg.assetsVerifiedCount],
+                ["Not verified", Math.max(0, rows.length - agg.assetsVerifiedCount)],
+              ]}
+            />
+            <ListCard
+              title="Registration channel"
+              rows={[
+                ["Walk-in", agg.walkIn],
+                ["Pre-registered", agg.preReg],
+                ["Kiosk self-registered", agg.kioskSelf],
+              ]}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="approvals" className="space-y-4 pt-4">
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+            <Kpi label="Approval required" value={agg.approvalRequired} />
+            <Kpi label="Approved" value={agg.approvalApproved} />
+            <Kpi label="Rejected" value={agg.approvalRejected} />
+            <Kpi label="Pending" value={agg.approvalPending} />
+          </div>
+          <ListCard title="Rejection reasons" rows={agg.byRejectionReason} />
+        </TabsContent>
+
         <TabsContent value="vehicles" className="space-y-4 pt-4">
           <div className="grid gap-4 md:grid-cols-2">
             <ListCard title="Vehicle entries by date" rows={agg.byVehicleDay} />
@@ -444,6 +503,7 @@ function ReportsPage() {
           <VisitTable title={`Unapproved entries (${unapproved.length})`} rows={unapproved} filename="unapproved" />
           <VisitTable title={`Missed visitor appointments (${missed.length})`} rows={missed} filename="missed_appointments" />
         </TabsContent>
+
 
         <TabsContent value="blacklist" className="space-y-4 pt-4">
           <Card>
