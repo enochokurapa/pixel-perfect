@@ -552,6 +552,26 @@ function ReportsPage() {
   );
 }
 
+function fmtMinutes(m: number): string {
+  if (!isFinite(m) || m <= 0) return "—";
+  if (m < 60) return `${Math.round(m)}m`;
+  const h = Math.floor(m / 60);
+  const r = Math.round(m - h * 60);
+  return r ? `${h}h ${r}m` : `${h}h`;
+}
+
+function Kpi({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="mt-1 font-display text-2xl font-semibold tabular-nums">{value}</div>
+        {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ListCard({ title, rows }: { title: string; rows: [string, number][] }) {
   const max = Math.max(1, ...rows.map((r) => r[1]));
   return (
