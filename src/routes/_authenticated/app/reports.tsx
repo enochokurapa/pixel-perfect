@@ -106,7 +106,7 @@ function ReportsPage() {
       let q = supabase
         .from("visits")
         .select(
-          "id, visit_type, visit_mode, status, approval, pre_registered, kiosk_self_registered, check_in_at, check_out_at, created_at, badge_number, host_name, vehicle_plate, expected_duration_minutes, purpose, branch_id, visitor:visitors(full_name, phone, company), host:profiles(full_name, department), branch:branches(name)",
+          "id, visit_type, visit_mode, status, approval, pre_registered, kiosk_self_registered, check_in_at, check_out_at, created_at, badge_number, host_name, vehicle_plate, expected_duration_minutes, purpose, branch_id, assets_verified, badge_returned, rejection_reason, visitor:visitors(full_name, phone, company), host:profiles(full_name, department), branch:branches(name)",
         )
         .gte("created_at", `${from}T00:00:00`)
         .lte("created_at", `${to}T23:59:59`)
