@@ -42,6 +42,9 @@ type VisitRow = {
   expected_duration_minutes: number;
   purpose: string;
   branch_id: string | null;
+  assets_verified: boolean | null;
+  badge_returned: boolean | null;
+  rejection_reason: string | null;
   visitor: { full_name: string; phone: string; company: string | null } | null;
   host: { full_name: string; department: string | null } | null;
   branch: { name: string } | null;
@@ -103,7 +106,7 @@ function ReportsPage() {
       let q = supabase
         .from("visits")
         .select(
-          "id, visit_type, visit_mode, status, approval, pre_registered, kiosk_self_registered, check_in_at, check_out_at, created_at, badge_number, host_name, vehicle_plate, expected_duration_minutes, purpose, branch_id, visitor:visitors(full_name, phone, company), host:profiles(full_name, department), branch:branches(name)",
+          "id, visit_type, visit_mode, status, approval, pre_registered, kiosk_self_registered, check_in_at, check_out_at, created_at, badge_number, host_name, vehicle_plate, expected_duration_minutes, purpose, branch_id, assets_verified, badge_returned, rejection_reason, visitor:visitors(full_name, phone, company), host:profiles(full_name, department), branch:branches(name)",
         )
         .gte("created_at", `${from}T00:00:00`)
         .lte("created_at", `${to}T23:59:59`)
@@ -128,6 +131,7 @@ function ReportsPage() {
   const agg = useMemo(() => {
     const byType: Record<string, number> = {};
     const byStatus: Record<string, number> = {};
+    const byMode: Record<string, number> = {};
     const byCompany: Record<string, number> = {};
     const byHost: Record<string, { name: string; dept: string | null; count: number }> = {};
     const byDept: Record<string, number> = {};
@@ -136,13 +140,33 @@ function ReportsPage() {
     const byDay: Record<string, number> = {};
     const byWeek: Record<string, number> = {};
     const byMonth: Record<string, number> = {};
+    const byDow: number[] = Array.from({ length: 7 }, () => 0);
     const byHour: number[] = Array.from({ length: 24 }, () => 0);
     const byVehicleDay: Record<string, number> = {};
     const byVehicleCompany: Record<string, number> = {};
+    const byPurpose: Record<string, number> = {};
+    const byRejectionReason: Record<string, number> = {};
+    const visitorVisits: Record<string, number> = {};
     let walkIn = 0;
     let preReg = 0;
+    let kioskSelf = 0;
+    let checkedOut = 0;
+    let totalDurationMin = 0;
+    let badgeIssued = 0;
+    let badgeReturned = 0;
+    let assetsVerifiedCount = 0;
+    let vehicleCount = 0;
+    let noShow = 0;
+    let approvalRequired = 0;
+    let approvalApproved = 0;
+    let approvalRejected = 0;
+    let approvalPending = 0;
+    let totalApprovalWaitMin = 0;
+    let approvalWaitSamples = 0;
+    const now = Date.now();
     rows.forEach((v) => {
       byType[v.visit_type] = (byType[v.visit_type] ?? 0) + 1;
+      byMode[v.visit_mode] = (byMode[v.visit_mode] ?? 0) + 1;
       const displayStatus = v.approval === "not_approved" ? "rejected" : v.status;
       byStatus[displayStatus] = (byStatus[displayStatus] ?? 0) + 1;
       const c = v.visitor?.company ?? "Unknown";
@@ -161,31 +185,57 @@ function ReportsPage() {
         byVisitor[k] = byVisitor[k]
           ? { ...byVisitor[k], count: byVisitor[k].count + 1 }
           : { name: v.visitor.full_name, phone: k, count: 1 };
+        visitorVisits[k] = (visitorVisits[k] ?? 0) + 1;
       }
       const bname = v.branch?.name ?? "Unassigned";
       byBranch[bname] = (byBranch[bname] ?? 0) + 1;
       const d = new Date(v.created_at);
       const day = d.toISOString().slice(0, 10);
       byDay[day] = (byDay[day] ?? 0) + 1;
-      // ISO week
       const weekStart = new Date(d);
       weekStart.setDate(d.getDate() - ((d.getDay() + 6) % 7));
       const wk = weekStart.toISOString().slice(0, 10);
       byWeek[wk] = (byWeek[wk] ?? 0) + 1;
       const mo = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       byMonth[mo] = (byMonth[mo] ?? 0) + 1;
+      byDow[d.getDay()] += 1;
       const hourSource = v.check_in_at ?? v.created_at;
       if (hourSource) byHour[new Date(hourSource).getHours()] += 1;
       if (v.vehicle_plate) {
         byVehicleDay[day] = (byVehicleDay[day] ?? 0) + 1;
         byVehicleCompany[c] = (byVehicleCompany[c] ?? 0) + 1;
+        vehicleCount += 1;
       }
-      if (v.pre_registered) preReg += 1;
-      else walkIn += 1;
+      if (v.purpose) byPurpose[v.purpose] = (byPurpose[v.purpose] ?? 0) + 1;
+      if (v.pre_registered) preReg += 1; else walkIn += 1;
+      if (v.kiosk_self_registered) kioskSelf += 1;
+      if (v.badge_number) badgeIssued += 1;
+      if (v.check_in_at && v.check_out_at) {
+        checkedOut += 1;
+        totalDurationMin += (new Date(v.check_out_at).getTime() - new Date(v.check_in_at).getTime()) / 60000;
+      }
+      if (v.assets_verified) assetsVerifiedCount += 1;
+      if (v.pre_registered && !v.check_in_at && new Date(v.created_at).getTime() + v.expected_duration_minutes * 60_000 < now) {
+        noShow += 1;
+      }
+      if (v.approval === "pending") { approvalRequired += 1; approvalPending += 1; }
+      else if (v.approval === "approved") { approvalRequired += 1; approvalApproved += 1; }
+      else if (v.approval === "not_approved") {
+        approvalRequired += 1; approvalRejected += 1;
+        const rr = v.rejection_reason?.trim() || "Unspecified";
+        byRejectionReason[rr] = (byRejectionReason[rr] ?? 0) + 1;
+      }
+      if (v.approval === "approved" && v.check_in_at) {
+        totalApprovalWaitMin += (new Date(v.check_in_at).getTime() - new Date(v.created_at).getTime()) / 60000;
+        approvalWaitSamples += 1;
+      }
+      if (v.badge_number && v.badge_returned) badgeReturned += 1;
     });
+
+    const uniqueVisitors = Object.keys(visitorVisits).length;
+    const returningVisitors = Object.values(visitorVisits).filter((n) => n > 1).length;
     return {
-      byType,
-      byStatus,
+      byType, byStatus, byMode,
       byCompany: Object.entries(byCompany).sort((a, b) => b[1] - a[1]).slice(0, 15),
       byHost: Object.values(byHost).sort((a, b) => b.count - a.count).slice(0, 15),
       byDept: Object.entries(byDept).sort((a, b) => b[1] - a[1]),
@@ -194,13 +244,20 @@ function ReportsPage() {
       byDay: Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)),
       byWeek: Object.entries(byWeek).sort(([a], [b]) => a.localeCompare(b)),
       byMonth: Object.entries(byMonth).sort(([a], [b]) => a.localeCompare(b)),
-      byHour,
+      byDow, byHour,
       byVehicleDay: Object.entries(byVehicleDay).sort(([a], [b]) => a.localeCompare(b)),
       byVehicleCompany: Object.entries(byVehicleCompany).sort((a, b) => b[1] - a[1]).slice(0, 15),
-      walkIn,
-      preReg,
+      byPurpose: Object.entries(byPurpose).sort((a, b) => b[1] - a[1]).slice(0, 15),
+      byRejectionReason: Object.entries(byRejectionReason).sort((a, b) => b[1] - a[1]),
+      walkIn, preReg, kioskSelf, checkedOut, totalDurationMin,
+      badgeIssued, badgeReturned, assetsVerifiedCount, vehicleCount, noShow,
+      approvalRequired, approvalApproved, approvalRejected, approvalPending,
+      avgApprovalWaitMin: approvalWaitSamples > 0 ? totalApprovalWaitMin / approvalWaitSamples : 0,
+      avgDurationMin: checkedOut > 0 ? totalDurationMin / checkedOut : 0,
+      uniqueVisitors, returningVisitors,
     };
   }, [rows]);
+
 
   const now = Date.now();
   const inside = rows.filter((r) => r.status === "checked_in");
@@ -320,16 +377,32 @@ function ReportsPage() {
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="now">Currently inside</TabsTrigger>
+          <TabsTrigger value="operations">Operations</TabsTrigger>
+          <TabsTrigger value="approvals">Approvals</TabsTrigger>
           <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
           <TabsTrigger value="exceptions">Exceptions</TabsTrigger>
           <TabsTrigger value="blacklist">Blacklist</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 pt-4">
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <Kpi label="Total visits" value={rows.length} />
+            <Kpi label="Unique visitors" value={agg.uniqueVisitors} />
+            <Kpi label="Returning visitors" value={agg.returningVisitors} hint={agg.uniqueVisitors ? `${Math.round((agg.returningVisitors / agg.uniqueVisitors) * 100)}% of unique` : undefined} />
+            <Kpi label="Walk-in vs Pre-reg" value={`${agg.walkIn} / ${agg.preReg}`} />
+            <Kpi label="Kiosk self-registered" value={agg.kioskSelf} />
+            <Kpi label="Avg visit duration" value={fmtMinutes(agg.avgDurationMin)} hint={`${agg.checkedOut} completed`} />
+            <Kpi label="Avg approval wait" value={fmtMinutes(agg.avgApprovalWaitMin)} hint={`${agg.approvalApproved} approved`} />
+            <Kpi label="No-shows (pre-reg)" value={agg.noShow} />
+            <Kpi label="Badges issued" value={agg.badgeIssued} hint={`${agg.badgeReturned} returned`} />
+            <Kpi label="Assets verified" value={agg.assetsVerifiedCount} />
+            <Kpi label="Vehicle entries" value={agg.vehicleCount} />
+            <Kpi label="Currently inside" value={inside.length} hint={`${overstayed.length} overstayed`} />
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ListCard title="By visitor type" rows={Object.entries(agg.byType).map(([k, v]) => [k, v])} />
             <ListCard title="By status" rows={Object.entries(agg.byStatus).map(([k, v]) => [k.replace("_", " "), v])} />
-            <ListCard title="Walk-ins vs Pre-registered" rows={[["Walk-in", agg.walkIn], ["Pre-registered", agg.preReg]]} />
+            <ListCard title="By visit mode" rows={Object.entries(agg.byMode).map(([k, v]) => [k.replace("_", " "), v])} />
             <ListCard title="Visits per branch" rows={agg.byBranch} />
           </div>
           <Card>
@@ -360,6 +433,10 @@ function ReportsPage() {
             <ListCard title="Visitors per week" rows={agg.byWeek.map(([k, v]) => [`Wk of ${k}`, v])} />
             <ListCard title="Visitors per month" rows={agg.byMonth} />
           </div>
+          <ListCard
+            title="Visitors by day-of-week"
+            rows={["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d, i) => [d, agg.byDow[i]])}
+          />
         </TabsContent>
 
         <TabsContent value="people" className="space-y-4 pt-4">
@@ -375,6 +452,45 @@ function ReportsPage() {
           <VisitTable title={`Currently inside (${inside.length})`} rows={inside} filename="currently_inside" />
         </TabsContent>
 
+        <TabsContent value="operations" className="space-y-4 pt-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <ListCard title="Visit purposes" rows={agg.byPurpose} />
+            <ListCard
+              title="Badge utilization"
+              rows={[
+                ["Issued", agg.badgeIssued],
+                ["Returned", agg.badgeReturned],
+                ["Outstanding", Math.max(0, agg.badgeIssued - agg.badgeReturned)],
+              ]}
+            />
+            <ListCard
+              title="Asset verification"
+              rows={[
+                ["Verified", agg.assetsVerifiedCount],
+                ["Not verified", Math.max(0, rows.length - agg.assetsVerifiedCount)],
+              ]}
+            />
+            <ListCard
+              title="Registration channel"
+              rows={[
+                ["Walk-in", agg.walkIn],
+                ["Pre-registered", agg.preReg],
+                ["Kiosk self-registered", agg.kioskSelf],
+              ]}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="approvals" className="space-y-4 pt-4">
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+            <Kpi label="Approval required" value={agg.approvalRequired} />
+            <Kpi label="Approved" value={agg.approvalApproved} />
+            <Kpi label="Rejected" value={agg.approvalRejected} />
+            <Kpi label="Pending" value={agg.approvalPending} />
+          </div>
+          <ListCard title="Rejection reasons" rows={agg.byRejectionReason} />
+        </TabsContent>
+
         <TabsContent value="vehicles" className="space-y-4 pt-4">
           <div className="grid gap-4 md:grid-cols-2">
             <ListCard title="Vehicle entries by date" rows={agg.byVehicleDay} />
@@ -387,6 +503,7 @@ function ReportsPage() {
           <VisitTable title={`Unapproved entries (${unapproved.length})`} rows={unapproved} filename="unapproved" />
           <VisitTable title={`Missed visitor appointments (${missed.length})`} rows={missed} filename="missed_appointments" />
         </TabsContent>
+
 
         <TabsContent value="blacklist" className="space-y-4 pt-4">
           <Card>
@@ -432,6 +549,26 @@ function ReportsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function fmtMinutes(m: number): string {
+  if (!isFinite(m) || m <= 0) return "—";
+  if (m < 60) return `${Math.round(m)}m`;
+  const h = Math.floor(m / 60);
+  const r = Math.round(m - h * 60);
+  return r ? `${h}h ${r}m` : `${h}h`;
+}
+
+function Kpi({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="mt-1 font-display text-2xl font-semibold tabular-nums">{value}</div>
+        {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
+      </CardContent>
+    </Card>
   );
 }
 
