@@ -42,6 +42,9 @@ type VisitRow = {
   expected_duration_minutes: number;
   purpose: string;
   branch_id: string | null;
+  assets_verified: boolean | null;
+  badge_returned: boolean | null;
+  rejection_reason: string | null;
   visitor: { full_name: string; phone: string; company: string | null } | null;
   host: { full_name: string; department: string | null } | null;
   branch: { name: string } | null;
