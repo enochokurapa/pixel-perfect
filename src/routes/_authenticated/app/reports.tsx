@@ -350,7 +350,7 @@ function ReportsPage() {
         <div>
           <h1 className="font-display text-3xl font-semibold">Reports</h1>
           <p className="text-sm text-muted-foreground">
-            {rows.length} visits in selected range · scoped to active branch.
+            {visits.isLoading ? "Loading…" : `${rows.length} visits in selected range`} · scoped to active branch.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -367,10 +367,49 @@ function ReportsPage() {
       </header>
 
       <Card>
-        <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Filters</CardTitle>
+          <Button variant="ghost" size="sm" onClick={resetFilters}>
+            <X className="mr-1 h-3.5 w-3.5" /> Reset
+          </Button>
+        </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-4">
           <div className="space-y-2"><Label>From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
           <div className="space-y-2"><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+          <div className="space-y-2">
+            <Label>Quick range</Label>
+            <Select
+              value="custom"
+              onValueChange={(v) => {
+                if (v === "today") { setFrom(todayISO()); setTo(todayISO()); }
+                else if (v === "7") { setFrom(daysAgo(7)); setTo(todayISO()); }
+                else if (v === "30") { setFrom(daysAgo(30)); setTo(todayISO()); }
+                else if (v === "90") { setFrom(daysAgo(90)); setTo(todayISO()); }
+                else if (v === "365") { setFrom(daysAgo(365)); setTo(todayISO()); }
+              }}
+            >
+              <SelectTrigger><SelectValue placeholder="Custom" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="90">Last 90 days</SelectItem>
+                <SelectItem value="365">Last 12 months</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Branch</Label>
+            <Select value={branchId} onValueChange={setBranchId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All allowed branches</SelectItem>
+                {branchScope.availableBranches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2">
             <Label>Visitor type</Label>
             <Select value={type} onValueChange={setType}>
@@ -397,8 +436,51 @@ function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label>Purpose contains</Label>
+            <Input placeholder="e.g. meeting" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Badge / returned</Label>
+            <Select value={badgeReturned} onValueChange={setBadgeReturned}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="with_badge">With badge</SelectItem>
+                <SelectItem value="no_badge">No badge</SelectItem>
+                <SelectItem value="returned">Badge returned</SelectItem>
+                <SelectItem value="outstanding">Badge outstanding</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Registration</Label>
+            <Select value={preReg} onValueChange={setPreReg}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="yes">Pre-registered</SelectItem>
+                <SelectItem value="no">Walk-in</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
+
+      {visits.isError && (
+        <Card className="border-destructive/40">
+          <CardContent className="p-4 text-sm text-destructive">
+            Failed to load report data: {visits.error instanceof Error ? visits.error.message : "Unknown error"}
+          </CardContent>
+        </Card>
+      )}
+      {!visits.isLoading && rows.length === 0 && !visits.isError && (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            No visits match the current filters. Try widening the date range or clearing filters.
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
