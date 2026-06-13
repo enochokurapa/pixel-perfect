@@ -93,15 +93,31 @@ const csvExport = (filename: string, data: ExportRow[]) => {
 function ReportsPage() {
   const me = useCurrentUser();
   const branchFilter = useEffectiveBranchFilter();
+  const branchScope = useBranchScope();
   const [from, setFrom] = useState(daysAgo(30));
   const [to, setTo] = useState(todayISO());
   const [type, setType] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
+  const [purpose, setPurpose] = useState<string>("");
+  const [branchId, setBranchId] = useState<string>("all");
+  const [badgeReturned, setBadgeReturned] = useState<string>("all");
+  const [preReg, setPreReg] = useState<string>("all");
   const [tab, setTab] = useState("overview");
+
+  const resetFilters = () => {
+    setFrom(daysAgo(30));
+    setTo(todayISO());
+    setType("all");
+    setStatus("all");
+    setPurpose("");
+    setBranchId("all");
+    setBadgeReturned("all");
+    setPreReg("all");
+  };
 
   const visits = useQuery({
     enabled: me.canViewReports,
-    queryKey: ["reports", from, to, type, status, branchFilter],
+    queryKey: ["reports", from, to, type, status, purpose, branchId, badgeReturned, preReg, branchFilter],
     queryFn: async () => {
       let q = supabase
         .from("visits")
@@ -112,13 +128,26 @@ function ReportsPage() {
         .lte("created_at", `${to}T23:59:59`)
         .order("created_at", { ascending: false })
         .limit(2000);
-      if (branchFilter.kind === "eq") q = q.eq("branch_id", branchFilter.branchId);
-      else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0)
+      // Branch filter: explicit override OR scope-based
+      if (branchId !== "all") {
+        q = q.eq("branch_id", branchId);
+      } else if (branchFilter.kind === "eq") {
+        q = q.eq("branch_id", branchFilter.branchId);
+      } else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0) {
         q = q.in("branch_id", branchFilter.branchIds);
-      else if (branchFilter.kind === "in") return [] as VisitRow[];
+      } else if (branchFilter.kind === "in") {
+        return [] as VisitRow[];
+      }
       if (type !== "all") q = q.eq("visit_type", type as "guest" | "supplier" | "contractor");
       if (status === "rejected") q = q.eq("approval", "not_approved");
       else if (status !== "all") q = q.eq("status", status as "pending" | "checked_in" | "checked_out" | "overstayed");
+      if (purpose.trim()) q = q.ilike("purpose", `%${purpose.trim()}%`);
+      if (badgeReturned === "returned") q = q.eq("badge_returned", true).not("badge_number", "is", null);
+      else if (badgeReturned === "outstanding") q = q.eq("badge_returned", false).not("badge_number", "is", null);
+      else if (badgeReturned === "with_badge") q = q.not("badge_number", "is", null);
+      else if (badgeReturned === "no_badge") q = q.is("badge_number", null);
+      if (preReg === "yes") q = q.eq("pre_registered", true);
+      else if (preReg === "no") q = q.eq("pre_registered", false);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as unknown as VisitRow[];
