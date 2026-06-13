@@ -1,0 +1,1 @@
+ALTER TABLE public.badges ADD COLUMN IF NOT EXISTS deleted_at timestamptz; ALTER TABLE public.badges ADD COLUMN IF NOT EXISTS deleted_reason text; ALTER TABLE public.badges ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;

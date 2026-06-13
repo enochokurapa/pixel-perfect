@@ -69,6 +69,9 @@ export type Database = {
           badge_number: string
           branch_id: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deleted_reason: string | null
           id: string
           notes: string | null
           status: Database["public"]["Enums"]["badge_status"]
@@ -77,6 +80,9 @@ export type Database = {
           badge_number: string
           branch_id?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_reason?: string | null
           id?: string
           notes?: string | null
           status?: Database["public"]["Enums"]["badge_status"]
@@ -85,6 +91,9 @@ export type Database = {
           badge_number?: string
           branch_id?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_reason?: string | null
           id?: string
           notes?: string | null
           status?: Database["public"]["Enums"]["badge_status"]
