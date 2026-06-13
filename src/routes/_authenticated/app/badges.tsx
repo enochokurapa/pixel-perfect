@@ -4,9 +4,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { useCurrentUser } from "@/hooks/use-session";
 
 type BadgeRow = {
   id: string;
@@ -21,14 +34,17 @@ export const Route = createFileRoute("/_authenticated/app/badges")({
 
 function BadgesPage() {
   const qc = useQueryClient();
+  const me = useCurrentUser();
   const branchFilter = useEffectiveBranchFilter();
   const [newBadge, setNewBadge] = useState("");
+  const [toDelete, setToDelete] = useState<BadgeRow | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
   const targetBranchId = branchFilter.kind === "eq" ? branchFilter.branchId : "";
 
   const badges = useQuery({
     queryKey: ["badges", "all", branchFilter],
     queryFn: async () => {
-      let q = supabase.from("badges").select("*").order("badge_number");
+      let q = supabase.from("badges").select("*").is("deleted_at", null).order("badge_number");
       if (branchFilter.kind === "eq") q = q.eq("branch_id", branchFilter.branchId);
       else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0) q = q.in("branch_id", branchFilter.branchIds);
       else if (branchFilter.kind === "in") return [];
@@ -48,6 +64,27 @@ function BadgesPage() {
     onSuccess: () => {
       setNewBadge("");
       toast.success("Badge added");
+      qc.invalidateQueries({ queryKey: ["badges"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      if (!toDelete) throw new Error("No badge selected");
+      const reason = deleteReason.trim();
+      if (reason.length < 3) throw new Error("Please provide a reason (min 3 chars).");
+      if (toDelete.status === "issued") throw new Error("Cannot delete an issued badge.");
+      const { error } = await supabase
+        .from("badges")
+        .update({ deleted_at: new Date().toISOString(), deleted_reason: reason, deleted_by: me.profile?.id ?? null })
+        .eq("id", toDelete.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Badge deleted");
+      setToDelete(null);
+      setDeleteReason("");
       qc.invalidateQueries({ queryKey: ["badges"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
@@ -94,20 +131,53 @@ function BadgesPage() {
           count={grouped.available.length}
           badges={grouped.available}
           tone="success"
+          onDelete={(b) => setToDelete(b)}
         />
         <BadgeBucket
           title="Issued"
           count={grouped.issued.length}
           badges={grouped.issued}
           tone="info"
+          onDelete={(b) => setToDelete(b)}
         />
         <BadgeBucket
           title="Unreturned"
           count={grouped.unreturned.length}
           badges={grouped.unreturned}
           tone="warning"
+          onDelete={(b) => setToDelete(b)}
         />
       </div>
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => { if (!o) { setToDelete(null); setDeleteReason(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete badge #{toDelete?.badge_number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the badge from inventory. A reason is required for audit purposes.
+              {toDelete?.status === "issued" && (
+                <span className="mt-2 block text-destructive">This badge is currently issued and cannot be deleted.</span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            placeholder="Reason for deletion (e.g. lost, damaged, replaced)"
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            rows={3}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); remove.mutate(); }}
+              disabled={remove.isPending || toDelete?.status === "issued" || deleteReason.trim().length < 3}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -117,11 +187,13 @@ function BadgeBucket({
   count,
   badges,
   tone,
+  onDelete,
 }: {
   title: string;
   count: number;
   badges: BadgeRow[];
   tone: "success" | "info" | "warning";
+  onDelete: (b: BadgeRow) => void;
 }) {
   const cls = { success: "text-success", info: "text-info", warning: "text-warning-foreground" }[
     tone
@@ -139,9 +211,20 @@ function BadgeBucket({
           {badges.map((b) => (
             <span
               key={b.id}
-              className="rounded-md border border-border bg-secondary px-2 py-1 text-xs font-mono"
+              className="group inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-1 text-xs font-mono"
             >
               #{b.badge_number}
+              {b.status !== "issued" && (
+                <button
+                  type="button"
+                  onClick={() => onDelete(b)}
+                  className="ml-0.5 rounded p-0.5 text-muted-foreground opacity-70 hover:bg-destructive/10 hover:text-destructive hover:opacity-100"
+                  aria-label={`Delete badge ${b.badge_number}`}
+                  title="Delete badge"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
             </span>
           ))}
           {badges.length === 0 && <span className="text-xs text-muted-foreground">None</span>}

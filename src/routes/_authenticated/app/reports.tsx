@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Download } from "lucide-react";
+import { Download, X } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
-import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { useBranchScope, useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 import { exportExcel, exportPdf, type ExportRow } from "@/lib/visit-export";
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
@@ -93,15 +93,31 @@ const csvExport = (filename: string, data: ExportRow[]) => {
 function ReportsPage() {
   const me = useCurrentUser();
   const branchFilter = useEffectiveBranchFilter();
+  const branchScope = useBranchScope();
   const [from, setFrom] = useState(daysAgo(30));
   const [to, setTo] = useState(todayISO());
   const [type, setType] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
+  const [purpose, setPurpose] = useState<string>("");
+  const [branchId, setBranchId] = useState<string>("all");
+  const [badgeReturned, setBadgeReturned] = useState<string>("all");
+  const [preReg, setPreReg] = useState<string>("all");
   const [tab, setTab] = useState("overview");
+
+  const resetFilters = () => {
+    setFrom(daysAgo(30));
+    setTo(todayISO());
+    setType("all");
+    setStatus("all");
+    setPurpose("");
+    setBranchId("all");
+    setBadgeReturned("all");
+    setPreReg("all");
+  };
 
   const visits = useQuery({
     enabled: me.canViewReports,
-    queryKey: ["reports", from, to, type, status, branchFilter],
+    queryKey: ["reports", from, to, type, status, purpose, branchId, badgeReturned, preReg, branchFilter],
     queryFn: async () => {
       let q = supabase
         .from("visits")
@@ -112,13 +128,26 @@ function ReportsPage() {
         .lte("created_at", `${to}T23:59:59`)
         .order("created_at", { ascending: false })
         .limit(2000);
-      if (branchFilter.kind === "eq") q = q.eq("branch_id", branchFilter.branchId);
-      else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0)
+      // Branch filter: explicit override OR scope-based
+      if (branchId !== "all") {
+        q = q.eq("branch_id", branchId);
+      } else if (branchFilter.kind === "eq") {
+        q = q.eq("branch_id", branchFilter.branchId);
+      } else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0) {
         q = q.in("branch_id", branchFilter.branchIds);
-      else if (branchFilter.kind === "in") return [] as VisitRow[];
+      } else if (branchFilter.kind === "in") {
+        return [] as VisitRow[];
+      }
       if (type !== "all") q = q.eq("visit_type", type as "guest" | "supplier" | "contractor");
       if (status === "rejected") q = q.eq("approval", "not_approved");
       else if (status !== "all") q = q.eq("status", status as "pending" | "checked_in" | "checked_out" | "overstayed");
+      if (purpose.trim()) q = q.ilike("purpose", `%${purpose.trim()}%`);
+      if (badgeReturned === "returned") q = q.eq("badge_returned", true).not("badge_number", "is", null);
+      else if (badgeReturned === "outstanding") q = q.eq("badge_returned", false).not("badge_number", "is", null);
+      else if (badgeReturned === "with_badge") q = q.not("badge_number", "is", null);
+      else if (badgeReturned === "no_badge") q = q.is("badge_number", null);
+      if (preReg === "yes") q = q.eq("pre_registered", true);
+      else if (preReg === "no") q = q.eq("pre_registered", false);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as unknown as VisitRow[];
@@ -321,7 +350,7 @@ function ReportsPage() {
         <div>
           <h1 className="font-display text-3xl font-semibold">Reports</h1>
           <p className="text-sm text-muted-foreground">
-            {rows.length} visits in selected range · scoped to active branch.
+            {visits.isLoading ? "Loading…" : `${rows.length} visits in selected range`} · scoped to active branch.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -338,10 +367,49 @@ function ReportsPage() {
       </header>
 
       <Card>
-        <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Filters</CardTitle>
+          <Button variant="ghost" size="sm" onClick={resetFilters}>
+            <X className="mr-1 h-3.5 w-3.5" /> Reset
+          </Button>
+        </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-4">
           <div className="space-y-2"><Label>From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
           <div className="space-y-2"><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+          <div className="space-y-2">
+            <Label>Quick range</Label>
+            <Select
+              value="custom"
+              onValueChange={(v) => {
+                if (v === "today") { setFrom(todayISO()); setTo(todayISO()); }
+                else if (v === "7") { setFrom(daysAgo(7)); setTo(todayISO()); }
+                else if (v === "30") { setFrom(daysAgo(30)); setTo(todayISO()); }
+                else if (v === "90") { setFrom(daysAgo(90)); setTo(todayISO()); }
+                else if (v === "365") { setFrom(daysAgo(365)); setTo(todayISO()); }
+              }}
+            >
+              <SelectTrigger><SelectValue placeholder="Custom" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="90">Last 90 days</SelectItem>
+                <SelectItem value="365">Last 12 months</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Branch</Label>
+            <Select value={branchId} onValueChange={setBranchId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All allowed branches</SelectItem>
+                {branchScope.availableBranches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2">
             <Label>Visitor type</Label>
             <Select value={type} onValueChange={setType}>
@@ -368,8 +436,51 @@ function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label>Purpose contains</Label>
+            <Input placeholder="e.g. meeting" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Badge / returned</Label>
+            <Select value={badgeReturned} onValueChange={setBadgeReturned}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="with_badge">With badge</SelectItem>
+                <SelectItem value="no_badge">No badge</SelectItem>
+                <SelectItem value="returned">Badge returned</SelectItem>
+                <SelectItem value="outstanding">Badge outstanding</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Registration</Label>
+            <Select value={preReg} onValueChange={setPreReg}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="yes">Pre-registered</SelectItem>
+                <SelectItem value="no">Walk-in</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
+
+      {visits.isError && (
+        <Card className="border-destructive/40">
+          <CardContent className="p-4 text-sm text-destructive">
+            Failed to load report data: {visits.error instanceof Error ? visits.error.message : "Unknown error"}
+          </CardContent>
+        </Card>
+      )}
+      {!visits.isLoading && rows.length === 0 && !visits.isError && (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            No visits match the current filters. Try widening the date range or clearing filters.
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
