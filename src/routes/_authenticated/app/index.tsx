@@ -16,6 +16,11 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  ShieldAlert,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Activity,
 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
 import { useBranchScope, useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
