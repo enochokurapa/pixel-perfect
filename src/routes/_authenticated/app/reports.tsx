@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Download } from "lucide-react";
+import { Download, X } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
-import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { useBranchScope, useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 import { exportExcel, exportPdf, type ExportRow } from "@/lib/visit-export";
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
