@@ -557,6 +557,7 @@ function ReportsPage() {
           <TabsTrigger value="approvals">Approvals</TabsTrigger>
           <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
           <TabsTrigger value="exceptions">Exceptions</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="blacklist">Blacklist</TabsTrigger>
         </TabsList>
 
