@@ -316,6 +316,71 @@ function ReportsPage() {
     },
   });
 
+  const timeline = useQuery({
+    enabled: me.canViewReports,
+    queryKey: ["reports", "timeline", branchFilter],
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 7);
+      const sinceISO = since.toISOString();
+      let q = supabase
+        .from("visits")
+        .select(
+          "id, created_at, check_in_at, check_out_at, approval, status, pre_registered, rejection_reason, visitor:visitors(full_name, company), host:profiles(full_name)",
+        )
+        .gte("updated_at", sinceISO)
+        .order("updated_at", { ascending: false })
+        .limit(50);
+      if (branchFilter.kind === "eq") q = q.eq("branch_id", branchFilter.branchId);
+      else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0) q = q.in("branch_id", branchFilter.branchIds);
+      const [{ data: visits }, { data: blacklist }] = await Promise.all([
+        q,
+        supabase
+          .from("blacklist")
+          .select("id, created_at, reason, active, visitor:visitors(full_name, company)")
+          .gte("created_at", sinceISO)
+          .order("created_at", { ascending: false })
+          .limit(25),
+      ]);
+      type Ev = {
+        id: string;
+        at: string;
+        kind: "created" | "approved" | "rejected" | "checked_in" | "checked_out" | "blacklisted" | "unblacklisted";
+        visitor: string;
+        company: string | null;
+        detail: string;
+        visitId?: string;
+      };
+      const events: Ev[] = [];
+      (visits ?? []).forEach((v) => {
+        const visitorName = (v as { visitor?: { full_name?: string; company?: string | null } | null }).visitor?.full_name ?? "Unknown";
+        const company = (v as { visitor?: { company?: string | null } | null }).visitor?.company ?? null;
+        const hostName = (v as { host?: { full_name?: string } | null }).host?.full_name ?? "—";
+        events.push({ id: `${v.id}-c`, at: v.created_at, kind: "created", visitor: visitorName, company, detail: `${v.pre_registered ? "Pre-registered" : "Registered"} · host ${hostName}`, visitId: v.id });
+        if (v.approval === "approved") events.push({ id: `${v.id}-a`, at: v.check_in_at ?? v.created_at, kind: "approved", visitor: visitorName, company, detail: `Approved by ${hostName}`, visitId: v.id });
+        if (v.approval === "not_approved") events.push({ id: `${v.id}-r`, at: v.created_at, kind: "rejected", visitor: visitorName, company, detail: v.rejection_reason || "Rejected", visitId: v.id });
+        if (v.check_in_at) events.push({ id: `${v.id}-i`, at: v.check_in_at, kind: "checked_in", visitor: visitorName, company, detail: `Checked in · host ${hostName}`, visitId: v.id });
+        if (v.check_out_at) events.push({ id: `${v.id}-o`, at: v.check_out_at, kind: "checked_out", visitor: visitorName, company, detail: "Checked out", visitId: v.id });
+      });
+      (blacklist ?? []).forEach((b) => {
+        const visitorName = (b as { visitor?: { full_name?: string; company?: string | null } | null }).visitor?.full_name ?? "Unknown";
+        const company = (b as { visitor?: { company?: string | null } | null }).visitor?.company ?? null;
+        events.push({
+          id: `bl-${b.id}`,
+          at: b.created_at,
+          kind: b.active ? "blacklisted" : "unblacklisted",
+          visitor: visitorName,
+          company,
+          detail: b.reason,
+        });
+      });
+      return events
+        .filter((e) => e.at && new Date(e.at).getTime() >= since.getTime())
+        .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+        .slice(0, 30);
+    },
+  });
+
   if (!me.canViewReports) {
     return (
       <div className="mx-auto max-w-3xl px-8 py-16 text-center">
