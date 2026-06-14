@@ -669,18 +669,6 @@ function Dashboard() {
   );
 }
 
-const TIMELINE_META: Record<
-  "created" | "approved" | "rejected" | "checked_in" | "checked_out" | "blacklisted" | "unblacklisted",
-  { label: string; icon: any; bg: string; text: string }
-> = {
-  created: { label: "Registered", icon: UserPlus, bg: "bg-secondary", text: "text-secondary-foreground" },
-  approved: { label: "Approved", icon: CheckCircle2, bg: "bg-success/15", text: "text-success" },
-  rejected: { label: "Rejected", icon: XCircle, bg: "bg-destructive/15", text: "text-destructive" },
-  checked_in: { label: "Checked in", icon: LogIn, bg: "bg-info/15", text: "text-info" },
-  checked_out: { label: "Checked out", icon: LogOut, bg: "bg-muted", text: "text-muted-foreground" },
-  blacklisted: { label: "Blacklisted", icon: ShieldAlert, bg: "bg-destructive/15", text: "text-destructive" },
-  unblacklisted: { label: "Removed from blacklist", icon: Clock, bg: "bg-warning/15", text: "text-warning-foreground" },
-};
 
 function StatCard({
   label,
