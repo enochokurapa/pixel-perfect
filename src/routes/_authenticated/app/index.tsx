@@ -343,70 +343,6 @@ function Dashboard() {
     },
   });
 
-  const timeline = useQuery({
-    queryKey: ["dashboard", "timeline", branchFilter],
-    queryFn: async () => {
-      const since = new Date();
-      since.setDate(since.getDate() - 7);
-      const sinceISO = since.toISOString();
-      const visitsQ = applyBranch(
-        supabase
-          .from("visits")
-          .select(
-            "id, created_at, check_in_at, check_out_at, approval, status, pre_registered, rejection_reason, visitor:visitors(full_name, company), host:profiles(full_name)",
-          )
-          .gte("updated_at", sinceISO)
-          .order("updated_at", { ascending: false })
-          .limit(50),
-      );
-      const [{ data: visits }, { data: blacklist }] = await Promise.all([
-        visitsQ,
-        supabase
-          .from("blacklist")
-          .select("id, created_at, reason, active, visitor:visitors(full_name, company)")
-          .gte("created_at", sinceISO)
-          .order("created_at", { ascending: false })
-          .limit(25),
-      ]);
-
-      type Ev = {
-        id: string;
-        at: string;
-        kind: "created" | "approved" | "rejected" | "checked_in" | "checked_out" | "blacklisted" | "unblacklisted";
-        visitor: string;
-        company: string | null;
-        detail: string;
-        visitId?: string;
-      };
-      const events: Ev[] = [];
-      (visits ?? []).forEach((v) => {
-        const visitorName = (v as { visitor?: { full_name?: string; company?: string | null } | null }).visitor?.full_name ?? "Unknown";
-        const company = (v as { visitor?: { company?: string | null } | null }).visitor?.company ?? null;
-        const hostName = (v as { host?: { full_name?: string } | null }).host?.full_name ?? "—";
-        events.push({ id: `${v.id}-c`, at: v.created_at, kind: "created", visitor: visitorName, company, detail: `${v.pre_registered ? "Pre-registered" : "Registered"} · host ${hostName}`, visitId: v.id });
-        if (v.approval === "approved") events.push({ id: `${v.id}-a`, at: v.check_in_at ?? v.created_at, kind: "approved", visitor: visitorName, company, detail: `Approved by ${hostName}`, visitId: v.id });
-        if (v.approval === "not_approved") events.push({ id: `${v.id}-r`, at: v.created_at, kind: "rejected", visitor: visitorName, company, detail: v.rejection_reason || "Rejected", visitId: v.id });
-        if (v.check_in_at) events.push({ id: `${v.id}-i`, at: v.check_in_at, kind: "checked_in", visitor: visitorName, company, detail: `Checked in · host ${hostName}`, visitId: v.id });
-        if (v.check_out_at) events.push({ id: `${v.id}-o`, at: v.check_out_at, kind: "checked_out", visitor: visitorName, company, detail: "Checked out", visitId: v.id });
-      });
-      (blacklist ?? []).forEach((b) => {
-        const visitorName = (b as { visitor?: { full_name?: string; company?: string | null } | null }).visitor?.full_name ?? "Unknown";
-        const company = (b as { visitor?: { company?: string | null } | null }).visitor?.company ?? null;
-        events.push({
-          id: `bl-${b.id}`,
-          at: b.created_at,
-          kind: b.active ? "blacklisted" : "unblacklisted",
-          visitor: visitorName,
-          company,
-          detail: b.reason,
-        });
-      });
-      return events
-        .filter((e) => e.at && new Date(e.at).getTime() >= since.getTime())
-        .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-        .slice(0, 30);
-    },
-  });
 
   const totalPages = Math.max(1, Math.ceil((totalCount.data ?? 0) / PAGE_SIZE));
 
@@ -729,73 +665,10 @@ function Dashboard() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> Visitor status timeline (last 7 days)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {timeline.isLoading ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
-          ) : (timeline.data?.length ?? 0) === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">No recent activity.</div>
-          ) : (
-            <ol className="relative ml-3 space-y-4 border-l border-border pl-6">
-              {timeline.data?.map((e) => {
-                const meta = TIMELINE_META[e.kind];
-                const Icon = meta.icon;
-                const inner = (
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">
-                        {e.visitor}
-                        {e.company ? <span className="text-muted-foreground"> · {e.company}</span> : null}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <span className={`font-medium ${meta.text}`}>{meta.label}</span> · {e.detail}
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                      {new Date(e.at).toLocaleString()}
-                    </div>
-                  </div>
-                );
-                return (
-                  <li key={e.id} className="relative">
-                    <span className={`absolute -left-[34px] grid h-6 w-6 place-items-center rounded-full ${meta.bg}`}>
-                      <Icon className={`h-3.5 w-3.5 ${meta.text}`} />
-                    </span>
-                    {e.visitId ? (
-                      <Link to="/app/visits/$id" params={{ id: e.visitId }} className="block -mx-2 rounded px-2 py-1 hover:bg-muted/40">
-                        {inner}
-                      </Link>
-                    ) : (
-                      <div className="px-2 py-1">{inner}</div>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
 
-const TIMELINE_META: Record<
-  "created" | "approved" | "rejected" | "checked_in" | "checked_out" | "blacklisted" | "unblacklisted",
-  { label: string; icon: any; bg: string; text: string }
-> = {
-  created: { label: "Registered", icon: UserPlus, bg: "bg-secondary", text: "text-secondary-foreground" },
-  approved: { label: "Approved", icon: CheckCircle2, bg: "bg-success/15", text: "text-success" },
-  rejected: { label: "Rejected", icon: XCircle, bg: "bg-destructive/15", text: "text-destructive" },
-  checked_in: { label: "Checked in", icon: LogIn, bg: "bg-info/15", text: "text-info" },
-  checked_out: { label: "Checked out", icon: LogOut, bg: "bg-muted", text: "text-muted-foreground" },
-  blacklisted: { label: "Blacklisted", icon: ShieldAlert, bg: "bg-destructive/15", text: "text-destructive" },
-  unblacklisted: { label: "Removed from blacklist", icon: Clock, bg: "bg-warning/15", text: "text-warning-foreground" },
-};
 
 function StatCard({
   label,
