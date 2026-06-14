@@ -665,57 +665,6 @@ function Dashboard() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> Visitor status timeline (last 7 days)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {timeline.isLoading ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
-          ) : (timeline.data?.length ?? 0) === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">No recent activity.</div>
-          ) : (
-            <ol className="relative ml-3 space-y-4 border-l border-border pl-6">
-              {timeline.data?.map((e) => {
-                const meta = TIMELINE_META[e.kind];
-                const Icon = meta.icon;
-                const inner = (
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">
-                        {e.visitor}
-                        {e.company ? <span className="text-muted-foreground"> · {e.company}</span> : null}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <span className={`font-medium ${meta.text}`}>{meta.label}</span> · {e.detail}
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                      {new Date(e.at).toLocaleString()}
-                    </div>
-                  </div>
-                );
-                return (
-                  <li key={e.id} className="relative">
-                    <span className={`absolute -left-[34px] grid h-6 w-6 place-items-center rounded-full ${meta.bg}`}>
-                      <Icon className={`h-3.5 w-3.5 ${meta.text}`} />
-                    </span>
-                    {e.visitId ? (
-                      <Link to="/app/visits/$id" params={{ id: e.visitId }} className="block -mx-2 rounded px-2 py-1 hover:bg-muted/40">
-                        {inner}
-                      </Link>
-                    ) : (
-                      <div className="px-2 py-1">{inner}</div>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
