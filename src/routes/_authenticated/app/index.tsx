@@ -373,13 +373,14 @@ function Dashboard() {
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <StatCard label="Pre-registered (pending)" value={stats.data?.preReg} icon={CalendarClock} tone="info" onClick={() => setOpenTile("preReg")} />
-        <StatCard label="Today's visits" value={stats.data?.today} icon={LogIn} tone="default" onClick={() => setOpenTile("today")} />
-        <StatCard label="Visitors inside" value={stats.data?.inside} icon={Users} tone="info" onClick={() => setOpenTile("inside")} />
+        <StatCard label="Pre-registered (pending)" value={stats.data?.preReg} icon={CalendarClock} tone="violet" onClick={() => setOpenTile("preReg")} />
+        <StatCard label="Today's visits" value={stats.data?.today} icon={LogIn} tone="primary" onClick={() => setOpenTile("today")} />
+        <StatCard label="Visitors inside" value={stats.data?.inside} icon={Users} tone="accent" onClick={() => setOpenTile("inside")} />
         <StatCard label="Overstayed" value={stats.data?.overstay} icon={AlertTriangle} tone="warning" onClick={() => setOpenTile("overstay")} />
-        <StatCard label="Badges issued" value={stats.data?.badgesIssued} icon={BadgeCheck} tone="default" onClick={() => setOpenTile("badgesIssued")} />
+        <StatCard label="Badges issued" value={stats.data?.badgesIssued} icon={BadgeCheck} tone="success" onClick={() => setOpenTile("badgesIssued")} />
         <StatCard label="Unissued badges" value={stats.data?.badgesUnissued} icon={BadgeMinus} tone="info" onClick={() => setOpenTile("badgesUnissued")} />
-        <StatCard label="With assets (today)" value={stats.data?.withAssets} icon={Laptop} tone="default" onClick={() => setOpenTile("withAssets")} />
+        <StatCard label="With assets (today)" value={stats.data?.withAssets} icon={Laptop} tone="primary" onClick={() => setOpenTile("withAssets")} />
+
       </section>
 
       <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} branchIds={visibleBranchIds.length > 0 ? visibleBranchIds : null} />
@@ -680,31 +681,44 @@ function StatCard({
   label: string;
   value: number | undefined;
   icon: any;
-  tone: "default" | "info" | "warning";
+  tone: "primary" | "accent" | "info" | "warning" | "success" | "violet" | "default";
   onClick?: () => void;
 }) {
-  const toneClass = {
-    default: "bg-secondary text-secondary-foreground",
-    info: "bg-info/10 text-info",
-    warning: "bg-warning/15 text-warning-foreground",
+  const toneGradient = {
+    primary: "bg-gradient-primary",
+    accent: "bg-gradient-accent",
+    info: "bg-gradient-accent",
+    warning: "bg-gradient-warning",
+    success: "bg-gradient-success",
+    violet: "bg-gradient-violet",
+    default: "bg-gradient-primary",
   }[tone];
+  const accentBar = toneGradient;
   return (
     <Card
       onClick={onClick}
-      className={onClick ? "cursor-pointer transition-colors hover:bg-muted/40" : ""}
+      className={`tile-card group relative ${onClick ? "cursor-pointer" : ""}`}
     >
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={`grid h-10 w-10 place-items-center rounded-md ${toneClass}`}>
+      <span className={`absolute inset-y-0 left-0 w-1 ${accentBar}`} aria-hidden />
+      <CardContent className="flex items-center gap-4 p-5 pl-6">
+        <div
+          className={`grid h-12 w-12 place-items-center rounded-lg text-white shadow-glow ${toneGradient}`}
+        >
           <Icon className="h-5 w-5" />
         </div>
-        <div>
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-          <div className="font-display text-2xl font-semibold tabular-nums">{value ?? "—"}</div>
+        <div className="min-w-0">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+          <div className="font-display text-3xl font-semibold tabular-nums text-foreground">
+            {value ?? "—"}
+          </div>
         </div>
       </CardContent>
     </Card>
   );
 }
+
 
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
