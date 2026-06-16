@@ -683,28 +683,41 @@ function StatCard({
   tone: "default" | "info" | "warning";
   onClick?: () => void;
 }) {
-  const toneClass = {
-    default: "bg-secondary text-secondary-foreground",
-    info: "bg-info/10 text-info",
-    warning: "bg-warning/15 text-warning-foreground",
+  const toneGradient = {
+    default: "bg-gradient-primary",
+    info: "bg-gradient-accent",
+    warning: "bg-gradient-warning",
+  }[tone];
+  const accentBar = {
+    default: "bg-gradient-primary",
+    info: "bg-gradient-accent",
+    warning: "bg-gradient-warning",
   }[tone];
   return (
     <Card
       onClick={onClick}
-      className={onClick ? "cursor-pointer transition-colors hover:bg-muted/40" : ""}
+      className={`tile-card group relative ${onClick ? "cursor-pointer" : ""}`}
     >
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={`grid h-10 w-10 place-items-center rounded-md ${toneClass}`}>
+      <span className={`absolute inset-y-0 left-0 w-1 ${accentBar}`} aria-hidden />
+      <CardContent className="flex items-center gap-4 p-5 pl-6">
+        <div
+          className={`grid h-12 w-12 place-items-center rounded-lg text-white shadow-glow ${toneGradient}`}
+        >
           <Icon className="h-5 w-5" />
         </div>
-        <div>
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-          <div className="font-display text-2xl font-semibold tabular-nums">{value ?? "—"}</div>
+        <div className="min-w-0">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+          <div className="font-display text-3xl font-semibold tabular-nums text-foreground">
+            {value ?? "—"}
+          </div>
         </div>
       </CardContent>
     </Card>
   );
 }
+
 
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
