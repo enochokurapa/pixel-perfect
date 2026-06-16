@@ -681,19 +681,19 @@ function StatCard({
   label: string;
   value: number | undefined;
   icon: any;
-  tone: "default" | "info" | "warning";
+  tone: "primary" | "accent" | "info" | "warning" | "success" | "violet" | "default";
   onClick?: () => void;
 }) {
   const toneGradient = {
-    default: "bg-gradient-primary",
+    primary: "bg-gradient-primary",
+    accent: "bg-gradient-accent",
     info: "bg-gradient-accent",
     warning: "bg-gradient-warning",
-  }[tone];
-  const accentBar = {
+    success: "bg-gradient-success",
+    violet: "bg-gradient-violet",
     default: "bg-gradient-primary",
-    info: "bg-gradient-accent",
-    warning: "bg-gradient-warning",
   }[tone];
+  const accentBar = toneGradient;
   return (
     <Card
       onClick={onClick}
