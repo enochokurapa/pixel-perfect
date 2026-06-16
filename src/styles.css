@@ -157,3 +157,35 @@
     letter-spacing: -0.015em;
   }
 }
+
+@utility bg-gradient-primary { background-image: var(--gradient-primary); }
+@utility bg-gradient-accent { background-image: var(--gradient-accent); }
+@utility bg-gradient-success { background-image: var(--gradient-success); }
+@utility bg-gradient-warning { background-image: var(--gradient-warning); }
+@utility bg-gradient-danger { background-image: var(--gradient-danger); }
+@utility bg-gradient-violet { background-image: var(--gradient-violet); }
+@utility bg-gradient-surface { background-image: var(--gradient-surface); }
+@utility shadow-elegant { box-shadow: var(--shadow-elegant); }
+@utility shadow-glow { box-shadow: var(--shadow-glow); }
+
+@utility tile-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background-image: var(--gradient-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-elegant);
+  }
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background-image: var(--gradient-primary);
+    opacity: 0.9;
+  }
+}
