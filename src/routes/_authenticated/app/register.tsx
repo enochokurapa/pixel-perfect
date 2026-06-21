@@ -497,21 +497,6 @@ function RegisterPage() {
               </SelectContent>
             </Select>
           </div>
-
-          {visitMode === "drive_in" && (
-            <>
-              <Field
-                label="Vehicle plate"
-                value={form.vehicle_plate}
-                onChange={(v) => set("vehicle_plate", v)}
-              />
-              <Field
-                label="Vehicle type"
-                value={form.vehicle_type}
-                onChange={(v) => set("vehicle_type", v)}
-              />
-            </>
-          )}
         </CardContent>
       </Card>
 
