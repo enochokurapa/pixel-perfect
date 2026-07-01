@@ -222,7 +222,7 @@ function Settings() {
   });
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-8 py-8">
+    <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 md:px-8 md:py-8">
       <header>
         <h1 className="font-display text-3xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground">
