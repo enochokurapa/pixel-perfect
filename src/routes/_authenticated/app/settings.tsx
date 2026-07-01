@@ -25,6 +25,7 @@ import {
 import { ALL_ROLES, ROLE_GROUPS, ROLE_LABELS, type Role } from "@/lib/permissions";
 import { KioskQrCard } from "@/components/kiosk-qr-card";
 import { BranchAssignmentsEditor } from "@/components/branch-assignments";
+import { USER_GUIDES, downloadModuleGuidePdf, downloadFullGuidePdf } from "@/lib/user-guide";
 
 export const Route = createFileRoute("/_authenticated/app/settings")({
   head: () => ({ meta: [{ title: "Settings — Sentinel VMS" }] }),
