@@ -120,7 +120,7 @@ function BlacklistPage() {
   const prefilled = Boolean(visitorId || name);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-8 py-8">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
       <header>
         <h1 className="font-display text-3xl font-semibold flex items-center gap-2">
           <ShieldAlert className="h-7 w-7 text-destructive" /> Blacklist

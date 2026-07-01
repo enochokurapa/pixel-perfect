@@ -172,7 +172,7 @@ function PreRegisterPage() {
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-8 py-8">
+    <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
       <header>
         <h1 className="font-display text-3xl font-semibold">Pre-register a visit</h1>
         <p className="text-sm text-muted-foreground">Book ahead — reception will check the visitor in on arrival.</p>

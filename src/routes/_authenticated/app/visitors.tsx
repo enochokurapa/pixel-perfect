@@ -102,7 +102,7 @@ function VisitorsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-8 py-8">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-semibold">Visitors</h1>
