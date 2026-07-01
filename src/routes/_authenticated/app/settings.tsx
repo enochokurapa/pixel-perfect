@@ -25,6 +25,7 @@ import {
 import { ALL_ROLES, ROLE_GROUPS, ROLE_LABELS, type Role } from "@/lib/permissions";
 import { KioskQrCard } from "@/components/kiosk-qr-card";
 import { BranchAssignmentsEditor } from "@/components/branch-assignments";
+import { USER_GUIDES, downloadModuleGuidePdf, downloadFullGuidePdf } from "@/lib/user-guide";
 
 export const Route = createFileRoute("/_authenticated/app/settings")({
   head: () => ({ meta: [{ title: "Settings — Sentinel VMS" }] }),
@@ -222,7 +223,7 @@ function Settings() {
   });
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-8 py-8">
+    <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 md:px-8 md:py-8">
       <header>
         <h1 className="font-display text-3xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground">
@@ -439,7 +440,50 @@ function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <GuidelinesCard />
     </div>
+  );
+}
+
+function GuidelinesCard() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle>User guidelines</CardTitle>
+          <CardDescription>
+            Downloadable how-to documents for every module. Share with new users during onboarding.
+          </CardDescription>
+        </div>
+        <Button onClick={() => downloadFullGuidePdf()} className="w-full sm:w-auto">
+          Download complete guide (PDF)
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {USER_GUIDES.map((m) => (
+            <div
+              key={m.key}
+              className="flex flex-col gap-2 rounded-md border border-border p-3 hover:border-primary/40 transition-colors"
+            >
+              <div>
+                <div className="text-sm font-semibold">{m.title}</div>
+                <p className="mt-0.5 text-xs text-muted-foreground line-clamp-3">{m.intro}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-auto w-full"
+                onClick={() => downloadModuleGuidePdf(m)}
+              >
+                Download PDF
+              </Button>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

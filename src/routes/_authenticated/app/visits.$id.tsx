@@ -264,7 +264,7 @@ function VisitDetail() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-8 py-8">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
       <div>
         <Button
           variant="ghost"
@@ -274,10 +274,10 @@ function VisitDetail() {
         >
           <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Back to visitors
         </Button>
-        <div className="mt-2 flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="font-display text-3xl font-semibold">{v.visitor?.full_name}</h1>
+        <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="font-display text-2xl font-semibold sm:text-3xl break-words">{v.visitor?.full_name}</h1>
               <StatusBadge status={v.status} approval={v.approval} />
               {v.pre_registered && (
                 <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
@@ -285,7 +285,7 @@ function VisitDetail() {
                 </span>
               )}
             </div>
-            <p className="mt-1 text-sm text-muted-foreground capitalize">
+            <p className="mt-1 text-sm text-muted-foreground capitalize break-words">
               {v.visit_type} · {v.visit_mode.replace("_", " ")} ·{" "}
               {v.visitor?.company ?? "No company"}
             </p>
@@ -425,6 +425,19 @@ function VisitDetail() {
         canEdit={canStaffEdit}
         onChange={() => qc.invalidateQueries({ queryKey: ["visit-assets", id] })}
       />
+
+      {v.visit_mode === "drive_in" && (
+        <VehicleCaptureCard
+          visitId={id}
+          plate={v.vehicle_plate}
+          vehicleType={v.vehicle_type}
+          canEdit={canStaffEdit && v.status !== "checked_out"}
+          onSave={async (plate, vt) => {
+            await update.mutateAsync({ vehicle_plate: plate || null, vehicle_type: vt || null });
+            qc.invalidateQueries({ queryKey: ["vehicle-audit", id] });
+          }}
+        />
+      )}
 
       {v.status === "checked_out" && (
         <FeedbackCard
@@ -951,5 +964,159 @@ function IssueBadgeButton({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function VehicleCaptureCard({
+  visitId,
+  plate,
+  vehicleType,
+  canEdit,
+  onSave,
+}: {
+  visitId: string;
+  plate: string | null;
+  vehicleType: string | null;
+  canEdit: boolean;
+  onSave: (plate: string, vehicleType: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [p, setP] = useState(plate ?? "");
+  const [t, setT] = useState(vehicleType ?? "");
+  const [busy, setBusy] = useState(false);
+  const [pErr, setPErr] = useState<string | null>(null);
+  const [tErr, setTErr] = useState<string | null>(null);
+
+  const audit = useQuery({
+    queryKey: ["vehicle-audit", visitId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visit_vehicle_audit" as any)
+        .select("*, changed_by_profile:profiles!visit_vehicle_audit_changed_by_fkey(full_name)")
+        .eq("visit_id", visitId)
+        .order("created_at", { ascending: false });
+      if (error) {
+        // Fallback without embed if FK isn't declared to profiles
+        const { data: raw } = await supabase
+          .from("visit_vehicle_audit" as any)
+          .select("*")
+          .eq("visit_id", visitId)
+          .order("created_at", { ascending: false });
+        return (raw ?? []) as any[];
+      }
+      return (data ?? []) as any[];
+    },
+  });
+
+  const save = async () => {
+    setPErr(null); setTErr(null);
+    if (!p.trim()) { setPErr("Vehicle plate is required."); return; }
+    if (!t.trim()) { setTErr("Vehicle type is required."); return; }
+    setBusy(true);
+    try {
+      await onSave(p.trim().toUpperCase(), t.trim());
+      toast.success("Vehicle details updated");
+      setEditing(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle>Vehicle capture</CardTitle>
+          <CardDescription>Current plate & type, plus full change history.</CardDescription>
+        </div>
+        {canEdit && !editing && (
+          <Button variant="outline" size="sm" onClick={() => { setP(plate ?? ""); setT(vehicleType ?? ""); setEditing(true); }}>
+            Edit vehicle
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!editing ? (
+          <div className="grid gap-3 sm:grid-cols-2 text-sm">
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Plate</div>
+              <div className="mt-0.5 font-mono font-medium">{plate ?? "—"}</div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Type</div>
+              <div className="mt-0.5 font-medium capitalize">{vehicleType ?? "—"}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Vehicle plate *</Label>
+              <Input value={p} onChange={(e) => setP(e.target.value)} className={pErr ? "border-destructive" : ""} />
+              {pErr && <p className="text-xs text-destructive">{pErr}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Vehicle type *</Label>
+              <Select value={t} onValueChange={setT}>
+                <SelectTrigger className={tErr ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Select vehicle type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="car">Car / Sedan</SelectItem>
+                  <SelectItem value="suv">SUV</SelectItem>
+                  <SelectItem value="van">Van</SelectItem>
+                  <SelectItem value="pickup">Pickup / Truck</SelectItem>
+                  <SelectItem value="motorcycle">Motorcycle</SelectItem>
+                  <SelectItem value="bus">Bus</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              {tErr && <p className="text-xs text-destructive">{tErr}</p>}
+            </div>
+            <div className="sm:col-span-2 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditing(false)} disabled={busy}>Cancel</Button>
+              <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Audit trail
+          </div>
+          {(!audit.data || audit.data.length === 0) ? (
+            <p className="text-sm text-muted-foreground">No changes recorded yet.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-left">When</th>
+                    <th className="px-3 py-2 text-left">Change</th>
+                    <th className="px-3 py-2 text-left">Plate</th>
+                    <th className="px-3 py-2 text-left">Type</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {audit.data.map((row: any) => (
+                    <tr key={row.id}>
+                      <td className="px-3 py-2 whitespace-nowrap">{new Date(row.created_at).toLocaleString()}</td>
+                      <td className="px-3 py-2 capitalize">{row.change_kind}</td>
+                      <td className="px-3 py-2 font-mono text-xs">
+                        {row.old_plate ?? "—"} <span className="text-muted-foreground">→</span> {row.new_plate ?? "—"}
+                      </td>
+                      <td className="px-3 py-2 capitalize">
+                        {row.old_vehicle_type ?? "—"} <span className="text-muted-foreground">→</span> {row.new_vehicle_type ?? "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

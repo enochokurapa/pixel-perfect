@@ -349,7 +349,7 @@ function Dashboard() {
   const PIE_COLORS = ["hsl(217, 91%, 60%)", "hsl(142, 71%, 45%)", "hsl(38, 92%, 50%)", "hsl(0, 84%, 60%)", "hsl(280, 70%, 55%)"];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-8 py-8">
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 md:px-8 md:py-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold">
