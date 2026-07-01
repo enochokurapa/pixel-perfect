@@ -439,7 +439,50 @@ function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <GuidelinesCard />
     </div>
+  );
+}
+
+function GuidelinesCard() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle>User guidelines</CardTitle>
+          <CardDescription>
+            Downloadable how-to documents for every module. Share with new users during onboarding.
+          </CardDescription>
+        </div>
+        <Button onClick={() => downloadFullGuidePdf()} className="w-full sm:w-auto">
+          Download complete guide (PDF)
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {USER_GUIDES.map((m) => (
+            <div
+              key={m.key}
+              className="flex flex-col gap-2 rounded-md border border-border p-3 hover:border-primary/40 transition-colors"
+            >
+              <div>
+                <div className="text-sm font-semibold">{m.title}</div>
+                <p className="mt-0.5 text-xs text-muted-foreground line-clamp-3">{m.intro}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-auto w-full"
+                onClick={() => downloadModuleGuidePdf(m)}
+              >
+                Download PDF
+              </Button>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
