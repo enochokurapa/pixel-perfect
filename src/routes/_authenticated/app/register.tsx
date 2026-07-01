@@ -314,16 +314,41 @@ function RegisterPage() {
           </div>
           {visitMode === "drive_in" && (
             <>
-              <Field
-                label="Vehicle plate"
-                value={form.vehicle_plate}
-                onChange={(v) => set("vehicle_plate", v)}
-              />
-              <Field
-                label="Vehicle type"
-                value={form.vehicle_type}
-                onChange={(v) => set("vehicle_type", v)}
-              />
+              <div className="space-y-2">
+                <Label>Vehicle plate <span className="text-destructive">*</span></Label>
+                <Input
+                  value={form.vehicle_plate}
+                  onChange={(e) => set("vehicle_plate", e.target.value)}
+                  aria-invalid={!form.vehicle_plate.trim()}
+                  className={!form.vehicle_plate.trim() ? "border-destructive/60" : ""}
+                />
+                {!form.vehicle_plate.trim() && (
+                  <p className="text-xs text-destructive">Vehicle plate is required for drive-in visits.</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Vehicle type <span className="text-destructive">*</span></Label>
+                <Select value={form.vehicle_type} onValueChange={(v) => set("vehicle_type", v)}>
+                  <SelectTrigger
+                    aria-invalid={!form.vehicle_type}
+                    className={!form.vehicle_type ? "border-destructive/60" : ""}
+                  >
+                    <SelectValue placeholder="Select vehicle type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="car">Car / Sedan</SelectItem>
+                    <SelectItem value="suv">SUV</SelectItem>
+                    <SelectItem value="van">Van</SelectItem>
+                    <SelectItem value="pickup">Pickup / Truck</SelectItem>
+                    <SelectItem value="motorcycle">Motorcycle</SelectItem>
+                    <SelectItem value="bus">Bus</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!form.vehicle_type && (
+                  <p className="text-xs text-destructive">Vehicle type is required for drive-in visits.</p>
+                )}
+              </div>
             </>
           )}
           {visitType !== "guest" && (
