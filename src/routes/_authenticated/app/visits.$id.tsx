@@ -264,7 +264,7 @@ function VisitDetail() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-8 py-8">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
       <div>
         <Button
           variant="ghost"
@@ -274,10 +274,10 @@ function VisitDetail() {
         >
           <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Back to visitors
         </Button>
-        <div className="mt-2 flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="font-display text-3xl font-semibold">{v.visitor?.full_name}</h1>
+        <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="font-display text-2xl font-semibold sm:text-3xl break-words">{v.visitor?.full_name}</h1>
               <StatusBadge status={v.status} approval={v.approval} />
               {v.pre_registered && (
                 <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
@@ -285,7 +285,7 @@ function VisitDetail() {
                 </span>
               )}
             </div>
-            <p className="mt-1 text-sm text-muted-foreground capitalize">
+            <p className="mt-1 text-sm text-muted-foreground capitalize break-words">
               {v.visit_type} · {v.visit_mode.replace("_", " ")} ·{" "}
               {v.visitor?.company ?? "No company"}
             </p>
