@@ -426,6 +426,19 @@ function VisitDetail() {
         onChange={() => qc.invalidateQueries({ queryKey: ["visit-assets", id] })}
       />
 
+      {v.visit_mode === "drive_in" && (
+        <VehicleCaptureCard
+          visitId={id}
+          plate={v.vehicle_plate}
+          vehicleType={v.vehicle_type}
+          canEdit={canStaffEdit && v.status !== "checked_out"}
+          onSave={async (plate, vt) => {
+            await update.mutateAsync({ vehicle_plate: plate || null, vehicle_type: vt || null });
+            qc.invalidateQueries({ queryKey: ["vehicle-audit", id] });
+          }}
+        />
+      )}
+
       {v.status === "checked_out" && (
         <FeedbackCard
           visitId={id}
