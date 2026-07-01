@@ -142,6 +142,10 @@ function RegisterPage() {
       if (!parsed.host_id && !parsed.host_name?.trim()) {
         throw new Error("Select a host or type the host name.");
       }
+      if (visitMode === "drive_in") {
+        if (!form.vehicle_plate.trim()) throw new Error("Vehicle plate is required for drive-in visits.");
+        if (!form.vehicle_type.trim()) throw new Error("Vehicle type is required for drive-in visits.");
+      }
 
       // Validate assets only if visitor declared bringing assets
       let cleanAssets: AssetRow[] = [];
