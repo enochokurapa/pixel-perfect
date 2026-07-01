@@ -569,6 +569,50 @@ export type Database = {
         }
         Relationships: []
       }
+      visit_vehicle_audit: {
+        Row: {
+          change_kind: string
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_plate: string | null
+          new_vehicle_type: string | null
+          old_plate: string | null
+          old_vehicle_type: string | null
+          visit_id: string
+        }
+        Insert: {
+          change_kind: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_plate?: string | null
+          new_vehicle_type?: string | null
+          old_plate?: string | null
+          old_vehicle_type?: string | null
+          visit_id: string
+        }
+        Update: {
+          change_kind?: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_plate?: string | null
+          new_vehicle_type?: string | null
+          old_plate?: string | null
+          old_vehicle_type?: string | null
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_vehicle_audit_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visitors: {
         Row: {
           company: string | null
