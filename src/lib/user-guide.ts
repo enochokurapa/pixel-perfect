@@ -271,6 +271,82 @@ export const USER_GUIDES: GuideModule[] = [
       },
     ],
   },
+  {
+    key: "photo-capture",
+    title: "Visitor Photo Capture",
+    intro:
+      "Operators with the 'Capture visitor photo' permission can attach a face photo and/or an ID photo to any visitor registration. Both steps are optional and will not slow down registration.",
+    sections: [
+      {
+        heading: "Capturing the face photo",
+        steps: [
+          "Complete the visitor details on the registration form.",
+          "In the 'Visitor photo capture' card, click 'Capture' under 'Visitor face photo'.",
+          "Choose the front or back camera from the dropdown when the dialog opens.",
+          "Use Capture → Retake if needed → Confirm to attach the photo. Cancel discards it.",
+          "Click 'Skip' by leaving the slot empty and submitting registration.",
+        ],
+      },
+      {
+        heading: "Capturing an ID photo",
+        steps: [
+          "Click 'Capture' under 'Visitor ID photo'.",
+          "Select the ID type: National ID, Passport, Driving Permit, Company ID, or Other.",
+          "Choose front or back camera, capture, retake if necessary, then confirm.",
+          "The ID type is stored on the visit record alongside the image.",
+        ],
+      },
+      {
+        heading: "Storage & privacy",
+        steps: [
+          "Images are compressed on-device and uploaded to the private 'visitor-photos' bucket.",
+          "Each file is scoped to its branch and visit and is only visible to authorised staff.",
+          "Capture date/time is stored automatically on the visit record.",
+        ],
+      },
+    ],
+  },
+  {
+    key: "photo-audit-reports",
+    title: "Photo & Audit Reports",
+    intro:
+      "The Reports module now includes photo galleries and a full activity audit log. Access is role-based (View photo reports / View audit log).",
+    sections: [
+      {
+        heading: "Visitor photo report",
+        steps: [
+          "Open Reports → Visitor photos.",
+          "Filter by branch and date range using the existing controls.",
+          "Each card shows the face photo, name, phone, company, purpose, branch and date/time.",
+          "Export the current selection to Excel or PDF.",
+        ],
+      },
+      {
+        heading: "Visitor ID report",
+        steps: [
+          "Open Reports → Visitor IDs.",
+          "Cards display the ID image, visitor details, ID type and visit details.",
+          "Export the list to Excel or PDF.",
+        ],
+      },
+      {
+        heading: "Audit log",
+        steps: [
+          "Open Reports → Audit log to see every action performed in the system.",
+          "Filter by branch (already scoped to your access), date range and action type.",
+          "Each entry shows who performed the action, their department, the entity affected and the branch.",
+          "Export the audit log to Excel or PDF for compliance.",
+        ],
+      },
+      {
+        heading: "Permissions",
+        steps: [
+          "Admins grant 'Capture visitor photo', 'View photo reports' and 'View audit log' from Settings → Staff.",
+          "Users without a permission will not see the corresponding button or tab.",
+        ],
+      },
+    ],
+  },
 ];
 
 export function downloadModuleGuidePdf(mod: GuideModule) {

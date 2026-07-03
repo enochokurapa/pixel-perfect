@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          actor_department: string | null
+          actor_id: string | null
+          actor_name: string | null
+          branch_id: string | null
+          created_at: string
+          details: Json
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_department?: string | null
+          actor_id?: string | null
+          actor_name?: string | null
+          branch_id?: string | null
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_department?: string | null
+          actor_id?: string | null
+          actor_name?: string | null
+          branch_id?: string | null
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_logs: {
         Row: {
           branch_id: string | null
@@ -666,12 +713,16 @@ export type Database = {
           created_at: string
           created_by: string | null
           expected_duration_minutes: number
+          face_photo_url: string | null
           feedback: string | null
           host_id: string | null
           host_name: string | null
           id: string
+          id_photo_type: string | null
+          id_photo_url: string | null
           kiosk_self_registered: boolean
           overstay_notified_at: string | null
+          photos_captured_at: string | null
           pre_registered: boolean
           purpose: string
           rejection_reason: string | null
@@ -698,12 +749,16 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           expected_duration_minutes?: number
+          face_photo_url?: string | null
           feedback?: string | null
           host_id?: string | null
           host_name?: string | null
           id?: string
+          id_photo_type?: string | null
+          id_photo_url?: string | null
           kiosk_self_registered?: boolean
           overstay_notified_at?: string | null
+          photos_captured_at?: string | null
           pre_registered?: boolean
           purpose: string
           rejection_reason?: string | null
@@ -730,12 +785,16 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           expected_duration_minutes?: number
+          face_photo_url?: string | null
           feedback?: string | null
           host_id?: string | null
           host_name?: string | null
           id?: string
+          id_photo_type?: string | null
+          id_photo_url?: string | null
           kiosk_self_registered?: boolean
           overstay_notified_at?: string | null
+          photos_captured_at?: string | null
           pre_registered?: boolean
           purpose?: string
           rejection_reason?: string | null
@@ -822,6 +881,9 @@ export type Database = {
         | "check_in_student"
         | "approve_pickup"
         | "view_student_reports"
+        | "capture_visitor_photo"
+        | "view_photo_reports"
+        | "view_audit_log"
       approval_status:
         | "not_required"
         | "pending"
@@ -1005,6 +1067,9 @@ export const Constants = {
         "check_in_student",
         "approve_pickup",
         "view_student_reports",
+        "capture_visitor_photo",
+        "view_photo_reports",
+        "view_audit_log",
       ],
       approval_status: [
         "not_required",

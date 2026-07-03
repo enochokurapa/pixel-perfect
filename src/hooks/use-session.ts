@@ -165,5 +165,8 @@ export function useCurrentUser() {
     canManageStaff: isAdmin || has("manage_staff"),
     canManageBranches: isAdmin || has("manage_branches"),
     canCheckout: isAdmin || has("checkout_visitor"),
+    canCapturePhoto: isAdmin || has("capture_visitor_photo"),
+    canViewPhotoReports: isAdmin || has("view_photo_reports") || has("view_reports"),
+    canViewAuditLog: isAdmin || has("view_audit_log"),
   };
 }

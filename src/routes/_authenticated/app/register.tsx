@@ -18,6 +18,9 @@ import { useCurrentUser } from "@/hooks/use-session";
 import { useBranchScope } from "@/hooks/use-branch-scope";
 import { toast } from "sonner";
 import { z } from "zod";
+import { PhotoCaptureDialog, type CapturedPhoto } from "@/components/photo-capture";
+import { logActivity } from "@/lib/activity-log";
+import { Camera, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app/register")({
   head: () => ({ meta: [{ title: "Register visitor — Sentinel VMS" }] }),
@@ -74,6 +77,10 @@ function RegisterPage() {
     id_type: "",
     id_number: "",
   });
+  const [facePhoto, setFacePhoto] = useState<CapturedPhoto | null>(null);
+  const [idPhoto, setIdPhoto] = useState<CapturedPhoto | null>(null);
+  const [faceOpen, setFaceOpen] = useState(false);
+  const [idOpen, setIdOpen] = useState(false);
 
   useEffect(() => {
     if (registrationBranchId) return;
@@ -253,6 +260,51 @@ function RegisterPage() {
           .eq("badge_number", parsed.badge_number)
           .eq("branch_id", registrationBranchId);
       }
+
+      // Optional photo uploads
+      const photoPatch: {
+        face_photo_url?: string;
+        id_photo_url?: string;
+        id_photo_type?: string;
+        photos_captured_at?: string;
+      } = {};
+      const uploadPhoto = async (photo: CapturedPhoto, kind: "face" | "id") => {
+        const path = `${registrationBranchId}/${visit.id}/${kind}-${Date.now()}.jpg`;
+        const { error } = await supabase.storage
+          .from("visitor-photos")
+          .upload(path, photo.blob, { upsert: true, contentType: "image/jpeg" });
+        if (error) throw error;
+        return path;
+      };
+      if (facePhoto) photoPatch.face_photo_url = await uploadPhoto(facePhoto, "face");
+      if (idPhoto) {
+        photoPatch.id_photo_url = await uploadPhoto(idPhoto, "id");
+        photoPatch.id_photo_type = idPhoto.idType ?? "other";
+      }
+      if (Object.keys(photoPatch).length > 0) {
+        photoPatch.photos_captured_at = new Date().toISOString();
+        await supabase.from("visits").update(photoPatch).eq("id", visit.id);
+        await logActivity({
+          action: "visit.photo_captured",
+          entityType: "visit",
+          entityId: visit.id,
+          branchId: registrationBranchId,
+          details: { face: !!facePhoto, id: !!idPhoto, id_type: idPhoto?.idType },
+        });
+      }
+
+      await logActivity({
+        action: "visit.register",
+        entityType: "visit",
+        entityId: visit.id,
+        branchId: registrationBranchId,
+        details: {
+          visitor: parsed.full_name,
+          type: visitType,
+          mode: visitMode,
+          host: parsed.host_id ? "system" : "manual",
+        },
+      });
       return visit.id;
     },
     onSuccess: () => {
@@ -660,6 +712,45 @@ function RegisterPage() {
         </CardContent>
       </Card>
 
+      {me.canCapturePhoto && (
+        <Card>
+          <CardHeader>
+            <CardTitle>5. Visitor photo capture (optional)</CardTitle>
+            <CardDescription>
+              Use the device camera to take a face photo and/or an ID photo. You can skip this step.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-6 md:grid-cols-2">
+            <PhotoSlot
+              label="Visitor face photo"
+              photo={facePhoto}
+              onCapture={() => setFaceOpen(true)}
+              onClear={() => setFacePhoto(null)}
+            />
+            <PhotoSlot
+              label="Visitor ID photo"
+              photo={idPhoto}
+              onCapture={() => setIdOpen(true)}
+              onClear={() => setIdPhoto(null)}
+              badge={idPhoto?.idType?.replace("_", " ")}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      <PhotoCaptureDialog
+        open={faceOpen}
+        onOpenChange={setFaceOpen}
+        mode="face"
+        onConfirm={(p) => setFacePhoto(p)}
+      />
+      <PhotoCaptureDialog
+        open={idOpen}
+        onOpenChange={setIdOpen}
+        mode="id"
+        onConfirm={(p) => setIdPhoto(p)}
+      />
+
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={() => navigate({ to: "/app" })}>
           Cancel
@@ -702,3 +793,51 @@ function Field({
     </div>
   );
 }
+
+function PhotoSlot({
+  label,
+  photo,
+  onCapture,
+  onClear,
+  badge,
+}: {
+  label: string;
+  photo: CapturedPhoto | null;
+  onCapture: () => void;
+  onClear: () => void;
+  badge?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>{label}</Label>
+        {badge && (
+          <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-primary">
+            {badge}
+          </span>
+        )}
+      </div>
+      <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted/40">
+        {photo ? (
+          <img src={photo.dataUrl} alt={label} className="h-full w-full object-cover" />
+        ) : (
+          <div className="grid h-full place-items-center text-xs text-muted-foreground">
+            Not captured
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onCapture}>
+          <Camera className="mr-1.5 h-3.5 w-3.5" />
+          {photo ? "Retake" : "Capture"}
+        </Button>
+        {photo && (
+          <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remove
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+

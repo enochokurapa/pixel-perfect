@@ -19,7 +19,10 @@ export type Role =
   | "manage_badges"
   | "pre_register_guest"
   | "pre_register_contractor"
-  | "pre_register_delivery";
+  | "pre_register_delivery"
+  | "capture_visitor_photo"
+  | "view_photo_reports"
+  | "view_audit_log";
 
 export type RoleGroup = {
   key: string;
@@ -73,6 +76,16 @@ export const ROLE_GROUPS: RoleGroup[] = [
       { id: "pre_register_guest", label: "Pre-register guests", description: "Schedule a guest visit and send a confirmation email." },
       { id: "pre_register_contractor", label: "Pre-register contractors", description: "Schedule a contractor visit in advance." },
       { id: "pre_register_delivery", label: "Pre-register deliveries", description: "Schedule a delivery in advance." },
+    ],
+  },
+  {
+    key: "photo_audit",
+    label: "Photo capture & auditing",
+    description: "Camera capture during registration and system-wide audit visibility.",
+    roles: [
+      { id: "capture_visitor_photo", label: "Capture visitor photo & ID", description: "Use the camera to take a visitor face photo and/or an ID photo during registration." },
+      { id: "view_photo_reports", label: "View photo reports", description: "See Visitor Photo and Visitor ID reports and export them." },
+      { id: "view_audit_log", label: "View audit log", description: "See the full system activity/audit log across users, branches, and departments." },
     ],
   },
 ];
