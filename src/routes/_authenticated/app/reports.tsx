@@ -12,7 +12,7 @@ import { Download, X, UserPlus, CheckCircle2, XCircle, LogIn, LogOut, ShieldAler
 import { useCurrentUser } from "@/hooks/use-session";
 import { useBranchScope, useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 import { exportExcel, exportPdf, type ExportRow } from "@/lib/visit-export";
-import { supabase as sb } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
   head: () => ({ meta: [{ title: "Reports — Sentinel VMS" }] }),
