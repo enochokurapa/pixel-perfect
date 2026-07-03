@@ -1049,6 +1049,7 @@ function PhotoReport({
 }
 
 type BranchFilter =
+  | { kind: "all" }
   | { kind: "none" }
   | { kind: "eq"; branchId: string }
   | { kind: "in"; branchIds: string[] };
