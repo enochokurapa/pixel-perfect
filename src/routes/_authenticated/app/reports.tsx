@@ -937,3 +937,230 @@ function VisitTable({
     </Card>
   );
 }
+
+function useSignedUrls(paths: (string | null | undefined)[]) {
+  return useQuery({
+    queryKey: ["signed-visitor-photos", paths.filter(Boolean).sort().join("|")],
+    enabled: paths.some(Boolean),
+    queryFn: async () => {
+      const clean = paths.filter((p): p is string => !!p);
+      if (clean.length === 0) return {} as Record<string, string>;
+      const { data, error } = await supabase.storage
+        .from("visitor-photos")
+        .createSignedUrls(clean, 60 * 15);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((d) => {
+        if (d.path && d.signedUrl) map[d.path] = d.signedUrl;
+      });
+      return map;
+    },
+  });
+}
+
+function PhotoReport({
+  rows,
+  variant,
+  filename,
+}: {
+  rows: VisitRow[];
+  variant: "face" | "id";
+  filename: string;
+}) {
+  const paths = rows.map((r) => (variant === "face" ? r.face_photo_url : r.id_photo_url));
+  const signed = useSignedUrls(paths);
+
+  const exportData: ExportRow[] = rows.map((r) => ({
+    "Visitor": r.visitor?.full_name ?? "",
+    "Phone": r.visitor?.phone ?? "",
+    "Company": r.visitor?.company ?? "",
+    ...(variant === "id" ? { "ID type": r.id_photo_type ?? "" } : {}),
+    "Purpose": r.purpose,
+    "Branch": r.branch?.name ?? "",
+    "Captured": fmtDate(r.photos_captured_at ?? r.created_at),
+    "Photo URL": (variant === "face" ? r.face_photo_url : r.id_photo_url) ?? "",
+  }));
+
+  const Icon = variant === "face" ? Camera : IdCard;
+  const title = variant === "face" ? "Visitor photo report" : "Visitor ID report";
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Icon className="h-4 w-4 text-primary" /> {title} ({rows.length})
+        </CardTitle>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" disabled={rows.length === 0} onClick={() => exportExcel(filename, exportData, variant === "face" ? "Photos" : "IDs")}>
+            <Download className="mr-1 h-3.5 w-3.5" /> Excel
+          </Button>
+          <Button size="sm" variant="outline" disabled={rows.length === 0} onClick={() => exportPdf(filename, title, exportData)}>
+            <Download className="mr-1 h-3.5 w-3.5" /> PDF
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No {variant === "face" ? "visitor photos" : "ID photos"} captured in this range.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {rows.map((r) => {
+              const path = variant === "face" ? r.face_photo_url : r.id_photo_url;
+              const url = path ? signed.data?.[path] : undefined;
+              return (
+                <Link
+                  key={r.id}
+                  to="/app/visits/$id"
+                  params={{ id: r.id }}
+                  className="group overflow-hidden rounded-lg border bg-card transition hover:shadow-md"
+                >
+                  <div className="aspect-video w-full overflow-hidden bg-muted">
+                    {url ? (
+                      <img src={url} alt={r.visitor?.full_name ?? "Visitor"} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
+                    ) : (
+                      <div className="grid h-full place-items-center text-xs text-muted-foreground">
+                        {signed.isLoading ? "Loading…" : "No preview"}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1 p-3 text-sm">
+                    <div className="font-medium truncate">{r.visitor?.full_name ?? "—"}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {r.visitor?.phone ?? ""}
+                      {r.visitor?.company ? ` · ${r.visitor.company}` : ""}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {r.branch?.name ?? "—"} · {new Date(r.photos_captured_at ?? r.created_at).toLocaleString()}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {variant === "id" ? (r.id_photo_type ?? "ID").replace("_", " ") : r.purpose}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+type BranchFilter =
+  | { kind: "none" }
+  | { kind: "eq"; branchId: string }
+  | { kind: "in"; branchIds: string[] };
+
+function AuditLogTab({
+  from,
+  to,
+  branchId,
+  branchFilter,
+}: {
+  from: string;
+  to: string;
+  branchId: string;
+  branchFilter: BranchFilter;
+}) {
+  const [action, setAction] = useState<string>("all");
+  const q = useQuery({
+    queryKey: ["audit-log", from, to, action, branchId, branchFilter],
+    queryFn: async () => {
+      let query = supabase
+        .from("activity_log")
+        .select("id, created_at, actor_name, actor_department, action, entity_type, entity_id, branch_id, details, branch:branches(name)")
+        .gte("created_at", `${from}T00:00:00`)
+        .lte("created_at", `${to}T23:59:59`)
+        .order("created_at", { ascending: false })
+        .limit(2000);
+      if (branchId !== "all") query = query.eq("branch_id", branchId);
+      else if (branchFilter.kind === "eq") query = query.eq("branch_id", branchFilter.branchId);
+      else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0)
+        query = query.in("branch_id", branchFilter.branchIds);
+      if (action !== "all") query = query.eq("action", action);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const rows = q.data ?? [];
+  const actions = Array.from(new Set(rows.map((r) => r.action))).sort();
+  const exportRows: ExportRow[] = rows.map((r) => ({
+    When: fmtDate(r.created_at),
+    User: r.actor_name ?? "",
+    Department: r.actor_department ?? "",
+    Action: r.action,
+    Entity: `${r.entity_type ?? ""} ${r.entity_id ?? ""}`.trim(),
+    Branch: (r as { branch?: { name?: string } | null }).branch?.name ?? "",
+    Details: JSON.stringify(r.details ?? {}),
+  }));
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Activity className="h-4 w-4 text-primary" /> Audit log ({rows.length})
+        </CardTitle>
+        <div className="flex flex-wrap gap-2">
+          <div className="w-48">
+            <Select value={action} onValueChange={setAction}>
+              <SelectTrigger><SelectValue placeholder="All actions" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All actions</SelectItem>
+                {actions.map((a) => (
+                  <SelectItem key={a} value={a}>{a}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button size="sm" variant="outline" disabled={rows.length === 0} onClick={() => exportExcel("audit_log", exportRows, "Audit")}>
+            <Download className="mr-1 h-3.5 w-3.5" /> Excel
+          </Button>
+          <Button size="sm" variant="outline" disabled={rows.length === 0} onClick={() => exportPdf("audit_log", "System audit log", exportRows)}>
+            <Download className="mr-1 h-3.5 w-3.5" /> PDF
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {q.isLoading ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">Loading…</p>
+        ) : rows.length === 0 ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">No activity yet in this range.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2 text-left">When</th>
+                  <th className="px-4 py-2 text-left">User</th>
+                  <th className="px-4 py-2 text-left">Dept</th>
+                  <th className="px-4 py-2 text-left">Action</th>
+                  <th className="px-4 py-2 text-left">Branch</th>
+                  <th className="px-4 py-2 text-left">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((r) => (
+                  <tr key={r.id}>
+                    <td className="px-4 py-2 text-xs text-muted-foreground tabular-nums">{new Date(r.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-2">{r.actor_name ?? "—"}</td>
+                    <td className="px-4 py-2 text-muted-foreground">{r.actor_department ?? "—"}</td>
+                    <td className="px-4 py-2 font-mono text-xs">{r.action}</td>
+                    <td className="px-4 py-2 text-muted-foreground">{(r as { branch?: { name?: string } | null }).branch?.name ?? "—"}</td>
+                    <td className="px-4 py-2 text-xs text-muted-foreground max-w-md truncate" title={JSON.stringify(r.details)}>
+                      {r.entity_type ? `${r.entity_type} · ` : ""}{JSON.stringify(r.details ?? {})}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
