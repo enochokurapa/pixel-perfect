@@ -262,7 +262,12 @@ function RegisterPage() {
       }
 
       // Optional photo uploads
-      const photoPatch: Record<string, string | null> = {};
+      const photoPatch: {
+        face_photo_url?: string;
+        id_photo_url?: string;
+        id_photo_type?: string;
+        photos_captured_at?: string;
+      } = {};
       const uploadPhoto = async (photo: CapturedPhoto, kind: "face" | "id") => {
         const path = `${registrationBranchId}/${visit.id}/${kind}-${Date.now()}.jpg`;
         const { error } = await supabase.storage
