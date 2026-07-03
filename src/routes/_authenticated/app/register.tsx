@@ -18,6 +18,9 @@ import { useCurrentUser } from "@/hooks/use-session";
 import { useBranchScope } from "@/hooks/use-branch-scope";
 import { toast } from "sonner";
 import { z } from "zod";
+import { PhotoCaptureDialog, type CapturedPhoto } from "@/components/photo-capture";
+import { logActivity } from "@/lib/activity-log";
+import { Camera, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/app/register")({
   head: () => ({ meta: [{ title: "Register visitor — Sentinel VMS" }] }),
@@ -74,6 +77,10 @@ function RegisterPage() {
     id_type: "",
     id_number: "",
   });
+  const [facePhoto, setFacePhoto] = useState<CapturedPhoto | null>(null);
+  const [idPhoto, setIdPhoto] = useState<CapturedPhoto | null>(null);
+  const [faceOpen, setFaceOpen] = useState(false);
+  const [idOpen, setIdOpen] = useState(false);
 
   useEffect(() => {
     if (registrationBranchId) return;
