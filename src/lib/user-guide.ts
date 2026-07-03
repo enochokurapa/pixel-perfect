@@ -272,6 +272,7 @@ export const USER_GUIDES: GuideModule[] = [
     ],
   },
   {
+    key: "photo-capture",
     title: "Visitor Photo Capture",
     intro:
       "Operators with the 'Capture visitor photo' permission can attach a face photo and/or an ID photo to any visitor registration. Both steps are optional and will not slow down registration.",
@@ -306,6 +307,7 @@ export const USER_GUIDES: GuideModule[] = [
     ],
   },
   {
+    key: "photo-audit-reports",
     title: "Photo & Audit Reports",
     intro:
       "The Reports module now includes photo galleries and a full activity audit log. Access is role-based (View photo reports / View audit log).",
