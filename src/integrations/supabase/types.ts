@@ -822,6 +822,9 @@ export type Database = {
         | "check_in_student"
         | "approve_pickup"
         | "view_student_reports"
+        | "capture_visitor_photo"
+        | "view_photo_reports"
+        | "view_audit_log"
       approval_status:
         | "not_required"
         | "pending"
@@ -1005,6 +1008,9 @@ export const Constants = {
         "check_in_student",
         "approve_pickup",
         "view_student_reports",
+        "capture_visitor_photo",
+        "view_photo_reports",
+        "view_audit_log",
       ],
       approval_status: [
         "not_required",
