@@ -786,6 +786,30 @@ function ReportsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {me.canViewPhotoReports && (
+          <TabsContent value="photos" className="space-y-4 pt-4">
+            <PhotoReport
+              rows={rows.filter((r) => !!r.face_photo_url)}
+              variant="face"
+              filename={`visitor_photos_${from}_to_${to}`}
+            />
+          </TabsContent>
+        )}
+        {me.canViewPhotoReports && (
+          <TabsContent value="ids" className="space-y-4 pt-4">
+            <PhotoReport
+              rows={rows.filter((r) => !!r.id_photo_url)}
+              variant="id"
+              filename={`visitor_ids_${from}_to_${to}`}
+            />
+          </TabsContent>
+        )}
+        {me.canViewAuditLog && (
+          <TabsContent value="audit" className="space-y-4 pt-4">
+            <AuditLogTab from={from} to={to} branchId={branchId} branchFilter={branchFilter} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
