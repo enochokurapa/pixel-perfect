@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Download, X, UserPlus, CheckCircle2, XCircle, LogIn, LogOut, ShieldAlert, Clock, Activity } from "lucide-react";
+import { Download, X, UserPlus, CheckCircle2, XCircle, LogIn, LogOut, ShieldAlert, Clock, Activity, Camera, IdCard } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
 import { useBranchScope, useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 import { exportExcel, exportPdf, type ExportRow } from "@/lib/visit-export";
+import { supabase as sb } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
   head: () => ({ meta: [{ title: "Reports — Sentinel VMS" }] }),
