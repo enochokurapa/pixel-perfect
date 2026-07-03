@@ -793,3 +793,51 @@ function Field({
     </div>
   );
 }
+
+function PhotoSlot({
+  label,
+  photo,
+  onCapture,
+  onClear,
+  badge,
+}: {
+  label: string;
+  photo: CapturedPhoto | null;
+  onCapture: () => void;
+  onClear: () => void;
+  badge?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>{label}</Label>
+        {badge && (
+          <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-primary">
+            {badge}
+          </span>
+        )}
+      </div>
+      <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted/40">
+        {photo ? (
+          <img src={photo.dataUrl} alt={label} className="h-full w-full object-cover" />
+        ) : (
+          <div className="grid h-full place-items-center text-xs text-muted-foreground">
+            Not captured
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onCapture}>
+          <Camera className="mr-1.5 h-3.5 w-3.5" />
+          {photo ? "Retake" : "Capture"}
+        </Button>
+        {photo && (
+          <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remove
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
