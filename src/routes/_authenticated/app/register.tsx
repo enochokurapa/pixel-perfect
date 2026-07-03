@@ -712,6 +712,45 @@ function RegisterPage() {
         </CardContent>
       </Card>
 
+      {me.canCapturePhoto && (
+        <Card>
+          <CardHeader>
+            <CardTitle>5. Visitor photo capture (optional)</CardTitle>
+            <CardDescription>
+              Use the device camera to take a face photo and/or an ID photo. You can skip this step.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-6 md:grid-cols-2">
+            <PhotoSlot
+              label="Visitor face photo"
+              photo={facePhoto}
+              onCapture={() => setFaceOpen(true)}
+              onClear={() => setFacePhoto(null)}
+            />
+            <PhotoSlot
+              label="Visitor ID photo"
+              photo={idPhoto}
+              onCapture={() => setIdOpen(true)}
+              onClear={() => setIdPhoto(null)}
+              badge={idPhoto?.idType?.replace("_", " ")}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      <PhotoCaptureDialog
+        open={faceOpen}
+        onOpenChange={setFaceOpen}
+        mode="face"
+        onConfirm={(p) => setFacePhoto(p)}
+      />
+      <PhotoCaptureDialog
+        open={idOpen}
+        onOpenChange={setIdOpen}
+        mode="id"
+        onConfirm={(p) => setIdPhoto(p)}
+      />
+
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={() => navigate({ to: "/app" })}>
           Cancel
