@@ -564,6 +564,9 @@ function ReportsPage() {
           <TabsTrigger value="exceptions">Exceptions</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="blacklist">Blacklist</TabsTrigger>
+          {me.canViewPhotoReports && <TabsTrigger value="photos">Visitor photos</TabsTrigger>}
+          {me.canViewPhotoReports && <TabsTrigger value="ids">Visitor IDs</TabsTrigger>}
+          {me.canViewAuditLog && <TabsTrigger value="audit">Audit log</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4 pt-4">
