@@ -260,6 +260,46 @@ function RegisterPage() {
           .eq("badge_number", parsed.badge_number)
           .eq("branch_id", registrationBranchId);
       }
+
+      // Optional photo uploads
+      const photoPatch: Record<string, string | null> = {};
+      const uploadPhoto = async (photo: CapturedPhoto, kind: "face" | "id") => {
+        const path = `${registrationBranchId}/${visit.id}/${kind}-${Date.now()}.jpg`;
+        const { error } = await supabase.storage
+          .from("visitor-photos")
+          .upload(path, photo.blob, { upsert: true, contentType: "image/jpeg" });
+        if (error) throw error;
+        return path;
+      };
+      if (facePhoto) photoPatch.face_photo_url = await uploadPhoto(facePhoto, "face");
+      if (idPhoto) {
+        photoPatch.id_photo_url = await uploadPhoto(idPhoto, "id");
+        photoPatch.id_photo_type = idPhoto.idType ?? "other";
+      }
+      if (Object.keys(photoPatch).length > 0) {
+        photoPatch.photos_captured_at = new Date().toISOString();
+        await supabase.from("visits").update(photoPatch).eq("id", visit.id);
+        await logActivity({
+          action: "visit.photo_captured",
+          entityType: "visit",
+          entityId: visit.id,
+          branchId: registrationBranchId,
+          details: { face: !!facePhoto, id: !!idPhoto, id_type: idPhoto?.idType },
+        });
+      }
+
+      await logActivity({
+        action: "visit.register",
+        entityType: "visit",
+        entityId: visit.id,
+        branchId: registrationBranchId,
+        details: {
+          visitor: parsed.full_name,
+          type: visitType,
+          mode: visitMode,
+          host: parsed.host_id ? "system" : "manual",
+        },
+      });
       return visit.id;
     },
     onSuccess: () => {
