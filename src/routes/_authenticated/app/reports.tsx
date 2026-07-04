@@ -1145,6 +1145,9 @@ function AuditLogTab({
               </SelectContent>
             </Select>
           </div>
+          <Button size="sm" variant="outline" disabled={rows.length === 0} onClick={() => exportCsv("audit_log", exportRows)}>
+            <Download className="mr-1 h-3.5 w-3.5" /> CSV
+          </Button>
           <Button size="sm" variant="outline" disabled={rows.length === 0} onClick={() => exportExcel("audit_log", exportRows, "Audit")}>
             <Download className="mr-1 h-3.5 w-3.5" /> Excel
           </Button>
