@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Download, X, UserPlus, CheckCircle2, XCircle, LogIn, LogOut, ShieldAlert, Clock, Activity, Camera, IdCard } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
 import { useBranchScope, useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
-import { exportExcel, exportPdf, type ExportRow } from "@/lib/visit-export";
+import { exportCsv, exportExcel, exportPdf, exportPhotoPdf, type ExportRow } from "@/lib/visit-export";
 
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
