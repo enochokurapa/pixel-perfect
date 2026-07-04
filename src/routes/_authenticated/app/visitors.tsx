@@ -111,6 +111,9 @@ function VisitorsPage() {
           <p className="text-sm text-muted-foreground">All visits, most recent first.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportCsv("visitors", toRows())}>
+            <Download className="mr-1 h-4 w-4" /> CSV
+          </Button>
           <Button variant="outline" size="sm" onClick={() => exportExcel("visitors", toRows())}>
             <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
           </Button>
