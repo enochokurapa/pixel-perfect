@@ -146,6 +146,7 @@ export function PhotoCaptureDialog(props: {
     if (!open) {
       stopStream();
       setCaptured(null);
+      setCameraError(null);
       return;
     }
     void startStream(facing);
