@@ -14,10 +14,11 @@ import {
 } from "@/components/ui/select";
 import { useMemo, useState } from "react";
 import { StatusBadge } from "./index";
-import { exportExcel, exportPdf } from "@/lib/visit-export";
-import { FileSpreadsheet, FileText } from "lucide-react";
+import { exportCsv, exportExcel, exportPdf } from "@/lib/visit-export";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
 import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { VisitorDetailDialog } from "@/components/visitor-detail-dialog";
 
 export const Route = createFileRoute("/_authenticated/app/visitors")({
   head: () => ({ meta: [{ title: "Visitors — Sentinel VMS" }] }),
@@ -32,6 +33,7 @@ function VisitorsPage() {
   const [type, setType] = useState<string>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   void me;
 
@@ -109,6 +111,9 @@ function VisitorsPage() {
           <p className="text-sm text-muted-foreground">All visits, most recent first.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportCsv("visitors", toRows())}>
+            <Download className="mr-1 h-4 w-4" /> CSV
+          </Button>
           <Button variant="outline" size="sm" onClick={() => exportExcel("visitors", toRows())}>
             <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
           </Button>
@@ -192,15 +197,19 @@ function VisitorsPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered?.map((v) => (
-                  <tr key={v.id} className="hover:bg-muted/30">
+                  <tr
+                    key={v.id}
+                    className="cursor-pointer hover:bg-muted/30"
+                    onClick={() => setSelectedId(v.id)}
+                  >
                     <td className="px-5 py-3">
-                      <Link
-                        to="/app/visits/$id"
-                        params={{ id: v.id }}
-                        className="font-medium hover:underline"
+                      <button
+                        type="button"
+                        className="font-medium text-left hover:underline"
+                        onClick={(e) => { e.stopPropagation(); setSelectedId(v.id); }}
                       >
                         {v.visitor?.full_name}
-                      </Link>
+                      </button>
                       <div className="text-xs text-muted-foreground">
                         {v.visitor?.company ?? v.visitor?.phone}
                       </div>
@@ -218,10 +227,10 @@ function VisitorsPage() {
                     <td className="px-5 py-3">
                       <StatusBadge status={v.status} approval={v.approval} />
                     </td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <Button size="sm" variant="outline" asChild>
                         <Link to="/app/visits/$id" params={{ id: v.id }}>
-                          View
+                          Open
                         </Link>
                       </Button>
                     </td>
@@ -239,6 +248,12 @@ function VisitorsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <VisitorDetailDialog
+        visitId={selectedId}
+        open={!!selectedId}
+        onOpenChange={(o) => { if (!o) setSelectedId(null); }}
+      />
     </div>
   );
 }

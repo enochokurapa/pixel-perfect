@@ -32,6 +32,7 @@ type VisitAsset = Database["public"]["Tables"]["visit_assets"]["Row"];
 import { toast } from "sonner";
 import { StatusBadge } from "./index";
 import { exportExcel, exportDetailPdf } from "@/lib/visit-export";
+import { logActivity } from "@/lib/activity-log";
 
 
 export const Route = createFileRoute("/_authenticated/app/visits/$id")({
@@ -201,10 +202,25 @@ function VisitDetail() {
         );
       }
     }
+    await logActivity({
+      action: "visit.approve",
+      entityType: "visit",
+      entityId: v.id,
+      branchId: v.branch_id,
+      details: { visitor: v.visitor?.full_name },
+    });
     toast.success("Approved. Front desk notified to issue badge.");
   };
-  const reject = (reason: string) =>
-    update.mutate({ approval: "not_approved", rejection_reason: reason });
+  const reject = async (reason: string) => {
+    await update.mutateAsync({ approval: "not_approved", rejection_reason: reason });
+    await logActivity({
+      action: "visit.reject",
+      entityType: "visit",
+      entityId: v.id,
+      branchId: v.branch_id,
+      details: { visitor: v.visitor?.full_name, reason },
+    });
+  };
   const checkIn = () =>
     update.mutate({ status: "checked_in", check_in_at: new Date().toISOString() });
 
@@ -213,6 +229,22 @@ function VisitDetail() {
     assets_verified: boolean;
     newAssets: { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string }[];
   }) => {
+    // Safety re-check: badge must still be available at this branch
+    if (payload.badge_number && v.branch_id) {
+      const { data: badgeRow, error: badgeErr } = await supabase
+        .from("badges")
+        .select("status")
+        .eq("badge_number", payload.badge_number)
+        .eq("branch_id", v.branch_id)
+        .maybeSingle();
+      if (badgeErr) throw new Error(badgeErr.message);
+      if (!badgeRow) throw new Error("This badge no longer exists at this branch.");
+      if (badgeRow.status !== "available") {
+        throw new Error(
+          `Badge #${payload.badge_number} is currently in use with another visitor and cannot be re-issued until it is returned.`,
+        );
+      }
+    }
     if (payload.newAssets.length > 0) {
       const { error: aErr } = await supabase.from("visit_assets").insert(
         payload.newAssets.map((a) => ({
@@ -237,7 +269,21 @@ function VisitDetail() {
         .update({ status: "issued" })
         .eq("badge_number", payload.badge_number)
         .eq("branch_id", v.branch_id);
+      await logActivity({
+        action: "visit.badge_issued",
+        entityType: "visit",
+        entityId: v.id,
+        branchId: v.branch_id,
+        details: { badge_number: payload.badge_number, visitor: v.visitor?.full_name },
+      });
     }
+    await logActivity({
+      action: "visit.check_in",
+      entityType: "visit",
+      entityId: v.id,
+      branchId: v.branch_id,
+      details: { visitor: v.visitor?.full_name },
+    });
     qc.invalidateQueries();
   };
 
@@ -261,6 +307,17 @@ function VisitDetail() {
         .eq("branch_id", v.branch_id);
       qc.invalidateQueries();
     }
+    await logActivity({
+      action: "visit.check_out",
+      entityType: "visit",
+      entityId: v.id,
+      branchId: v.branch_id,
+      details: {
+        visitor: v.visitor?.full_name,
+        badge_returned: verification.badge_returned,
+        badge_number: v.badge_number,
+      },
+    });
   };
 
   return (

@@ -154,6 +154,24 @@ function RegisterPage() {
         if (!form.vehicle_type.trim()) throw new Error("Vehicle type is required for drive-in visits.");
       }
 
+      // Safety re-check: badge (if selected) must still be available at this branch.
+      if (parsed.badge_number) {
+        const { data: badgeRow, error: badgeErr } = await supabase
+          .from("badges")
+          .select("status")
+          .eq("badge_number", parsed.badge_number)
+          .eq("branch_id", registrationBranchId)
+          .maybeSingle();
+        if (badgeErr) throw new Error(badgeErr.message);
+        if (!badgeRow) throw new Error("The selected badge no longer exists at this branch.");
+        if (badgeRow.status !== "available") {
+          throw new Error(
+            `Badge #${parsed.badge_number} is currently in use with another visitor. Please pick a different badge or wait until it is returned.`,
+          );
+        }
+      }
+
+
       // Validate assets only if visitor declared bringing assets
       let cleanAssets: AssetRow[] = [];
       if (hasAssets === "yes") {
