@@ -197,15 +197,19 @@ function VisitorsPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered?.map((v) => (
-                  <tr key={v.id} className="hover:bg-muted/30">
+                  <tr
+                    key={v.id}
+                    className="cursor-pointer hover:bg-muted/30"
+                    onClick={() => setSelectedId(v.id)}
+                  >
                     <td className="px-5 py-3">
-                      <Link
-                        to="/app/visits/$id"
-                        params={{ id: v.id }}
-                        className="font-medium hover:underline"
+                      <button
+                        type="button"
+                        className="font-medium text-left hover:underline"
+                        onClick={(e) => { e.stopPropagation(); setSelectedId(v.id); }}
                       >
                         {v.visitor?.full_name}
-                      </Link>
+                      </button>
                       <div className="text-xs text-muted-foreground">
                         {v.visitor?.company ?? v.visitor?.phone}
                       </div>
@@ -223,10 +227,10 @@ function VisitorsPage() {
                     <td className="px-5 py-3">
                       <StatusBadge status={v.status} approval={v.approval} />
                     </td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <Button size="sm" variant="outline" asChild>
                         <Link to="/app/visits/$id" params={{ id: v.id }}>
-                          View
+                          Open
                         </Link>
                       </Button>
                     </td>
@@ -244,6 +248,12 @@ function VisitorsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <VisitorDetailDialog
+        visitId={selectedId}
+        open={!!selectedId}
+        onOpenChange={(o) => { if (!o) setSelectedId(null); }}
+      />
     </div>
   );
 }
