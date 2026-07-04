@@ -202,10 +202,25 @@ function VisitDetail() {
         );
       }
     }
+    await logActivity({
+      action: "visit.approve",
+      entityType: "visit",
+      entityId: v.id,
+      branchId: v.branch_id,
+      details: { visitor: v.visitor?.full_name },
+    });
     toast.success("Approved. Front desk notified to issue badge.");
   };
-  const reject = (reason: string) =>
-    update.mutate({ approval: "not_approved", rejection_reason: reason });
+  const reject = async (reason: string) => {
+    await update.mutateAsync({ approval: "not_approved", rejection_reason: reason });
+    await logActivity({
+      action: "visit.reject",
+      entityType: "visit",
+      entityId: v.id,
+      branchId: v.branch_id,
+      details: { visitor: v.visitor?.full_name, reason },
+    });
+  };
   const checkIn = () =>
     update.mutate({ status: "checked_in", check_in_at: new Date().toISOString() });
 
