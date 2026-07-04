@@ -969,6 +969,7 @@ function PhotoReport({
 }) {
   const paths = rows.map((r) => (variant === "face" ? r.face_photo_url : r.id_photo_url));
   const signed = useSignedUrls(paths);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const exportData: ExportRow[] = rows.map((r) => ({
     "Visitor": r.visitor?.full_name ?? "",
@@ -981,6 +982,30 @@ function PhotoReport({
     "Photo URL": (variant === "face" ? r.face_photo_url : r.id_photo_url) ?? "",
   }));
 
+  const downloadPdfWithImages = async () => {
+    setPdfBusy(true);
+    try {
+      const items = rows.map((r) => {
+        const path = variant === "face" ? r.face_photo_url : r.id_photo_url;
+        return {
+          imageUrl: path ? signed.data?.[path] : undefined,
+          fields: [
+            ["Visitor", r.visitor?.full_name ?? "—"],
+            ["Phone", r.visitor?.phone ?? "—"],
+            ["Company", r.visitor?.company ?? "—"],
+            ...(variant === "id" ? [["ID type", (r.id_photo_type ?? "—").replace("_", " ")] as [string, string]] : []),
+            ["Purpose", r.purpose],
+            ["Branch", r.branch?.name ?? "—"],
+            ["Captured", fmtDate(r.photos_captured_at ?? r.created_at)],
+          ] as [string, string][],
+        };
+      });
+      await exportPhotoPdf(filename, variant === "face" ? "Visitor photos report" : "Visitor ID report", items);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   const Icon = variant === "face" ? Camera : IdCard;
   const title = variant === "face" ? "Visitor photo report" : "Visitor ID report";
 
@@ -991,11 +1016,14 @@ function PhotoReport({
           <Icon className="h-4 w-4 text-primary" /> {title} ({rows.length})
         </CardTitle>
         <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" disabled={rows.length === 0} onClick={() => exportCsv(filename, exportData)}>
+            <Download className="mr-1 h-3.5 w-3.5" /> CSV
+          </Button>
           <Button size="sm" variant="outline" disabled={rows.length === 0} onClick={() => exportExcel(filename, exportData, variant === "face" ? "Photos" : "IDs")}>
             <Download className="mr-1 h-3.5 w-3.5" /> Excel
           </Button>
-          <Button size="sm" variant="outline" disabled={rows.length === 0} onClick={() => exportPdf(filename, title, exportData)}>
-            <Download className="mr-1 h-3.5 w-3.5" /> PDF
+          <Button size="sm" variant="outline" disabled={rows.length === 0 || pdfBusy || signed.isLoading} onClick={downloadPdfWithImages}>
+            <Download className="mr-1 h-3.5 w-3.5" /> {pdfBusy ? "Building PDF…" : "PDF (with photos)"}
           </Button>
         </div>
       </CardHeader>
