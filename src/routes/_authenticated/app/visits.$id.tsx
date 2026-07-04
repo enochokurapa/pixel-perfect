@@ -32,6 +32,7 @@ type VisitAsset = Database["public"]["Tables"]["visit_assets"]["Row"];
 import { toast } from "sonner";
 import { StatusBadge } from "./index";
 import { exportExcel, exportDetailPdf } from "@/lib/visit-export";
+import { logActivity } from "@/lib/activity-log";
 
 
 export const Route = createFileRoute("/_authenticated/app/visits/$id")({
