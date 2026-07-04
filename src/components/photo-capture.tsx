@@ -60,6 +60,7 @@ export function PhotoCaptureDialog(props: {
   const [captured, setCaptured] = useState<CapturedPhoto | null>(null);
   const [idType, setIdType] = useState<string>("national_id");
   const [starting, setStarting] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -68,7 +69,29 @@ export function PhotoCaptureDialog(props: {
 
   const startStream = useCallback(async (mode: Facing) => {
     setStarting(true);
+    setCameraError(null);
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new DOMException(
+          "Your browser does not support camera access. Please use a modern browser (Chrome, Edge, Safari, Firefox) over HTTPS.",
+          "NotSupportedError",
+        );
+      }
+      // Proactive permission check (not supported in Safari — falls through silently).
+      try {
+        // @ts-expect-error - camera is a valid PermissionName in modern browsers
+        const status = await navigator.permissions?.query?.({ name: "camera" });
+        if (status?.state === "denied") {
+          throw new DOMException(
+            "Camera access is blocked. Enable it in your browser's site settings (padlock icon → Site settings → Camera → Allow) and reload the page.",
+            "NotAllowedError",
+          );
+        }
+      } catch (permErr) {
+        if (permErr instanceof DOMException && permErr.name === "NotAllowedError") throw permErr;
+        // ignore — Safari/unsupported
+      }
+
       stopStream();
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: mode }, width: { ideal: 1280 }, height: { ideal: 960 } },
@@ -80,16 +103,45 @@ export function PhotoCaptureDialog(props: {
         await videoRef.current.play().catch(() => undefined);
       }
     } catch (e) {
-      toast.error(
-        e instanceof Error
-          ? `Camera error: ${e.message}. Grant camera access and try again.`
-          : "Unable to access camera.",
-      );
-      onOpenChange(false);
+      const err = e as { name?: string; message?: string };
+      let friendly = "Unable to access the camera.";
+      switch (err.name) {
+        case "NotAllowedError":
+        case "PermissionDeniedError":
+          friendly =
+            "Camera permission was denied. Click the padlock icon in the address bar → Site settings → Camera → Allow, then reload and try again.";
+          break;
+        case "NotFoundError":
+        case "DevicesNotFoundError":
+          friendly = "No camera was found on this device. Connect a camera and try again.";
+          break;
+        case "NotReadableError":
+        case "TrackStartError":
+          friendly =
+            "The camera is being used by another application. Close other apps or browser tabs using the camera and try again.";
+          break;
+        case "OverconstrainedError":
+        case "ConstraintNotSatisfiedError":
+          friendly =
+            "Your camera does not support the requested settings. Try switching between front and back camera.";
+          break;
+        case "SecurityError":
+          friendly =
+            "Camera access requires a secure connection (HTTPS). Please open the site over HTTPS and try again.";
+          break;
+        case "NotSupportedError":
+          friendly = err.message ?? friendly;
+          break;
+        case "AbortError":
+          friendly = "Camera start was interrupted. Please try again.";
+          break;
+      }
+      setCameraError(friendly);
+      toast.error(friendly);
     } finally {
       setStarting(false);
     }
-  }, [onOpenChange, stopStream]);
+  }, [stopStream]);
 
   useEffect(() => {
     if (!open) {
