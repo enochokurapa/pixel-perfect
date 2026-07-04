@@ -14,10 +14,11 @@ import {
 } from "@/components/ui/select";
 import { useMemo, useState } from "react";
 import { StatusBadge } from "./index";
-import { exportExcel, exportPdf } from "@/lib/visit-export";
-import { FileSpreadsheet, FileText } from "lucide-react";
+import { exportCsv, exportExcel, exportPdf } from "@/lib/visit-export";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-session";
 import { useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
+import { VisitorDetailDialog } from "@/components/visitor-detail-dialog";
 
 export const Route = createFileRoute("/_authenticated/app/visitors")({
   head: () => ({ meta: [{ title: "Visitors — Sentinel VMS" }] }),
