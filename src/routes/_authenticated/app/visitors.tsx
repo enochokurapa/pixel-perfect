@@ -33,6 +33,7 @@ function VisitorsPage() {
   const [type, setType] = useState<string>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   void me;
 
