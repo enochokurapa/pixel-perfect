@@ -79,8 +79,7 @@ export function PhotoCaptureDialog(props: {
       }
       // Proactive permission check (not supported in Safari — falls through silently).
       try {
-        // @ts-expect-error - camera is a valid PermissionName in modern browsers
-        const status = await navigator.permissions?.query?.({ name: "camera" });
+        const status = await navigator.permissions?.query?.({ name: "camera" as PermissionName });
         if (status?.state === "denied") {
           throw new DOMException(
             "Camera access is blocked. Enable it in your browser's site settings (padlock icon → Site settings → Camera → Allow) and reload the page.",
