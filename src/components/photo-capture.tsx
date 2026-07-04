@@ -224,6 +224,18 @@ export function PhotoCaptureDialog(props: {
           </div>
         )}
 
+        {cameraError && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="font-medium">Camera unavailable</div>
+            <div className="mt-1 text-xs">{cameraError}</div>
+            <div className="mt-2 flex gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={() => startStream(facing)}>
+                <RefreshCw className="mr-1 h-3.5 w-3.5" /> Try again
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-black">
           {!captured ? (
             <video
