@@ -268,7 +268,7 @@ export function PhotoCaptureDialog(props: {
               <X className="mr-2 h-4 w-4" /> Cancel
             </Button>
             {!captured ? (
-              <Button type="button" onClick={capture} disabled={starting}>
+              <Button type="button" onClick={capture} disabled={starting || !!cameraError}>
                 <Camera className="mr-2 h-4 w-4" /> Capture
               </Button>
             ) : (
