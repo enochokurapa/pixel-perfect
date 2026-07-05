@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -109,6 +109,17 @@ function ReportsPage() {
   const [preReg, setPreReg] = useState<string>("all");
   const [tab, setTab] = useState("overview");
   const canOpenReports = me.canViewReports || me.canViewPhotoReports || me.canViewAuditLog;
+  const allowedTabs = useMemo(() => {
+    const tabs: string[] = [];
+    if (me.canViewReports) tabs.push("overview", "trends", "people", "now", "operations", "approvals", "vehicles", "exceptions", "timeline", "blacklist");
+    if (me.canViewPhotoReports) tabs.push("photos", "ids");
+    if (me.canViewAuditLog) tabs.push("audit");
+    return tabs;
+  }, [me.canViewReports, me.canViewPhotoReports, me.canViewAuditLog]);
+
+  useEffect(() => {
+    if (allowedTabs.length > 0 && !allowedTabs.includes(tab)) setTab(allowedTabs[0]);
+  }, [allowedTabs, tab]);
 
   const resetFilters = () => {
     setFrom(daysAgo(30));
@@ -424,17 +435,19 @@ function ReportsPage() {
             {visits.isLoading ? "Loading…" : `${rows.length} visits in selected range`} · scoped to active branch.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => csvExport(`${baseName}.csv`, fullExportRows)} disabled={rows.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> All visits CSV
-          </Button>
-          <Button variant="outline" onClick={() => exportExcel(baseName, fullExportRows, "Visits")} disabled={rows.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> All visits Excel
-          </Button>
-          <Button onClick={() => exportPdf(baseName, `Visits report ${from} to ${to}`, fullExportRows)} disabled={rows.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> All visits PDF
-          </Button>
-        </div>
+        {me.canViewReports && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => csvExport(`${baseName}.csv`, fullExportRows)} disabled={rows.length === 0}>
+              <Download className="mr-2 h-4 w-4" /> All visits CSV
+            </Button>
+            <Button variant="outline" onClick={() => exportExcel(baseName, fullExportRows, "Visits")} disabled={rows.length === 0}>
+              <Download className="mr-2 h-4 w-4" /> All visits Excel
+            </Button>
+            <Button onClick={() => exportPdf(baseName, `Visits report ${from} to ${to}`, fullExportRows)} disabled={rows.length === 0}>
+              <Download className="mr-2 h-4 w-4" /> All visits PDF
+            </Button>
+          </div>
+        )}
       </header>
 
       <Card>
