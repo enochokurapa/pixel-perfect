@@ -108,6 +108,7 @@ function ReportsPage() {
   const [badgeReturned, setBadgeReturned] = useState<string>("all");
   const [preReg, setPreReg] = useState<string>("all");
   const [tab, setTab] = useState("overview");
+  const canOpenReports = me.canViewReports || me.canViewPhotoReports || me.canViewAuditLog;
 
   const resetFilters = () => {
     setFrom(daysAgo(30));
@@ -121,7 +122,7 @@ function ReportsPage() {
   };
 
   const visits = useQuery({
-    enabled: me.canViewReports,
+    enabled: me.canViewReports || me.canViewPhotoReports,
     queryKey: ["reports", from, to, type, status, purpose, branchId, badgeReturned, preReg, branchFilter],
     queryFn: async () => {
       let q = supabase
@@ -386,7 +387,7 @@ function ReportsPage() {
     },
   });
 
-  if (!me.canViewReports) {
+  if (!canOpenReports) {
     return (
       <div className="mx-auto max-w-3xl px-8 py-16 text-center">
         <h1 className="font-display text-2xl font-semibold">Reports</h1>
@@ -554,16 +555,16 @@ function ReportsPage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="people">People</TabsTrigger>
-          <TabsTrigger value="now">Currently inside</TabsTrigger>
-          <TabsTrigger value="operations">Operations</TabsTrigger>
-          <TabsTrigger value="approvals">Approvals</TabsTrigger>
-          <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
-          <TabsTrigger value="exceptions">Exceptions</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="blacklist">Blacklist</TabsTrigger>
+          {me.canViewReports && <TabsTrigger value="overview">Overview</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="trends">Trends</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="people">People</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="now">Currently inside</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="operations">Operations</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="approvals">Approvals</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="vehicles">Vehicles</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="exceptions">Exceptions</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="timeline">Timeline</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="blacklist">Blacklist</TabsTrigger>}
           {me.canViewPhotoReports && <TabsTrigger value="photos">Visitor photos</TabsTrigger>}
           {me.canViewPhotoReports && <TabsTrigger value="ids">Visitor IDs</TabsTrigger>}
           {me.canViewAuditLog && <TabsTrigger value="audit">Audit log</TabsTrigger>}
