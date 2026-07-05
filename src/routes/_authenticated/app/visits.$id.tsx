@@ -221,29 +221,42 @@ function VisitDetail() {
       details: { visitor: v.visitor?.full_name, reason },
     });
   };
-  const checkIn = () =>
-    update.mutate({ status: "checked_in", check_in_at: new Date().toISOString() });
-
   const issueBadgeAndCheckIn = async (payload: {
     badge_number: string;
     assets_verified: boolean;
     newAssets: { kind: "laptop" | "device" | "other"; brand: string; serial: string; description: string }[];
   }) => {
-    // Safety re-check: badge must still be available at this branch
-    if (payload.badge_number && v.branch_id) {
-      const { data: badgeRow, error: badgeErr } = await supabase
+    if (!payload.badge_number) {
+      throw new Error("Please assign a badge before checking the visitor in.");
+    }
+    if (!v.branch_id) {
+      throw new Error("This visit is missing a branch, so a badge cannot be issued safely.");
+    }
+
+    // Safety re-check: badge must still be available and not active on another checked-in visit.
+    const [{ data: badgeRow, error: badgeErr }, { data: activeBadge, error: activeBadgeErr }] = await Promise.all([
+      supabase
         .from("badges")
         .select("status")
         .eq("badge_number", payload.badge_number)
         .eq("branch_id", v.branch_id)
-        .maybeSingle();
-      if (badgeErr) throw new Error(badgeErr.message);
-      if (!badgeRow) throw new Error("This badge no longer exists at this branch.");
-      if (badgeRow.status !== "available") {
-        throw new Error(
-          `Badge #${payload.badge_number} is currently in use with another visitor and cannot be re-issued until it is returned.`,
-        );
-      }
+        .maybeSingle(),
+      supabase
+        .from("visits")
+        .select("id")
+        .eq("badge_number", payload.badge_number)
+        .eq("branch_id", v.branch_id)
+        .eq("status", "checked_in")
+        .neq("id", v.id)
+        .maybeSingle(),
+    ]);
+    if (badgeErr) throw new Error(badgeErr.message);
+    if (activeBadgeErr) throw new Error(activeBadgeErr.message);
+    if (!badgeRow) throw new Error("This badge no longer exists at this branch.");
+    if (badgeRow.status !== "available" || activeBadge) {
+      throw new Error(
+        `Badge #${payload.badge_number} is currently in use with another visitor and cannot be re-issued until it is returned.`,
+      );
     }
     if (payload.newAssets.length > 0) {
       const { error: aErr } = await supabase.from("visit_assets").insert(
@@ -263,20 +276,18 @@ function VisitDetail() {
       badge_number: payload.badge_number,
       assets_verified: payload.assets_verified,
     });
-    if (payload.badge_number && v.branch_id) {
-      await supabase
-        .from("badges")
-        .update({ status: "issued" })
-        .eq("badge_number", payload.badge_number)
-        .eq("branch_id", v.branch_id);
-      await logActivity({
-        action: "visit.badge_issued",
-        entityType: "visit",
-        entityId: v.id,
-        branchId: v.branch_id,
-        details: { badge_number: payload.badge_number, visitor: v.visitor?.full_name },
-      });
-    }
+    await supabase
+      .from("badges")
+      .update({ status: "issued" })
+      .eq("badge_number", payload.badge_number)
+      .eq("branch_id", v.branch_id);
+    await logActivity({
+      action: "visit.badge_issued",
+      entityType: "visit",
+      entityId: v.id,
+      branchId: v.branch_id,
+      details: { badge_number: payload.badge_number, visitor: v.visitor?.full_name },
+    });
     await logActivity({
       action: "visit.check_in",
       entityType: "visit",
@@ -363,19 +374,13 @@ function VisitDetail() {
               </>
             )}
             {canStaffEdit && v.status === "pending" && v.approval !== "not_approved" && (
-              v.approval === "approved" || v.pre_registered || v.kiosk_self_registered ? (
-                <IssueBadgeButton
-                  visitorName={v.visitor?.full_name ?? "visitor"}
-                  existingAssets={assets.data ?? []}
-                  branchId={v.branch_id ?? null}
-                  onConfirm={issueBadgeAndCheckIn}
-                  disabled={update.isPending || v.approval === "pending"}
-                />
-              ) : (
-                <Button onClick={checkIn} disabled={update.isPending}>
-                  <LogIn className="mr-1 h-4 w-4" /> Check in
-                </Button>
-              )
+              <IssueBadgeButton
+                visitorName={v.visitor?.full_name ?? "visitor"}
+                existingAssets={assets.data ?? []}
+                branchId={v.branch_id ?? null}
+                onConfirm={issueBadgeAndCheckIn}
+                disabled={update.isPending || v.approval === "pending"}
+              />
             )}
             {canStaffEdit && v.status === "checked_in" && (
               <CheckOutButton
@@ -455,9 +460,6 @@ function VisitDetail() {
             <Info label="Company / Origin" value={v.visitor?.company ?? "—"} />
             <Info label="ID type" value={v.visitor?.id_type ?? "—"} />
             <Info label="ID number" value={v.visitor?.id_number ?? "—"} />
-            {v.visitor?.id_scan_url && (
-              <Info label="ID scan" value="On file" />
-            )}
             <Button asChild variant="outline" size="sm" className="mt-2 w-full">
               <Link
                 to="/app/blacklist"

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -108,6 +108,19 @@ function ReportsPage() {
   const [badgeReturned, setBadgeReturned] = useState<string>("all");
   const [preReg, setPreReg] = useState<string>("all");
   const [tab, setTab] = useState("overview");
+  const canOpenReports = me.canViewReports || me.canViewPhotoReports || me.canViewAuditLog;
+  const allowedTabs = useMemo(() => {
+    const tabs: string[] = [];
+    if (me.canViewReports) tabs.push("overview", "trends", "people", "now", "operations", "approvals", "vehicles", "exceptions", "timeline", "blacklist");
+    if (me.canViewPhotoReports) tabs.push("photos", "ids");
+    if (me.canViewAuditLog) tabs.push("audit");
+    return tabs;
+  }, [me.canViewReports, me.canViewPhotoReports, me.canViewAuditLog]);
+
+  useEffect(() => {
+    if (allowedTabs.length > 0 && !allowedTabs.includes(tab)) setTab(allowedTabs[0]);
+  }, [allowedTabs, tab]);
+  const activeTab = allowedTabs.includes(tab) ? tab : allowedTabs[0] ?? tab;
 
   const resetFilters = () => {
     setFrom(daysAgo(30));
@@ -121,7 +134,7 @@ function ReportsPage() {
   };
 
   const visits = useQuery({
-    enabled: me.canViewReports,
+    enabled: me.canViewReports || me.canViewPhotoReports,
     queryKey: ["reports", from, to, type, status, purpose, branchId, badgeReturned, preReg, branchFilter],
     queryFn: async () => {
       let q = supabase
@@ -386,7 +399,7 @@ function ReportsPage() {
     },
   });
 
-  if (!me.canViewReports) {
+  if (!canOpenReports) {
     return (
       <div className="mx-auto max-w-3xl px-8 py-16 text-center">
         <h1 className="font-display text-2xl font-semibold">Reports</h1>
@@ -416,24 +429,26 @@ function ReportsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
-      <header className="flex items-end justify-between gap-4">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold">Reports</h1>
           <p className="text-sm text-muted-foreground">
             {visits.isLoading ? "Loading…" : `${rows.length} visits in selected range`} · scoped to active branch.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => csvExport(`${baseName}.csv`, fullExportRows)} disabled={rows.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> CSV
-          </Button>
-          <Button variant="outline" onClick={() => exportExcel(baseName, fullExportRows, "Visits")} disabled={rows.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> Excel
-          </Button>
-          <Button onClick={() => exportPdf(baseName, `Visits report ${from} to ${to}`, fullExportRows)} disabled={rows.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> PDF
-          </Button>
-        </div>
+        {me.canViewReports && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => csvExport(`${baseName}.csv`, fullExportRows)} disabled={rows.length === 0}>
+              <Download className="mr-2 h-4 w-4" /> All visits CSV
+            </Button>
+            <Button variant="outline" onClick={() => exportExcel(baseName, fullExportRows, "Visits")} disabled={rows.length === 0}>
+              <Download className="mr-2 h-4 w-4" /> All visits Excel
+            </Button>
+            <Button onClick={() => exportPdf(baseName, `Visits report ${from} to ${to}`, fullExportRows)} disabled={rows.length === 0}>
+              <Download className="mr-2 h-4 w-4" /> All visits PDF
+            </Button>
+          </div>
+        )}
       </header>
 
       <Card>
@@ -537,14 +552,14 @@ function ReportsPage() {
         </CardContent>
       </Card>
 
-      {visits.isError && (
+      {(me.canViewReports || me.canViewPhotoReports) && visits.isError && (
         <Card className="border-destructive/40">
           <CardContent className="p-4 text-sm text-destructive">
             Failed to load report data: {visits.error instanceof Error ? visits.error.message : "Unknown error"}
           </CardContent>
         </Card>
       )}
-      {!visits.isLoading && rows.length === 0 && !visits.isError && (
+      {(me.canViewReports || me.canViewPhotoReports) && !visits.isLoading && rows.length === 0 && !visits.isError && (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
             No visits match the current filters. Try widening the date range or clearing filters.
@@ -552,18 +567,18 @@ function ReportsPage() {
         </Card>
       )}
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={activeTab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="people">People</TabsTrigger>
-          <TabsTrigger value="now">Currently inside</TabsTrigger>
-          <TabsTrigger value="operations">Operations</TabsTrigger>
-          <TabsTrigger value="approvals">Approvals</TabsTrigger>
-          <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
-          <TabsTrigger value="exceptions">Exceptions</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="blacklist">Blacklist</TabsTrigger>
+          {me.canViewReports && <TabsTrigger value="overview">Overview</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="trends">Trends</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="people">People</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="now">Currently inside</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="operations">Operations</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="approvals">Approvals</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="vehicles">Vehicles</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="exceptions">Exceptions</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="timeline">Timeline</TabsTrigger>}
+          {me.canViewReports && <TabsTrigger value="blacklist">Blacklist</TabsTrigger>}
           {me.canViewPhotoReports && <TabsTrigger value="photos">Visitor photos</TabsTrigger>}
           {me.canViewPhotoReports && <TabsTrigger value="ids">Visitor IDs</TabsTrigger>}
           {me.canViewAuditLog && <TabsTrigger value="audit">Audit log</TabsTrigger>}
@@ -695,6 +710,9 @@ function ReportsPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Blacklisted visitors ({blacklistedVisitors.data?.length ?? 0})</CardTitle>
               <div className="flex gap-2">
+                <Button size="sm" variant="outline" disabled={blacklistExportRows.length === 0} onClick={() => exportCsv("blacklist", blacklistExportRows)}>
+                  <Download className="mr-1 h-3.5 w-3.5" /> CSV
+                </Button>
                 <Button size="sm" variant="outline" disabled={blacklistExportRows.length === 0} onClick={() => exportExcel("blacklist", blacklistExportRows, "Blacklist")}>
                   <Download className="mr-1 h-3.5 w-3.5" /> Excel
                 </Button>
@@ -979,7 +997,10 @@ function PhotoReport({
     "Purpose": r.purpose,
     "Branch": r.branch?.name ?? "",
     "Captured": fmtDate(r.photos_captured_at ?? r.created_at),
-    "Photo URL": (variant === "face" ? r.face_photo_url : r.id_photo_url) ?? "",
+    "Photo URL": (() => {
+      const path = variant === "face" ? r.face_photo_url : r.id_photo_url;
+      return path ? signed.data?.[path] ?? path : "";
+    })(),
   }));
 
   const downloadPdfWithImages = async () => {
@@ -1031,6 +1052,10 @@ function PhotoReport({
         {rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             No {variant === "face" ? "visitor photos" : "ID photos"} captured in this range.
+          </p>
+        ) : signed.isError ? (
+          <p className="py-8 text-center text-sm text-destructive">
+            The photo report data loaded, but photo previews could not be opened. Please try again.
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -1108,6 +1133,7 @@ function AuditLogTab({
       else if (branchFilter.kind === "eq") query = query.eq("branch_id", branchFilter.branchId);
       else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0)
         query = query.in("branch_id", branchFilter.branchIds);
+      else if (branchFilter.kind === "in") return [];
       if (action !== "all") query = query.eq("action", action);
       const { data, error } = await query;
       if (error) throw error;
@@ -1159,6 +1185,10 @@ function AuditLogTab({
       <CardContent className="p-0">
         {q.isLoading ? (
           <p className="p-6 text-center text-sm text-muted-foreground">Loading…</p>
+        ) : q.isError ? (
+          <p className="p-6 text-center text-sm text-destructive">
+            Failed to load the audit log: {q.error instanceof Error ? q.error.message : "Unknown error"}
+          </p>
         ) : rows.length === 0 ? (
           <p className="p-6 text-center text-sm text-muted-foreground">No activity yet in this range.</p>
         ) : (

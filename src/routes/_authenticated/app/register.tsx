@@ -58,7 +58,6 @@ function RegisterPage() {
   const [hostId, setHostId] = useState<string>("");
   const [manualHostName, setManualHostName] = useState("");
   const [registrationBranchId, setRegistrationBranchId] = useState("");
-  const [idScanFile, setIdScanFile] = useState<File | null>(null);
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
   const [hasAssets, setHasAssets] = useState<"no" | "yes">("no");
   const [assets, setAssets] = useState<AssetRow[]>([
@@ -154,21 +153,33 @@ function RegisterPage() {
         if (!form.vehicle_type.trim()) throw new Error("Vehicle type is required for drive-in visits.");
       }
 
-      // Safety re-check: badge (if selected) must still be available at this branch.
-      if (parsed.badge_number) {
-        const { data: badgeRow, error: badgeErr } = await supabase
+      if (!parsed.badge_number) {
+        throw new Error("Assign an available badge before checking the visitor in.");
+      }
+
+      // Safety re-check: badge must still be available and not active on another checked-in visit.
+      const [{ data: badgeRow, error: badgeErr }, { data: activeBadge, error: activeBadgeErr }] = await Promise.all([
+        supabase
           .from("badges")
           .select("status")
           .eq("badge_number", parsed.badge_number)
           .eq("branch_id", registrationBranchId)
-          .maybeSingle();
-        if (badgeErr) throw new Error(badgeErr.message);
-        if (!badgeRow) throw new Error("The selected badge no longer exists at this branch.");
-        if (badgeRow.status !== "available") {
-          throw new Error(
-            `Badge #${parsed.badge_number} is currently in use with another visitor. Please pick a different badge or wait until it is returned.`,
-          );
-        }
+          .maybeSingle(),
+        supabase
+          .from("visits")
+          .select("id")
+          .eq("badge_number", parsed.badge_number)
+          .eq("branch_id", registrationBranchId)
+          .eq("status", "checked_in")
+          .maybeSingle(),
+      ]);
+      if (badgeErr) throw new Error(badgeErr.message);
+      if (activeBadgeErr) throw new Error(activeBadgeErr.message);
+      if (!badgeRow) throw new Error("The selected badge no longer exists at this branch.");
+      if (badgeRow.status !== "available" || activeBadge) {
+        throw new Error(
+          `Badge #${parsed.badge_number} is currently in use with another visitor. Please pick a different badge or wait until it is returned.`,
+        );
       }
 
 
@@ -223,15 +234,29 @@ function RegisterPage() {
         .maybeSingle();
       if (bl) throw new Error(`Visitor is blacklisted: ${bl.reason}`);
 
-      // Optional ID scan upload
-      if (idScanFile) {
-        const ext = idScanFile.name.split(".").pop() || "jpg";
-        const path = `${visitorId}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from("id-scans")
-          .upload(path, idScanFile, { upsert: true, contentType: idScanFile.type });
-        if (upErr) throw upErr;
-        await supabase.from("visitors").update({ id_scan_url: path }).eq("id", visitorId);
+      // Optional photo uploads happen before check-in so a camera/storage failure never leaves
+      // a visitor marked inside without their requested photo records.
+      const photoPatch: {
+        face_photo_url?: string;
+        id_photo_url?: string;
+        id_photo_type?: string;
+        photos_captured_at?: string;
+      } = {};
+      const uploadPhoto = async (photo: CapturedPhoto, kind: "face" | "id") => {
+        const path = `${registrationBranchId}/${visitorId}/${kind}-${Date.now()}.jpg`;
+        const { error } = await supabase.storage
+          .from("visitor-photos")
+          .upload(path, photo.blob, { upsert: true, contentType: "image/jpeg" });
+        if (error) throw new Error(`Could not save ${kind === "face" ? "visitor face" : "visitor ID"} photo: ${error.message}`);
+        return path;
+      };
+      if (facePhoto) photoPatch.face_photo_url = await uploadPhoto(facePhoto, "face");
+      if (idPhoto) {
+        photoPatch.id_photo_url = await uploadPhoto(idPhoto, "id");
+        photoPatch.id_photo_type = idPhoto.idType ?? "other";
+      }
+      if (Object.keys(photoPatch).length > 0) {
+        photoPatch.photos_captured_at = new Date().toISOString();
       }
 
       const { data: visit, error: visitErr } = await supabase
@@ -252,6 +277,7 @@ function RegisterPage() {
           check_in_at: new Date().toISOString(),
           created_by: me.userId,
           branch_id: registrationBranchId,
+          ...photoPatch,
         })
         .select("id")
         .single();
@@ -279,29 +305,7 @@ function RegisterPage() {
           .eq("branch_id", registrationBranchId);
       }
 
-      // Optional photo uploads
-      const photoPatch: {
-        face_photo_url?: string;
-        id_photo_url?: string;
-        id_photo_type?: string;
-        photos_captured_at?: string;
-      } = {};
-      const uploadPhoto = async (photo: CapturedPhoto, kind: "face" | "id") => {
-        const path = `${registrationBranchId}/${visit.id}/${kind}-${Date.now()}.jpg`;
-        const { error } = await supabase.storage
-          .from("visitor-photos")
-          .upload(path, photo.blob, { upsert: true, contentType: "image/jpeg" });
-        if (error) throw error;
-        return path;
-      };
-      if (facePhoto) photoPatch.face_photo_url = await uploadPhoto(facePhoto, "face");
-      if (idPhoto) {
-        photoPatch.id_photo_url = await uploadPhoto(idPhoto, "id");
-        photoPatch.id_photo_type = idPhoto.idType ?? "other";
-      }
       if (Object.keys(photoPatch).length > 0) {
-        photoPatch.photos_captured_at = new Date().toISOString();
-        await supabase.from("visits").update(photoPatch).eq("id", visit.id);
         await logActivity({
           action: "visit.photo_captured",
           entityType: "visit",
@@ -577,10 +581,10 @@ function RegisterPage() {
           />
 
           <div className="space-y-2">
-            <Label>Badge number</Label>
+            <Label>Badge number <span className="text-destructive">*</span></Label>
             <Select value={form.badge_number} onValueChange={(v) => set("badge_number", v)}>
               <SelectTrigger>
-                <SelectValue placeholder="Assign an available badge if needed" />
+                <SelectValue placeholder="Assign an available badge" />
               </SelectTrigger>
               <SelectContent>
                 {availableBadges.data?.length === 0 && (
@@ -697,7 +701,7 @@ function RegisterPage() {
       <Card>
         <CardHeader>
           <CardTitle>4. Identification (optional)</CardTitle>
-          <CardDescription>Capture ID details and an optional scan for audit.</CardDescription>
+          <CardDescription>Capture ID details here. Use the photo capture step below for ID pictures.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -716,17 +720,6 @@ function RegisterPage() {
             </Select>
           </div>
           <Field label="ID Number" value={form.id_number} onChange={(v) => set("id_number", v)} />
-          <div className="space-y-2 md:col-span-2">
-            <Label>ID Scan (image)</Label>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setIdScanFile(e.target.files?.[0] ?? null)}
-            />
-            {idScanFile && (
-              <p className="text-xs text-muted-foreground">Selected: {idScanFile.name}</p>
-            )}
-          </div>
         </CardContent>
       </Card>
 
