@@ -120,6 +120,7 @@ function ReportsPage() {
   useEffect(() => {
     if (allowedTabs.length > 0 && !allowedTabs.includes(tab)) setTab(allowedTabs[0]);
   }, [allowedTabs, tab]);
+  const activeTab = allowedTabs.includes(tab) ? tab : allowedTabs[0] ?? tab;
 
   const resetFilters = () => {
     setFrom(daysAgo(30));
@@ -428,7 +429,7 @@ function ReportsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
-      <header className="flex items-end justify-between gap-4">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold">Reports</h1>
           <p className="text-sm text-muted-foreground">
@@ -551,14 +552,14 @@ function ReportsPage() {
         </CardContent>
       </Card>
 
-      {visits.isError && (
+      {(me.canViewReports || me.canViewPhotoReports) && visits.isError && (
         <Card className="border-destructive/40">
           <CardContent className="p-4 text-sm text-destructive">
             Failed to load report data: {visits.error instanceof Error ? visits.error.message : "Unknown error"}
           </CardContent>
         </Card>
       )}
-      {!visits.isLoading && rows.length === 0 && !visits.isError && (
+      {(me.canViewReports || me.canViewPhotoReports) && !visits.isLoading && rows.length === 0 && !visits.isError && (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
             No visits match the current filters. Try widening the date range or clearing filters.
@@ -566,7 +567,7 @@ function ReportsPage() {
         </Card>
       )}
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={activeTab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
           {me.canViewReports && <TabsTrigger value="overview">Overview</TabsTrigger>}
           {me.canViewReports && <TabsTrigger value="trends">Trends</TabsTrigger>}
