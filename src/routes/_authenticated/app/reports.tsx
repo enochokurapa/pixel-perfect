@@ -1118,6 +1118,7 @@ function AuditLogTab({
       else if (branchFilter.kind === "eq") query = query.eq("branch_id", branchFilter.branchId);
       else if (branchFilter.kind === "in" && branchFilter.branchIds.length > 0)
         query = query.in("branch_id", branchFilter.branchIds);
+      else if (branchFilter.kind === "in") return [];
       if (action !== "all") query = query.eq("action", action);
       const { data, error } = await query;
       if (error) throw error;
