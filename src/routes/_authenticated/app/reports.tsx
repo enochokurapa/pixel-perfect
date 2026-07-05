@@ -425,13 +425,13 @@ function ReportsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => csvExport(`${baseName}.csv`, fullExportRows)} disabled={rows.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> CSV
+            <Download className="mr-2 h-4 w-4" /> All visits CSV
           </Button>
           <Button variant="outline" onClick={() => exportExcel(baseName, fullExportRows, "Visits")} disabled={rows.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> Excel
+            <Download className="mr-2 h-4 w-4" /> All visits Excel
           </Button>
           <Button onClick={() => exportPdf(baseName, `Visits report ${from} to ${to}`, fullExportRows)} disabled={rows.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> PDF
+            <Download className="mr-2 h-4 w-4" /> All visits PDF
           </Button>
         </div>
       </header>
@@ -695,6 +695,9 @@ function ReportsPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Blacklisted visitors ({blacklistedVisitors.data?.length ?? 0})</CardTitle>
               <div className="flex gap-2">
+                <Button size="sm" variant="outline" disabled={blacklistExportRows.length === 0} onClick={() => exportCsv("blacklist", blacklistExportRows)}>
+                  <Download className="mr-1 h-3.5 w-3.5" /> CSV
+                </Button>
                 <Button size="sm" variant="outline" disabled={blacklistExportRows.length === 0} onClick={() => exportExcel("blacklist", blacklistExportRows, "Blacklist")}>
                   <Download className="mr-1 h-3.5 w-3.5" /> Excel
                 </Button>
@@ -979,7 +982,10 @@ function PhotoReport({
     "Purpose": r.purpose,
     "Branch": r.branch?.name ?? "",
     "Captured": fmtDate(r.photos_captured_at ?? r.created_at),
-    "Photo URL": (variant === "face" ? r.face_photo_url : r.id_photo_url) ?? "",
+    "Photo URL": (() => {
+      const path = variant === "face" ? r.face_photo_url : r.id_photo_url;
+      return path ? signed.data?.[path] ?? path : "";
+    })(),
   }));
 
   const downloadPdfWithImages = async () => {
@@ -1031,6 +1037,10 @@ function PhotoReport({
         {rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             No {variant === "face" ? "visitor photos" : "ID photos"} captured in this range.
+          </p>
+        ) : signed.isError ? (
+          <p className="py-8 text-center text-sm text-destructive">
+            The photo report data loaded, but photo previews could not be opened. Please try again.
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -1159,6 +1169,10 @@ function AuditLogTab({
       <CardContent className="p-0">
         {q.isLoading ? (
           <p className="p-6 text-center text-sm text-muted-foreground">Loading…</p>
+        ) : q.isError ? (
+          <p className="p-6 text-center text-sm text-destructive">
+            Failed to load the audit log: {q.error instanceof Error ? q.error.message : "Unknown error"}
+          </p>
         ) : rows.length === 0 ? (
           <p className="p-6 text-center text-sm text-muted-foreground">No activity yet in this range.</p>
         ) : (
