@@ -142,8 +142,8 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
       When: new Date(a.created_at).toLocaleString(),
       User: a.actor_name ?? "",
       Department: a.actor_department ?? "",
-      Action: a.action,
-      Details: JSON.stringify(a.details ?? {}),
+      Action: formatActionLabel(a.action),
+      Details: formatDetails(a.details) || "—",
     }));
 
   const filenameBase = v ? `visit-${(v.visitor?.full_name ?? "detail").replace(/\s+/g, "_")}` : "visit";
@@ -154,24 +154,31 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
     const combined: ExportRow[] = [
       ...rows,
       { Field: "", Value: "" },
-      { Field: "— Audit trail —", Value: "" },
-      ...audits.map((a) => ({ Field: `${a.When} · ${a.User}`, Value: `${a.Action} ${a.Details}` })),
+      { Field: "Audit trail", Value: "" },
+      ...audits.map((a) => ({
+        Field: `${a.When} — ${a.User}${a.Department ? ` (${a.Department})` : ""}`,
+        Value: `${a.Action}${a.Details && a.Details !== "—" ? ` — ${a.Details}` : ""}`,
+      })),
     ];
     exportCsv(filenameBase, combined);
   };
 
   const downloadPdf = () => {
     const auditFields: [string, string][] = (audit.data ?? []).length
-      ? (audit.data ?? []).map((a) => [
-          new Date(a.created_at).toLocaleString(),
-          `${a.action} · ${a.actor_name ?? "—"}${a.actor_department ? ` (${a.actor_department})` : ""}`,
-        ])
+      ? (audit.data ?? []).map((a) => {
+          const who = `${a.actor_name ?? "Unknown"}${a.actor_department ? ` (${a.actor_department})` : ""}`;
+          const when = new Date(a.created_at).toLocaleString();
+          const details = formatDetails(a.details);
+          const value = `${formatActionLabel(a.action)} by ${who}${details ? `. ${details}` : ""}`;
+          return [when, value];
+        })
       : [["Audit trail", "No activity recorded yet"]];
     exportDetailPdf(filenameBase, `Visit report — ${v?.visitor?.full_name ?? ""}`, [
       { heading: "Visitor & visit", rows: detailRows() },
       { heading: "Audit trail", rows: auditFields },
     ]);
   };
+
 
   const downloadExcel = () => {
     const rows: ExportRow[] = detailRows().map(([Field, Value]) => ({ Field, Value }));
