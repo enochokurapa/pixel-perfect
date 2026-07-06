@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Download, ExternalLink, FileSpreadsheet, FileText, LogOut } from "lucide-react";
 import { exportCsv, exportDetailPdf, exportExcel, type ExportRow } from "@/lib/visit-export";
+import { formatActionLabel, formatDetails } from "@/lib/audit-format";
 import { logActivity } from "@/lib/activity-log";
 import { useCurrentUser } from "@/hooks/use-session";
 
