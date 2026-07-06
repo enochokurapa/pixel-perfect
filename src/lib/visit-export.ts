@@ -120,8 +120,9 @@ export async function exportPhotoPdf(
       body: item.fields,
       startY: y,
       margin: { left: hasImage ? 60 : 14, right: 14 },
-      styles: { fontSize: 9 },
-      columnStyles: { 0: { fontStyle: "bold", cellWidth: 35 } },
+      styles: { fontSize: 9, cellPadding: 2, overflow: "linebreak", valign: "top" },
+      columnStyles: { 0: { fontStyle: "bold", cellWidth: 45, textColor: [30, 41, 59] }, 1: { cellWidth: "auto" } },
+      tableWidth: "auto",
     });
     // @ts-expect-error - lastAutoTable injected by autoTable
     const tableEnd = (doc.lastAutoTable?.finalY ?? y) + 6;
