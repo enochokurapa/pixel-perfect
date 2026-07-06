@@ -76,8 +76,12 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
           checkout_notes: notes.trim() || null,
         })
         .eq("id", v.id);
-      if (error) throw error;
-      if (v.badge_number && v.branch_id) {
+      if (error) throw new Error(error.message);
+      // Belt-and-braces: the sync_badge_status_from_visit DB trigger already
+      // returns the badge to "available" when badge_returned = true, but we
+      // also do it here so the UI reflects it immediately even if the trigger
+      // is temporarily disabled.
+      if (v.badge_number && v.branch_id && badgeReturned) {
         await supabase
           .from("badges")
           .update({ status: "available" })
@@ -89,7 +93,12 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
         entityType: "visit",
         entityId: v.id,
         branchId: v.branch_id,
-        details: { visitor: v.visitor?.full_name, badge_number: v.badge_number, badge_returned: badgeReturned },
+        details: {
+          visitor: v.visitor?.full_name,
+          badge_number: v.badge_number,
+          badge_returned: badgeReturned,
+          assets_verified: assetsVerified,
+        },
       });
     },
     onSuccess: () => {
@@ -100,7 +109,7 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
       setNotes("");
       qc.invalidateQueries();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to check out"),
   });
 
   const detailRows = (): [string, string][] =>
