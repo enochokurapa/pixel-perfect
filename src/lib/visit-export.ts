@@ -89,7 +89,7 @@ export async function exportPhotoPdf(
   title: string,
   items: { imageUrl?: string | null; fields: [string, string][] }[],
 ) {
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   doc.setFontSize(14);
   doc.text(title, 14, 14);
   const pageHeight = doc.internal.pageSize.getHeight();
