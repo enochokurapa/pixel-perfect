@@ -284,25 +284,28 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
                   </p>
                 ) : (
                   <ol className="space-y-2">
-                    {audit.data!.map((a, i) => (
-                      <li key={i} className="rounded-md border bg-card p-3">
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <div className="text-sm font-medium">{a.action}</div>
-                          <div className="text-xs text-muted-foreground tabular-nums">
-                            {new Date(a.created_at).toLocaleString()}
+                    {audit.data!.map((a, i) => {
+                      const readableDetails = formatDetails(a.details);
+                      return (
+                        <li key={i} className="rounded-md border bg-card p-3">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <div className="text-sm font-medium">{formatActionLabel(a.action)}</div>
+                            <div className="text-xs text-muted-foreground tabular-nums">
+                              {new Date(a.created_at).toLocaleString()}
+                            </div>
                           </div>
-                        </div>
-                        <div className="mt-0.5 text-xs text-muted-foreground">
-                          {a.actor_name ?? "—"}
-                          {a.actor_department ? ` · ${a.actor_department}` : ""}
-                        </div>
-                        {a.details && Object.keys(a.details).length > 0 && (
-                          <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted/40 p-2 text-[11px]">
-                            {JSON.stringify(a.details, null, 2)}
-                          </pre>
-                        )}
-                      </li>
-                    ))}
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {a.actor_name ?? "—"}
+                            {a.actor_department ? ` · ${a.actor_department}` : ""}
+                          </div>
+                          {readableDetails && (
+                            <div className="mt-2 rounded bg-muted/40 p-2 text-xs text-foreground/80 break-words">
+                              {readableDetails}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ol>
                 )}
               </TabsContent>
