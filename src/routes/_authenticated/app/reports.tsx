@@ -1208,13 +1208,13 @@ function AuditLogTab({
               <tbody className="divide-y divide-border">
                 {rows.map((r) => (
                   <tr key={r.id}>
-                    <td className="px-4 py-2 text-xs text-muted-foreground tabular-nums">{new Date(r.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
                     <td className="px-4 py-2">{r.actor_name ?? "—"}</td>
                     <td className="px-4 py-2 text-muted-foreground">{r.actor_department ?? "—"}</td>
-                    <td className="px-4 py-2 font-mono text-xs">{r.action}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{formatActionLabel(r.action)}</td>
                     <td className="px-4 py-2 text-muted-foreground">{(r as { branch?: { name?: string } | null }).branch?.name ?? "—"}</td>
-                    <td className="px-4 py-2 text-xs text-muted-foreground max-w-md truncate" title={JSON.stringify(r.details)}>
-                      {r.entity_type ? `${r.entity_type} · ` : ""}{JSON.stringify(r.details ?? {})}
+                    <td className="px-4 py-2 text-xs text-muted-foreground max-w-md">
+                      {formatDetails(r.details) || "—"}
                     </td>
                   </tr>
                 ))}
