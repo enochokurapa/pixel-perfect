@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Download, ExternalLink, FileSpreadsheet, FileText, LogOut } from "lucide-react";
 import { exportCsv, exportDetailPdf, exportExcel, type ExportRow } from "@/lib/visit-export";
+import { formatActionLabel, formatDetails } from "@/lib/audit-format";
 import { logActivity } from "@/lib/activity-log";
 import { useCurrentUser } from "@/hooks/use-session";
 
@@ -75,8 +76,12 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
           checkout_notes: notes.trim() || null,
         })
         .eq("id", v.id);
-      if (error) throw error;
-      if (v.badge_number && v.branch_id) {
+      if (error) throw new Error(error.message);
+      // Belt-and-braces: the sync_badge_status_from_visit DB trigger already
+      // returns the badge to "available" when badge_returned = true, but we
+      // also do it here so the UI reflects it immediately even if the trigger
+      // is temporarily disabled.
+      if (v.badge_number && v.branch_id && badgeReturned) {
         await supabase
           .from("badges")
           .update({ status: "available" })
@@ -88,7 +93,12 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
         entityType: "visit",
         entityId: v.id,
         branchId: v.branch_id,
-        details: { visitor: v.visitor?.full_name, badge_number: v.badge_number, badge_returned: badgeReturned },
+        details: {
+          visitor: v.visitor?.full_name,
+          badge_number: v.badge_number,
+          badge_returned: badgeReturned,
+          assets_verified: assetsVerified,
+        },
       });
     },
     onSuccess: () => {
@@ -99,7 +109,7 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
       setNotes("");
       qc.invalidateQueries();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to check out"),
   });
 
   const detailRows = (): [string, string][] =>
@@ -132,8 +142,8 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
       When: new Date(a.created_at).toLocaleString(),
       User: a.actor_name ?? "",
       Department: a.actor_department ?? "",
-      Action: a.action,
-      Details: JSON.stringify(a.details ?? {}),
+      Action: formatActionLabel(a.action),
+      Details: formatDetails(a.details) || "—",
     }));
 
   const filenameBase = v ? `visit-${(v.visitor?.full_name ?? "detail").replace(/\s+/g, "_")}` : "visit";
@@ -144,24 +154,31 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
     const combined: ExportRow[] = [
       ...rows,
       { Field: "", Value: "" },
-      { Field: "— Audit trail —", Value: "" },
-      ...audits.map((a) => ({ Field: `${a.When} · ${a.User}`, Value: `${a.Action} ${a.Details}` })),
+      { Field: "Audit trail", Value: "" },
+      ...audits.map((a) => ({
+        Field: `${a.When} — ${a.User}${a.Department ? ` (${a.Department})` : ""}`,
+        Value: `${a.Action}${a.Details && a.Details !== "—" ? ` — ${a.Details}` : ""}`,
+      })),
     ];
     exportCsv(filenameBase, combined);
   };
 
   const downloadPdf = () => {
     const auditFields: [string, string][] = (audit.data ?? []).length
-      ? (audit.data ?? []).map((a) => [
-          new Date(a.created_at).toLocaleString(),
-          `${a.action} · ${a.actor_name ?? "—"}${a.actor_department ? ` (${a.actor_department})` : ""}`,
-        ])
+      ? (audit.data ?? []).map((a) => {
+          const who = `${a.actor_name ?? "Unknown"}${a.actor_department ? ` (${a.actor_department})` : ""}`;
+          const when = new Date(a.created_at).toLocaleString();
+          const details = formatDetails(a.details);
+          const value = `${formatActionLabel(a.action)} by ${who}${details ? `. ${details}` : ""}`;
+          return [when, value];
+        })
       : [["Audit trail", "No activity recorded yet"]];
     exportDetailPdf(filenameBase, `Visit report — ${v?.visitor?.full_name ?? ""}`, [
       { heading: "Visitor & visit", rows: detailRows() },
       { heading: "Audit trail", rows: auditFields },
     ]);
   };
+
 
   const downloadExcel = () => {
     const rows: ExportRow[] = detailRows().map(([Field, Value]) => ({ Field, Value }));
@@ -267,25 +284,28 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
                   </p>
                 ) : (
                   <ol className="space-y-2">
-                    {audit.data!.map((a, i) => (
-                      <li key={i} className="rounded-md border bg-card p-3">
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <div className="text-sm font-medium">{a.action}</div>
-                          <div className="text-xs text-muted-foreground tabular-nums">
-                            {new Date(a.created_at).toLocaleString()}
+                    {audit.data!.map((a, i) => {
+                      const readableDetails = formatDetails(a.details);
+                      return (
+                        <li key={i} className="rounded-md border bg-card p-3">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <div className="text-sm font-medium">{formatActionLabel(a.action)}</div>
+                            <div className="text-xs text-muted-foreground tabular-nums">
+                              {new Date(a.created_at).toLocaleString()}
+                            </div>
                           </div>
-                        </div>
-                        <div className="mt-0.5 text-xs text-muted-foreground">
-                          {a.actor_name ?? "—"}
-                          {a.actor_department ? ` · ${a.actor_department}` : ""}
-                        </div>
-                        {a.details && Object.keys(a.details).length > 0 && (
-                          <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted/40 p-2 text-[11px]">
-                            {JSON.stringify(a.details, null, 2)}
-                          </pre>
-                        )}
-                      </li>
-                    ))}
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {a.actor_name ?? "—"}
+                            {a.actor_department ? ` · ${a.actor_department}` : ""}
+                          </div>
+                          {readableDetails && (
+                            <div className="mt-2 rounded bg-muted/40 p-2 text-xs text-foreground/80 break-words">
+                              {readableDetails}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ol>
                 )}
               </TabsContent>

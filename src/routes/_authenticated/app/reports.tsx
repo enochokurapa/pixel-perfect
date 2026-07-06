@@ -12,6 +12,7 @@ import { Download, X, UserPlus, CheckCircle2, XCircle, LogIn, LogOut, ShieldAler
 import { useCurrentUser } from "@/hooks/use-session";
 import { useBranchScope, useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 import { exportCsv, exportExcel, exportPdf, exportPhotoPdf, type ExportRow } from "@/lib/visit-export";
+import { formatActionLabel, formatDetails } from "@/lib/audit-format";
 
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
@@ -1147,10 +1148,10 @@ function AuditLogTab({
     When: fmtDate(r.created_at),
     User: r.actor_name ?? "",
     Department: r.actor_department ?? "",
-    Action: r.action,
+    Action: formatActionLabel(r.action),
     Entity: `${r.entity_type ?? ""} ${r.entity_id ?? ""}`.trim(),
     Branch: (r as { branch?: { name?: string } | null }).branch?.name ?? "",
-    Details: JSON.stringify(r.details ?? {}),
+    Details: formatDetails(r.details) || "—",
   }));
 
   return (
@@ -1166,7 +1167,7 @@ function AuditLogTab({
               <SelectContent>
                 <SelectItem value="all">All actions</SelectItem>
                 {actions.map((a) => (
-                  <SelectItem key={a} value={a}>{a}</SelectItem>
+                  <SelectItem key={a} value={a}>{formatActionLabel(a)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1207,13 +1208,13 @@ function AuditLogTab({
               <tbody className="divide-y divide-border">
                 {rows.map((r) => (
                   <tr key={r.id}>
-                    <td className="px-4 py-2 text-xs text-muted-foreground tabular-nums">{new Date(r.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
                     <td className="px-4 py-2">{r.actor_name ?? "—"}</td>
                     <td className="px-4 py-2 text-muted-foreground">{r.actor_department ?? "—"}</td>
-                    <td className="px-4 py-2 font-mono text-xs">{r.action}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{formatActionLabel(r.action)}</td>
                     <td className="px-4 py-2 text-muted-foreground">{(r as { branch?: { name?: string } | null }).branch?.name ?? "—"}</td>
-                    <td className="px-4 py-2 text-xs text-muted-foreground max-w-md truncate" title={JSON.stringify(r.details)}>
-                      {r.entity_type ? `${r.entity_type} · ` : ""}{JSON.stringify(r.details ?? {})}
+                    <td className="px-4 py-2 text-xs text-muted-foreground max-w-md">
+                      {formatDetails(r.details) || "—"}
                     </td>
                   </tr>
                 ))}

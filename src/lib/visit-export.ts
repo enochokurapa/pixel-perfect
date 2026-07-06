@@ -29,7 +29,7 @@ export function exportCsv(filename: string, rows: ExportRow[]) {
 }
 
 export function exportPdf(filename: string, title: string, rows: ExportRow[]) {
-  const doc = new jsPDF({ orientation: "landscape" });
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   doc.setFontSize(14);
   doc.text(title, 14, 14);
   const headers = rows.length ? Object.keys(rows[0]) : [];
@@ -37,25 +37,30 @@ export function exportPdf(filename: string, title: string, rows: ExportRow[]) {
     head: [headers],
     body: rows.map((r) => headers.map((h) => String(r[h] ?? ""))),
     startY: 20,
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: [30, 41, 59] },
+    styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak", valign: "top" },
+    headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: 8, right: 8 },
+    tableWidth: "auto",
   });
   doc.save(`${filename}.pdf`);
 }
 
 export function exportDetailPdf(filename: string, title: string, sections: { heading: string; rows: [string, string][] }[]) {
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   doc.setFontSize(16);
-  doc.text(title, 14, 16);
-  let y = 24;
+  doc.text(title, 14, 14);
+  let y = 22;
   sections.forEach((sec) => {
     autoTable(doc, {
       head: [[sec.heading, ""]],
       body: sec.rows,
       startY: y,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [30, 41, 59] },
-      columnStyles: { 0: { fontStyle: "bold", cellWidth: 55 } },
+      styles: { fontSize: 10, cellPadding: 3, overflow: "linebreak", valign: "top" },
+      headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: "bold" },
+      columnStyles: { 0: { fontStyle: "bold", cellWidth: 60, textColor: [30, 41, 59] }, 1: { cellWidth: "auto" } },
+      margin: { left: 10, right: 10 },
+      tableWidth: "auto",
     });
     // @ts-expect-error - lastAutoTable injected by autoTable
     y = (doc.lastAutoTable?.finalY ?? y) + 6;
@@ -84,7 +89,7 @@ export async function exportPhotoPdf(
   title: string,
   items: { imageUrl?: string | null; fields: [string, string][] }[],
 ) {
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   doc.setFontSize(14);
   doc.text(title, 14, 14);
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -115,8 +120,9 @@ export async function exportPhotoPdf(
       body: item.fields,
       startY: y,
       margin: { left: hasImage ? 60 : 14, right: 14 },
-      styles: { fontSize: 9 },
-      columnStyles: { 0: { fontStyle: "bold", cellWidth: 35 } },
+      styles: { fontSize: 9, cellPadding: 2, overflow: "linebreak", valign: "top" },
+      columnStyles: { 0: { fontStyle: "bold", cellWidth: 45, textColor: [30, 41, 59] }, 1: { cellWidth: "auto" } },
+      tableWidth: "auto",
     });
     // @ts-expect-error - lastAutoTable injected by autoTable
     const tableEnd = (doc.lastAutoTable?.finalY ?? y) + 6;
