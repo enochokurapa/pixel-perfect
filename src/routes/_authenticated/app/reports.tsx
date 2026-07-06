@@ -1148,10 +1148,10 @@ function AuditLogTab({
     When: fmtDate(r.created_at),
     User: r.actor_name ?? "",
     Department: r.actor_department ?? "",
-    Action: r.action,
+    Action: formatActionLabel(r.action),
     Entity: `${r.entity_type ?? ""} ${r.entity_id ?? ""}`.trim(),
     Branch: (r as { branch?: { name?: string } | null }).branch?.name ?? "",
-    Details: JSON.stringify(r.details ?? {}),
+    Details: formatDetails(r.details) || "—",
   }));
 
   return (
