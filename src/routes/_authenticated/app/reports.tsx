@@ -12,6 +12,7 @@ import { Download, X, UserPlus, CheckCircle2, XCircle, LogIn, LogOut, ShieldAler
 import { useCurrentUser } from "@/hooks/use-session";
 import { useBranchScope, useEffectiveBranchFilter } from "@/hooks/use-branch-scope";
 import { exportCsv, exportExcel, exportPdf, exportPhotoPdf, type ExportRow } from "@/lib/visit-export";
+import { formatActionLabel, formatDetails } from "@/lib/audit-format";
 
 
 export const Route = createFileRoute("/_authenticated/app/reports")({
