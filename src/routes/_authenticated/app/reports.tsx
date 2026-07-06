@@ -1167,7 +1167,7 @@ function AuditLogTab({
               <SelectContent>
                 <SelectItem value="all">All actions</SelectItem>
                 {actions.map((a) => (
-                  <SelectItem key={a} value={a}>{a}</SelectItem>
+                  <SelectItem key={a} value={a}>{formatActionLabel(a)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
