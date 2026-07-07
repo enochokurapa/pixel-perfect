@@ -306,20 +306,15 @@ function VisitDetail() {
     assets_verified: boolean;
     checkout_notes: string;
   }) => {
-    try {
-      await checkoutVisitFn({
-        data: {
-          visit_id: v.id,
-          badge_returned: verification.badge_returned,
-          assets_verified: verification.assets_verified,
-          checkout_notes: verification.checkout_notes,
-        },
-      });
-      qc.invalidateQueries();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to check out visitor");
-      throw error;
-    }
+    await checkoutVisitFn({
+      data: {
+        visit_id: v.id,
+        badge_returned: verification.badge_returned,
+        assets_verified: verification.assets_verified,
+        checkout_notes: verification.checkout_notes,
+      },
+    });
+    qc.invalidateQueries();
   };
 
   return (
@@ -580,6 +575,8 @@ function CheckOutButton({
       });
       toast.success("Visitor checked out");
       setOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to check out visitor");
     } finally {
       setBusy(false);
     }
