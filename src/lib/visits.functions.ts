@@ -57,7 +57,7 @@ export const checkoutVisit = createServerFn({ method: "POST" })
     }
 
     const checkedOutAt = new Date().toISOString();
-    const { error: updateError } = await supabaseAdmin
+    const { data: checkedOutVisit, error: updateError } = await supabaseAdmin
       .from("visits")
       .update({
         status: "checked_out",
@@ -67,9 +67,12 @@ export const checkoutVisit = createServerFn({ method: "POST" })
         checkout_notes: data.checkout_notes || null,
       })
       .eq("id", data.visit_id)
-      .eq("status", "checked_in");
+      .eq("status", "checked_in")
+      .select("id")
+      .maybeSingle();
 
     if (updateError) throw new Error(updateError.message);
+    if (!checkedOutVisit) throw new Error("This visitor has already been checked out or is no longer checked in.");
 
     if (visit.badge_number) {
       let badgeQuery = supabaseAdmin
