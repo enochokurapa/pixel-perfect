@@ -321,9 +321,6 @@ function VisitDetail() {
       throw error;
     }
   };
-      },
-    });
-  };
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 md:px-8 md:py-8">
