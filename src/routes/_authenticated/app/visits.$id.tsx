@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import { toast } from "sonner";
 import { StatusBadge } from "./index";
 import { exportExcel, exportDetailPdf } from "@/lib/visit-export";
 import { logActivity } from "@/lib/activity-log";
+import { checkoutVisit } from "@/lib/visits.functions";
 
 
 export const Route = createFileRoute("/_authenticated/app/visits/$id")({
@@ -121,6 +123,7 @@ function VisitDetail() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const checkoutVisitFn = useServerFn(checkoutVisit);
 
   const visit = useQuery({
     queryKey: ["visit", id],
@@ -303,32 +306,15 @@ function VisitDetail() {
     assets_verified: boolean;
     checkout_notes: string;
   }) => {
-    await update.mutateAsync({
-      status: "checked_out",
-      check_out_at: new Date().toISOString(),
-      badge_returned: verification.badge_returned,
-      assets_verified: verification.assets_verified,
-      checkout_notes: verification.checkout_notes || null,
-    });
-    if (v.badge_number && v.branch_id) {
-      await supabase
-        .from("badges")
-        .update({ status: "available" })
-        .eq("badge_number", v.badge_number)
-        .eq("branch_id", v.branch_id);
-      qc.invalidateQueries();
-    }
-    await logActivity({
-      action: "visit.check_out",
-      entityType: "visit",
-      entityId: v.id,
-      branchId: v.branch_id,
-      details: {
-        visitor: v.visitor?.full_name,
+    await checkoutVisitFn({
+      data: {
+        visit_id: v.id,
         badge_returned: verification.badge_returned,
-        badge_number: v.badge_number,
+        assets_verified: verification.assets_verified,
+        checkout_notes: verification.checkout_notes,
       },
     });
+    qc.invalidateQueries();
   };
 
   return (
@@ -589,6 +575,8 @@ function CheckOutButton({
       });
       toast.success("Visitor checked out");
       setOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to check out visitor");
     } finally {
       setBusy(false);
     }
