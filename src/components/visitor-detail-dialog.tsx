@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,8 +13,8 @@ import { toast } from "sonner";
 import { Download, ExternalLink, FileSpreadsheet, FileText, LogOut } from "lucide-react";
 import { exportCsv, exportDetailPdf, exportExcel, type ExportRow } from "@/lib/visit-export";
 import { formatActionLabel, formatDetails } from "@/lib/audit-format";
-import { logActivity } from "@/lib/activity-log";
 import { useCurrentUser } from "@/hooks/use-session";
+import { checkoutVisit } from "@/lib/visits.functions";
 
 type Props = {
   visitId: string | null;
@@ -24,6 +25,7 @@ type Props = {
 export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
   const me = useCurrentUser();
   const qc = useQueryClient();
+  const checkoutVisitFn = useServerFn(checkoutVisit);
 
   const visit = useQuery({
     enabled: open && !!visitId,
@@ -66,38 +68,12 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
       if (!v) return;
       if (v.badge_number && !badgeReturned) throw new Error("Please confirm the badge was returned.");
       if (!assetsVerified) throw new Error("Please confirm assets were verified.");
-      const { error } = await supabase
-        .from("visits")
-        .update({
-          status: "checked_out",
-          check_out_at: new Date().toISOString(),
+      await checkoutVisitFn({
+        data: {
+          visit_id: v.id,
           badge_returned: badgeReturned,
           assets_verified: assetsVerified,
-          checkout_notes: notes.trim() || null,
-        })
-        .eq("id", v.id);
-      if (error) throw new Error(error.message);
-      // Belt-and-braces: the sync_badge_status_from_visit DB trigger already
-      // returns the badge to "available" when badge_returned = true, but we
-      // also do it here so the UI reflects it immediately even if the trigger
-      // is temporarily disabled.
-      if (v.badge_number && v.branch_id && badgeReturned) {
-        await supabase
-          .from("badges")
-          .update({ status: "available" })
-          .eq("badge_number", v.badge_number)
-          .eq("branch_id", v.branch_id);
-      }
-      await logActivity({
-        action: "visit.check_out",
-        entityType: "visit",
-        entityId: v.id,
-        branchId: v.branch_id,
-        details: {
-          visitor: v.visitor?.full_name,
-          badge_number: v.badge_number,
-          badge_returned: badgeReturned,
-          assets_verified: assetsVerified,
+          checkout_notes: notes.trim(),
         },
       });
     },
