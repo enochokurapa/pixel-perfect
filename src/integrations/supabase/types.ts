@@ -839,6 +839,7 @@ export type Database = {
     Functions: {
       checkout_visit: {
         Args: {
+          _actor_id: string
           _assets_verified: boolean
           _badge_returned: boolean
           _checkout_notes?: string
