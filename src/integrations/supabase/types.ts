@@ -837,6 +837,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      checkout_visit: {
+        Args: {
+          _actor_id: string
+          _assets_verified: boolean
+          _badge_returned: boolean
+          _checkout_notes?: string
+          _visit_id: string
+        }
+        Returns: {
+          checked_out_at: string
+          ok: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
