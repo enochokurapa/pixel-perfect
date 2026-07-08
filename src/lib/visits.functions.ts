@@ -2,16 +2,18 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const checkoutSchema = z.object({
-  visit_id: z.string().uuid(),
-  badge_returned: z.boolean(),
-  assets_verified: z.boolean(),
-  checkout_notes: z.string().trim().max(1000).optional().default(""),
-});
-
 export const checkoutVisit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => checkoutSchema.parse(input))
+  .inputValidator((input) =>
+    z
+      .object({
+        visit_id: z.string().uuid(),
+        badge_returned: z.boolean(),
+        assets_verified: z.boolean(),
+        checkout_notes: z.string().trim().max(1000).optional().default(""),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
 
@@ -36,12 +38,12 @@ export const checkoutVisit = createServerFn({ method: "POST" })
         .from("user_roles")
         .select("role")
         .eq("user_id", context.userId)
-        .in("role", ["admin", "checkout_visitor", "manage_badges"]),
+        .in("role", ["admin", "checkout_visitor", "manage_badges", "receptionist", "security"]),
       supabase
         .from("user_branch_roles")
         .select("role, branch_id")
         .eq("user_id", context.userId)
-        .in("role", ["admin", "checkout_visitor", "manage_badges"]),
+        .in("role", ["admin", "checkout_visitor", "manage_badges", "receptionist", "security"]),
     ]);
 
     if (globalRoleError) throw new Error(globalRoleError.message);
