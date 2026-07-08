@@ -164,7 +164,12 @@ export function useCurrentUser() {
     canManageBlacklist: isAdmin || has("manage_blacklist"),
     canManageStaff: isAdmin || has("manage_staff"),
     canManageBranches: isAdmin || has("manage_branches"),
-    canCheckout: isAdmin || has("checkout_visitor"),
+    canCheckout:
+      isAdmin ||
+      has("checkout_visitor") ||
+      has("manage_badges") ||
+      has("receptionist") ||
+      has("security"),
     canCapturePhoto: isAdmin || has("capture_visitor_photo"),
     canViewPhotoReports: isAdmin || has("view_photo_reports") || has("view_reports"),
     canViewAuditLog: isAdmin || has("view_audit_log"),
