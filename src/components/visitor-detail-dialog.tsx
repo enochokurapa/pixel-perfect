@@ -238,10 +238,7 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
                     type="submit"
                     size="sm"
                     disabled={checkOut.isPending}
-                    onPointerDown={(event) => {
-                      event.preventDefault();
-                      submitCheckout();
-                    }}
+                    onClick={submitCheckout}
                   >
                     {checkOut.isPending ? "Checking out…" : "Confirm check-out"}
                   </Button>

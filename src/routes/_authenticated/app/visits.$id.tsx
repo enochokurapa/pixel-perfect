@@ -651,10 +651,7 @@ function CheckOutButton({
             <Button
               type="submit"
               disabled={busy}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                void confirm();
-              }}
+              onClick={() => void confirm()}
             >
               {busy ? "Checking out…" : "Confirm check-out"}
             </Button>
