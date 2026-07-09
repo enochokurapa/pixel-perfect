@@ -22,7 +22,7 @@ export const checkoutVisit = createServerFn({ method: "POST" })
       _visit_id: data.visit_id,
       _badge_returned: data.badge_returned,
       _assets_verified: data.assets_verified,
-      _checkout_notes: data.checkout_notes || null,
+      _checkout_notes: data.checkout_notes || undefined,
     });
 
     if (error) throw new Error(error.message);
