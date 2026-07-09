@@ -169,7 +169,8 @@ export function useCurrentUser() {
       has("checkout_visitor") ||
       has("manage_badges") ||
       has("receptionist") ||
-      has("security"),
+      has("security") ||
+      has("gate_officer"),
     canCapturePhoto: isAdmin || has("capture_visitor_photo"),
     canViewPhotoReports: isAdmin || has("view_photo_reports") || has("view_reports"),
     canViewAuditLog: isAdmin || has("view_audit_log"),
