@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.checkout_visit(uuid, uuid, boolean, boolean, text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.checkout_visit(uuid, uuid, boolean, boolean, text) TO service_role;
