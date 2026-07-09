@@ -558,6 +558,7 @@ function CheckOutButton({
   const [busy, setBusy] = useState(false);
 
   const confirm = async () => {
+    if (busy) return;
     if (hasBadge && !badgeReturned) {
       toast.error("Please confirm the badge was returned.");
       return;
@@ -647,7 +648,14 @@ function CheckOutButton({
             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={busy}>
               Cancel
             </Button>
-            <Button type="submit" disabled={busy}>
+            <Button
+              type="submit"
+              disabled={busy}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                void confirm();
+              }}
+            >
               {busy ? "Checking out…" : "Confirm check-out"}
             </Button>
           </DialogFooter>

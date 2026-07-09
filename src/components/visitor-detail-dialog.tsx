@@ -88,6 +88,10 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to check out"),
   });
 
+  const submitCheckout = () => {
+    if (!checkOut.isPending) checkOut.mutate();
+  };
+
   const detailRows = (): [string, string][] =>
     !v
       ? []
@@ -204,7 +208,13 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
             </div>
 
             {checkoutOpen && (
-              <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4">
+              <form
+                className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitCheckout();
+                }}
+              >
                 <div className="text-sm font-medium">Check-out verification</div>
                 {v.badge_number && (
                   <label className="flex items-start gap-2 text-sm">
@@ -224,11 +234,19 @@ export function VisitorDetailDialog({ visitId, open, onOpenChange }: Props) {
                   <Button variant="outline" size="sm" onClick={() => setCheckoutOpen(false)} disabled={checkOut.isPending}>
                     Cancel
                   </Button>
-                  <Button size="sm" onClick={() => checkOut.mutate()} disabled={checkOut.isPending}>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={checkOut.isPending}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      submitCheckout();
+                    }}
+                  >
                     {checkOut.isPending ? "Checking out…" : "Confirm check-out"}
                   </Button>
                 </div>
-              </div>
+              </form>
             )}
 
             <Tabs defaultValue="details">
