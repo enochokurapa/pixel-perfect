@@ -596,7 +596,13 @@ function CheckOutButton({
             Confirm everything is in order before the visitor leaves. Exit time will be captured automatically.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <form
+          className="space-y-4 py-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void confirm();
+          }}
+        >
           {hasBadge && (
             <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer">
               <Checkbox
@@ -637,15 +643,15 @@ function CheckOutButton({
           <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
             Exit time: <span className="font-medium text-foreground">{new Date().toLocaleString()}</span>
           </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
-            Cancel
-          </Button>
-          <Button onClick={confirm} disabled={busy}>
-            {busy ? "Checking out…" : "Confirm check-out"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {busy ? "Checking out…" : "Confirm check-out"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
