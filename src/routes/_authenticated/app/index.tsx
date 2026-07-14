@@ -250,7 +250,7 @@ function Dashboard() {
       ? branchFilter.branchIds
       : branchScope.availableBranches.map((b) => b.id);
   const branchDashboards = useQuery({
-    enabled: visibleBranchIds.length > 1,
+    enabled: !personalScope && visibleBranchIds.length > 1,
     queryKey: ["dashboard", "branch-cards", visibleBranchIds],
     queryFn: async () => {
       const [{ data: visits }, { data: badges }] = await Promise.all([
