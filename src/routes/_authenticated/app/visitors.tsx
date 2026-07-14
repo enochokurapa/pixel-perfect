@@ -35,10 +35,12 @@ function VisitorsPage() {
   const [to, setTo] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  void me;
+  const personalScope =
+    !me.isAdmin && !me.canViewAllBranches && !me.canViewReports && !!me.userId;
+  const personalUserId = personalScope ? (me.userId ?? null) : null;
 
   const visits = useQuery({
-    queryKey: ["visits", "all", branchFilter],
+    queryKey: ["visits", "all", branchFilter, personalUserId ?? "any"],
     queryFn: async () => {
       let query = supabase
         .from("visits")
@@ -52,6 +54,11 @@ function VisitorsPage() {
         query = query.in("branch_id", branchFilter.branchIds);
       else if (branchFilter.kind === "in" && branchFilter.branchIds.length === 0)
         return [];
+      if (personalUserId) {
+        query = query.or(
+          `host_id.eq.${personalUserId},created_by.eq.${personalUserId}`,
+        );
+      }
       const { data, error } = await query;
       if (error) throw error;
       return data;
