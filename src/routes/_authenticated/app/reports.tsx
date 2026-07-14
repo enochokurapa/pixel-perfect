@@ -607,20 +607,66 @@ function ReportsPage() {
             <ListCard title="Visits per branch" rows={agg.byBranch} />
           </div>
           <Card>
-            <CardHeader>
-              <CardTitle>Peak visitation hours</CardTitle>
-              <CardDescription>Arrivals by hour-of-day.</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-2">
+              <div>
+                <CardTitle>Peak visitation hours</CardTitle>
+                <CardDescription>Arrivals by hour of day (0–23).</CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const peakRows: ExportRow[] = agg.byHour.map((count, h) => ({
+                      Hour: `${String(h).padStart(2, "0")}:00`,
+                      Visits: count,
+                    }));
+                    csvExport(`peak_hours_${from}_to_${to}.csv`, peakRows);
+                  }}
+                >
+                  <Download className="mr-1 h-4 w-4" /> CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const peakRows: ExportRow[] = agg.byHour.map((count, h) => ({
+                      Hour: `${String(h).padStart(2, "0")}:00`,
+                      Visits: count,
+                    }));
+                    exportPdf(
+                      `peak_hours_${from}_to_${to}`,
+                      `Peak visitation hours ${from} to ${to}`,
+                      peakRows,
+                    );
+                  }}
+                >
+                  <Download className="mr-1 h-4 w-4" /> PDF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-end gap-1 h-32">
-                {agg.byHour.map((count, h) => (
-                  <div key={h} className="flex-1 flex flex-col items-center gap-1">
-                    <div
-                      className="w-full rounded-t bg-primary/70 transition-all"
-                      style={{ height: `${(count / peakMax) * 100}%` }}
-                      title={`${h}:00 — ${count} visits`}
-                    />
-                    <span className="text-[10px] text-muted-foreground tabular-nums">{h}</span>
+              <div className="flex items-end gap-1 h-40 border-b border-border">
+                {agg.byHour.map((count, h) => {
+                  const pct = (count / peakMax) * 100;
+                  return (
+                    <div key={h} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                      <div className="text-[10px] text-muted-foreground tabular-nums leading-none">
+                        {count > 0 ? count : ""}
+                      </div>
+                      <div
+                        className="w-full rounded-t bg-primary transition-all"
+                        style={{ height: count > 0 ? `${Math.max(pct, 6)}%` : "2px" }}
+                        title={`${String(h).padStart(2, "0")}:00 — ${count} visits`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-1 flex gap-1">
+                {agg.byHour.map((_, h) => (
+                  <div key={h} className="flex-1 text-center text-[10px] text-muted-foreground tabular-nums">
+                    {h % 2 === 0 ? h : ""}
                   </div>
                 ))}
               </div>
