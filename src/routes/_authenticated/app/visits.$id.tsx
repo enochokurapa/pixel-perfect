@@ -35,6 +35,7 @@ import { StatusBadge } from "./index";
 import { exportExcel, exportDetailPdf } from "@/lib/visit-export";
 import { logActivity } from "@/lib/activity-log";
 import { checkoutVisit } from "@/lib/visits.functions";
+import { useCurrentUser } from "@/hooks/use-session";
 
 
 export const Route = createFileRoute("/_authenticated/app/visits/$id")({
