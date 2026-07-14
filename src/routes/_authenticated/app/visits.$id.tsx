@@ -482,7 +482,7 @@ function VisitDetail() {
           visitId={id}
           plate={v.vehicle_plate}
           vehicleType={v.vehicle_type}
-          canEdit={canStaffEdit && v.status !== "checked_out"}
+          canEdit={canFrontDesk && v.status !== "checked_out"}
           onSave={async (plate, vt) => {
             await update.mutateAsync({ vehicle_plate: plate || null, vehicle_type: vt || null });
             qc.invalidateQueries({ queryKey: ["vehicle-audit", id] });
