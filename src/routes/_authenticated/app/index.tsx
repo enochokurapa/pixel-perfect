@@ -57,6 +57,13 @@ function Dashboard() {
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
   const scopedBranch = branchFilter.kind === "eq" ? branchFilter.branchId : null;
   const scopedIn = branchFilter.kind === "in" ? branchFilter.branchIds : null;
+
+  // Personal scope: users without admin / view-all-branches / view-reports
+  // permissions only see visits they hosted or created themselves.
+  const personalScope =
+    !me.isAdmin && !me.canViewAllBranches && !me.canViewReports && !!me.userId;
+  const personalUserId = personalScope ? (me.userId ?? null) : null;
+
   const applyBranch = <T extends { eq: (col: string, val: string) => T; in: (col: string, val: string[]) => T }>(
     q: T,
   ): T => {
@@ -65,6 +72,19 @@ function Dashboard() {
     if (scopedIn) return q.in("branch_id", scopedIn);
     return q;
   };
+  const applyPersonal = <T extends { or: (filter: string) => T }>(q: T): T => {
+    if (!personalUserId) return q;
+    return q.or(`host_id.eq.${personalUserId},created_by.eq.${personalUserId}`);
+  };
+  const scopeVisits = <
+    T extends {
+      eq: (col: string, val: string) => T;
+      in: (col: string, val: string[]) => T;
+      or: (filter: string) => T;
+    },
+  >(
+    q: T,
+  ): T => applyPersonal(applyBranch(q));
 
   const stats = useQuery({
     queryKey: ["dashboard", "stats", branchFilter],
