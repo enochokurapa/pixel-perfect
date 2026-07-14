@@ -397,13 +397,17 @@ function Dashboard() {
         <StatCard label="Today's visits" value={stats.data?.today} icon={LogIn} tone="primary" onClick={() => setOpenTile("today")} />
         <StatCard label="Visitors inside" value={stats.data?.inside} icon={Users} tone="accent" onClick={() => setOpenTile("inside")} />
         <StatCard label="Overstayed" value={stats.data?.overstay} icon={AlertTriangle} tone="warning" onClick={() => setOpenTile("overstay")} />
-        <StatCard label="Badges issued" value={stats.data?.badgesIssued} icon={BadgeCheck} tone="success" onClick={() => setOpenTile("badgesIssued")} />
-        <StatCard label="Unissued badges" value={stats.data?.badgesUnissued} icon={BadgeMinus} tone="info" onClick={() => setOpenTile("badgesUnissued")} />
+        {me.canManageBadges && (
+          <>
+            <StatCard label="Badges issued" value={stats.data?.badgesIssued} icon={BadgeCheck} tone="success" onClick={() => setOpenTile("badgesIssued")} />
+            <StatCard label="Unissued badges" value={stats.data?.badgesUnissued} icon={BadgeMinus} tone="info" onClick={() => setOpenTile("badgesUnissued")} />
+          </>
+        )}
         <StatCard label="With assets (today)" value={stats.data?.withAssets} icon={Laptop} tone="primary" onClick={() => setOpenTile("withAssets")} />
 
       </section>
 
-      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} branchIds={visibleBranchIds.length > 0 ? visibleBranchIds : null} />
+      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} branchIds={visibleBranchIds.length > 0 ? visibleBranchIds : null} personalUserId={personalUserId} />
 
       {(branchDashboards.data?.length ?? 0) > 1 && (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
