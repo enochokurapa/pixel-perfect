@@ -222,7 +222,7 @@ function Dashboard() {
 
   // Branch comparison — count per branch
   const branchComparison = useQuery({
-    enabled: me.canViewAllBranches || (scopedIn?.length ?? 0) > 1,
+    enabled: !personalScope && (me.canViewAllBranches || (scopedIn?.length ?? 0) > 1),
     queryKey: ["dashboard", "branch-comparison", branchFilter],
     queryFn: async () => {
       const start = new Date();
