@@ -35,6 +35,7 @@ import { StatusBadge } from "./index";
 import { exportExcel, exportDetailPdf } from "@/lib/visit-export";
 import { logActivity } from "@/lib/activity-log";
 import { checkoutVisit } from "@/lib/visits.functions";
+import { useCurrentUser } from "@/hooks/use-session";
 
 
 export const Route = createFileRoute("/_authenticated/app/visits/$id")({
@@ -124,6 +125,7 @@ function VisitDetail() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const checkoutVisitFn = useServerFn(checkoutVisit);
+  const me = useCurrentUser();
 
   const visit = useQuery({
     queryKey: ["visit", id],
@@ -169,7 +171,11 @@ function VisitDetail() {
     return <div className="p-8 text-sm text-muted-foreground">Visit not found.</div>;
   }
 
-  const canStaffEdit = true;
+  const isHostOfVisit = !!me.userId && v.host_id === me.userId;
+  const canApproveThis = me.isAdmin || isHostOfVisit;
+  const canFrontDesk = me.isAdmin || me.canManageBadges || me.canRegister;
+  const canCheckOutThis = me.canCheckout;
+
 
   const approve = async () => {
     await update.mutateAsync({ approval: "approved" });
@@ -351,7 +357,7 @@ function VisitDetail() {
             <Button variant="outline" size="sm" onClick={() => downloadPdf(v, assets.data ?? [])}>
               <FileText className="mr-1 h-4 w-4" /> PDF
             </Button>
-            {v.approval === "pending" && (
+            {v.approval === "pending" && canApproveThis && (
               <>
                 <RejectButton onReject={reject} disabled={update.isPending} />
                 <Button onClick={approve} disabled={update.isPending}>
@@ -359,16 +365,16 @@ function VisitDetail() {
                 </Button>
               </>
             )}
-            {canStaffEdit && v.status === "pending" && v.approval !== "not_approved" && (
+            {canFrontDesk && v.status === "pending" && v.approval === "approved" && (
               <IssueBadgeButton
                 visitorName={v.visitor?.full_name ?? "visitor"}
                 existingAssets={assets.data ?? []}
                 branchId={v.branch_id ?? null}
                 onConfirm={issueBadgeAndCheckIn}
-                disabled={update.isPending || v.approval === "pending"}
+                disabled={update.isPending}
               />
             )}
-            {canStaffEdit && v.status === "checked_in" && (
+            {canCheckOutThis && v.status === "checked_in" && (
               <CheckOutButton
                 hasBadge={!!v.badge_number}
                 onConfirm={checkOut}
@@ -467,7 +473,7 @@ function VisitDetail() {
       <AssetsCard
         visitId={id}
         items={assets.data ?? []}
-        canEdit={canStaffEdit}
+        canEdit={canFrontDesk}
         onChange={() => qc.invalidateQueries({ queryKey: ["visit-assets", id] })}
       />
 
@@ -476,7 +482,7 @@ function VisitDetail() {
           visitId={id}
           plate={v.vehicle_plate}
           vehicleType={v.vehicle_type}
-          canEdit={canStaffEdit && v.status !== "checked_out"}
+          canEdit={canFrontDesk && v.status !== "checked_out"}
           onSave={async (plate, vt) => {
             await update.mutateAsync({ vehicle_plate: plate || null, vehicle_type: vt || null });
             qc.invalidateQueries({ queryKey: ["vehicle-audit", id] });
