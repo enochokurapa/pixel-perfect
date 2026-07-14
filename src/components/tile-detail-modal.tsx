@@ -48,16 +48,23 @@ export function TileDetailModal({
   onClose,
   branchId,
   branchIds,
+  personalUserId,
 }: {
   tile: TileKey | null;
   onClose: () => void;
   branchId?: string | null;
   branchIds?: string[] | null;
+  personalUserId?: string | null;
 }) {
   const open = tile !== null;
 
   const q = useQuery({
-    queryKey: ["tile-detail", tile, branchId ?? branchIds?.join(",") ?? "all"],
+    queryKey: [
+      "tile-detail",
+      tile,
+      branchId ?? branchIds?.join(",") ?? "all",
+      personalUserId ?? "any",
+    ],
     enabled: open,
     queryFn: async () => {
 
@@ -90,6 +97,12 @@ export function TileDetailModal({
         .order("created_at", { ascending: false });
       if (branchId) query = query.eq("branch_id", branchId);
       else if (branchIds && branchIds.length > 0) query = query.in("branch_id", branchIds);
+      if (personalUserId) {
+        query = query.or(
+          `host_id.eq.${personalUserId},created_by.eq.${personalUserId}`,
+        );
+      }
+
 
 
       if (tile === "inside" || tile === "overstay") {
@@ -114,6 +127,11 @@ export function TileDetailModal({
           .not("check_in_at", "is", null);
         if (branchId) inToday = inToday.eq("branch_id", branchId);
         else if (branchIds && branchIds.length > 0) inToday = inToday.in("branch_id", branchIds);
+        if (personalUserId) {
+          inToday = inToday.or(
+            `host_id.eq.${personalUserId},created_by.eq.${personalUserId}`,
+          );
+        }
         const { data: todayVisits } = await inToday;
         const todayIds = (todayVisits ?? []).map((v) => v.id);
         if (todayIds.length === 0) return [];

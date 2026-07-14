@@ -57,6 +57,13 @@ function Dashboard() {
   const [openTile, setOpenTile] = useState<TileKey | null>(null);
   const scopedBranch = branchFilter.kind === "eq" ? branchFilter.branchId : null;
   const scopedIn = branchFilter.kind === "in" ? branchFilter.branchIds : null;
+
+  // Personal scope: users without admin / view-all-branches / view-reports
+  // permissions only see visits they hosted or created themselves.
+  const personalScope =
+    !me.isAdmin && !me.canViewAllBranches && !me.canViewReports && !!me.userId;
+  const personalUserId = personalScope ? (me.userId ?? null) : null;
+
   const applyBranch = <T extends { eq: (col: string, val: string) => T; in: (col: string, val: string[]) => T }>(
     q: T,
   ): T => {
@@ -65,12 +72,25 @@ function Dashboard() {
     if (scopedIn) return q.in("branch_id", scopedIn);
     return q;
   };
+  const applyPersonal = <T extends { or: (filter: string) => T }>(q: T): T => {
+    if (!personalUserId) return q;
+    return q.or(`host_id.eq.${personalUserId},created_by.eq.${personalUserId}`);
+  };
+  const scopeVisits = <
+    T extends {
+      eq: (col: string, val: string) => T;
+      in: (col: string, val: string[]) => T;
+      or: (filter: string) => T;
+    },
+  >(
+    q: T,
+  ): T => applyPersonal(applyBranch(q));
 
   const stats = useQuery({
     queryKey: ["dashboard", "stats", branchFilter],
     queryFn: async () => {
       const now = new Date();
-      const insideQ = applyBranch(
+      const insideQ = scopeVisits(
         supabase
           .from("visits")
           .select("id, check_in_at, expected_duration_minutes")
@@ -78,14 +98,14 @@ function Dashboard() {
       );
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const todayQ = applyBranch(
+      const todayQ = scopeVisits(
         supabase
           .from("visits")
           .select("id", { count: "exact", head: true })
           .gte("check_in_at", todayStart.toISOString())
           .not("check_in_at", "is", null),
       );
-      const preRegQ = applyBranch(
+      const preRegQ = scopeVisits(
         supabase
           .from("visits")
           .select("id", { count: "exact", head: true })
@@ -94,7 +114,7 @@ function Dashboard() {
           .neq("approval", "not_approved")
           .is("check_in_at", null),
       );
-      const todayAssetsVisitsQ = applyBranch(
+      const todayAssetsVisitsQ = scopeVisits(
         supabase
           .from("visits")
           .select("id")
@@ -151,7 +171,7 @@ function Dashboard() {
       const monday = new Date(now);
       monday.setDate(now.getDate() - daysSinceMon);
       monday.setHours(0, 0, 0, 0);
-      const q = applyBranch(
+      const q = scopeVisits(
         supabase
           .from("visits")
           .select("created_at, visit_type, status, branch_id, host:profiles(department)")
@@ -172,7 +192,7 @@ function Dashboard() {
       start.setMonth(start.getMonth() - 11);
       start.setDate(1);
       start.setHours(0, 0, 0, 0);
-      const q = applyBranch(
+      const q = scopeVisits(
         supabase
           .from("visits")
           .select("created_at, branch_id")
@@ -202,12 +222,12 @@ function Dashboard() {
 
   // Branch comparison — count per branch
   const branchComparison = useQuery({
-    enabled: me.canViewAllBranches || (scopedIn?.length ?? 0) > 1,
+    enabled: !personalScope && (me.canViewAllBranches || (scopedIn?.length ?? 0) > 1),
     queryKey: ["dashboard", "branch-comparison", branchFilter],
     queryFn: async () => {
       const start = new Date();
       start.setDate(start.getDate() - 30);
-      const q = applyBranch(
+      const q = scopeVisits(
         supabase
           .from("visits")
           .select("branch_id, branch:branches(name)")
@@ -230,7 +250,7 @@ function Dashboard() {
       ? branchFilter.branchIds
       : branchScope.availableBranches.map((b) => b.id);
   const branchDashboards = useQuery({
-    enabled: visibleBranchIds.length > 1,
+    enabled: !personalScope && visibleBranchIds.length > 1,
     queryKey: ["dashboard", "branch-cards", visibleBranchIds],
     queryFn: async () => {
       const [{ data: visits }, { data: badges }] = await Promise.all([
@@ -303,7 +323,7 @@ function Dashboard() {
   const totalCount = useQuery({
     queryKey: ["dashboard", "recent-count", branchFilter],
     queryFn: async () => {
-      const { count, error } = await applyBranch(supabase.from("visits").select("id", { count: "exact", head: true }));
+      const { count, error } = await scopeVisits(supabase.from("visits").select("id", { count: "exact", head: true }));
       if (error) throw error;
       return count ?? 0;
     },
@@ -314,7 +334,7 @@ function Dashboard() {
     queryFn: async () => {
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
-      const { data, error } = await applyBranch(supabase
+      const { data, error } = await scopeVisits(supabase
         .from("visits")
         .select(
           "id, status, approval, purpose, check_in_at, created_at, visit_type, badge_number, host_name, visitor:visitors(full_name, company), host:profiles(full_name)",
@@ -329,7 +349,7 @@ function Dashboard() {
   const pendingApprovals = useQuery({
     queryKey: ["dashboard", "pending-approvals"],
     queryFn: async () => {
-      const { data, error } = await applyBranch(supabase
+      const { data, error } = await scopeVisits(supabase
         .from("visits")
         .select(
           "id, purpose, created_at, visitor:visitors(full_name, company), host:profiles(full_name)",
@@ -377,13 +397,17 @@ function Dashboard() {
         <StatCard label="Today's visits" value={stats.data?.today} icon={LogIn} tone="primary" onClick={() => setOpenTile("today")} />
         <StatCard label="Visitors inside" value={stats.data?.inside} icon={Users} tone="accent" onClick={() => setOpenTile("inside")} />
         <StatCard label="Overstayed" value={stats.data?.overstay} icon={AlertTriangle} tone="warning" onClick={() => setOpenTile("overstay")} />
-        <StatCard label="Badges issued" value={stats.data?.badgesIssued} icon={BadgeCheck} tone="success" onClick={() => setOpenTile("badgesIssued")} />
-        <StatCard label="Unissued badges" value={stats.data?.badgesUnissued} icon={BadgeMinus} tone="info" onClick={() => setOpenTile("badgesUnissued")} />
+        {me.canManageBadges && (
+          <>
+            <StatCard label="Badges issued" value={stats.data?.badgesIssued} icon={BadgeCheck} tone="success" onClick={() => setOpenTile("badgesIssued")} />
+            <StatCard label="Unissued badges" value={stats.data?.badgesUnissued} icon={BadgeMinus} tone="info" onClick={() => setOpenTile("badgesUnissued")} />
+          </>
+        )}
         <StatCard label="With assets (today)" value={stats.data?.withAssets} icon={Laptop} tone="primary" onClick={() => setOpenTile("withAssets")} />
 
       </section>
 
-      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} branchIds={visibleBranchIds.length > 0 ? visibleBranchIds : null} />
+      <TileDetailModal tile={openTile} onClose={() => setOpenTile(null)} branchId={scopedBranch} branchIds={visibleBranchIds.length > 0 ? visibleBranchIds : null} personalUserId={personalUserId} />
 
       {(branchDashboards.data?.length ?? 0) > 1 && (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
