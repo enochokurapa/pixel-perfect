@@ -125,6 +125,7 @@ function VisitDetail() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const checkoutVisitFn = useServerFn(checkoutVisit);
+  const me = useCurrentUser();
 
   const visit = useQuery({
     queryKey: ["visit", id],
