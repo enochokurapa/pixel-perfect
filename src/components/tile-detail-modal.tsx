@@ -127,6 +127,11 @@ export function TileDetailModal({
           .not("check_in_at", "is", null);
         if (branchId) inToday = inToday.eq("branch_id", branchId);
         else if (branchIds && branchIds.length > 0) inToday = inToday.in("branch_id", branchIds);
+        if (personalUserId) {
+          inToday = inToday.or(
+            `host_id.eq.${personalUserId},created_by.eq.${personalUserId}`,
+          );
+        }
         const { data: todayVisits } = await inToday;
         const todayIds = (todayVisits ?? []).map((v) => v.id);
         if (todayIds.length === 0) return [];
