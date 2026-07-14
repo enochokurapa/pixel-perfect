@@ -473,7 +473,7 @@ function VisitDetail() {
       <AssetsCard
         visitId={id}
         items={assets.data ?? []}
-        canEdit={canStaffEdit}
+        canEdit={canFrontDesk}
         onChange={() => qc.invalidateQueries({ queryKey: ["visit-assets", id] })}
       />
 
