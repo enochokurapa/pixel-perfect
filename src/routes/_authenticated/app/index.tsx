@@ -90,7 +90,7 @@ function Dashboard() {
     queryKey: ["dashboard", "stats", branchFilter],
     queryFn: async () => {
       const now = new Date();
-      const insideQ = applyBranch(
+      const insideQ = scopeVisits(
         supabase
           .from("visits")
           .select("id, check_in_at, expected_duration_minutes")
@@ -98,14 +98,14 @@ function Dashboard() {
       );
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const todayQ = applyBranch(
+      const todayQ = scopeVisits(
         supabase
           .from("visits")
           .select("id", { count: "exact", head: true })
           .gte("check_in_at", todayStart.toISOString())
           .not("check_in_at", "is", null),
       );
-      const preRegQ = applyBranch(
+      const preRegQ = scopeVisits(
         supabase
           .from("visits")
           .select("id", { count: "exact", head: true })
@@ -114,7 +114,7 @@ function Dashboard() {
           .neq("approval", "not_approved")
           .is("check_in_at", null),
       );
-      const todayAssetsVisitsQ = applyBranch(
+      const todayAssetsVisitsQ = scopeVisits(
         supabase
           .from("visits")
           .select("id")
@@ -171,7 +171,7 @@ function Dashboard() {
       const monday = new Date(now);
       monday.setDate(now.getDate() - daysSinceMon);
       monday.setHours(0, 0, 0, 0);
-      const q = applyBranch(
+      const q = scopeVisits(
         supabase
           .from("visits")
           .select("created_at, visit_type, status, branch_id, host:profiles(department)")
@@ -192,7 +192,7 @@ function Dashboard() {
       start.setMonth(start.getMonth() - 11);
       start.setDate(1);
       start.setHours(0, 0, 0, 0);
-      const q = applyBranch(
+      const q = scopeVisits(
         supabase
           .from("visits")
           .select("created_at, branch_id")
@@ -227,7 +227,7 @@ function Dashboard() {
     queryFn: async () => {
       const start = new Date();
       start.setDate(start.getDate() - 30);
-      const q = applyBranch(
+      const q = scopeVisits(
         supabase
           .from("visits")
           .select("branch_id, branch:branches(name)")
@@ -323,7 +323,7 @@ function Dashboard() {
   const totalCount = useQuery({
     queryKey: ["dashboard", "recent-count", branchFilter],
     queryFn: async () => {
-      const { count, error } = await applyBranch(supabase.from("visits").select("id", { count: "exact", head: true }));
+      const { count, error } = await scopeVisits(supabase.from("visits").select("id", { count: "exact", head: true }));
       if (error) throw error;
       return count ?? 0;
     },
@@ -334,7 +334,7 @@ function Dashboard() {
     queryFn: async () => {
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
-      const { data, error } = await applyBranch(supabase
+      const { data, error } = await scopeVisits(supabase
         .from("visits")
         .select(
           "id, status, approval, purpose, check_in_at, created_at, visit_type, badge_number, host_name, visitor:visitors(full_name, company), host:profiles(full_name)",
@@ -349,7 +349,7 @@ function Dashboard() {
   const pendingApprovals = useQuery({
     queryKey: ["dashboard", "pending-approvals"],
     queryFn: async () => {
-      const { data, error } = await applyBranch(supabase
+      const { data, error } = await scopeVisits(supabase
         .from("visits")
         .select(
           "id, purpose, created_at, visitor:visitors(full_name, company), host:profiles(full_name)",
