@@ -171,7 +171,11 @@ function VisitDetail() {
     return <div className="p-8 text-sm text-muted-foreground">Visit not found.</div>;
   }
 
-  const canStaffEdit = true;
+  const isHostOfVisit = !!me.userId && v.host_id === me.userId;
+  const canApproveThis = me.isAdmin || isHostOfVisit;
+  const canFrontDesk = me.isAdmin || me.canManageBadges || me.canRegister;
+  const canCheckOutThis = me.canCheckout;
+
 
   const approve = async () => {
     await update.mutateAsync({ approval: "approved" });
