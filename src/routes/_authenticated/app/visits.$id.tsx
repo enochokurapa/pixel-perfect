@@ -357,7 +357,7 @@ function VisitDetail() {
             <Button variant="outline" size="sm" onClick={() => downloadPdf(v, assets.data ?? [])}>
               <FileText className="mr-1 h-4 w-4" /> PDF
             </Button>
-            {v.approval === "pending" && (
+            {v.approval === "pending" && canApproveThis && (
               <>
                 <RejectButton onReject={reject} disabled={update.isPending} />
                 <Button onClick={approve} disabled={update.isPending}>
@@ -365,16 +365,16 @@ function VisitDetail() {
                 </Button>
               </>
             )}
-            {canStaffEdit && v.status === "pending" && v.approval !== "not_approved" && (
+            {canFrontDesk && v.status === "pending" && v.approval === "approved" && (
               <IssueBadgeButton
                 visitorName={v.visitor?.full_name ?? "visitor"}
                 existingAssets={assets.data ?? []}
                 branchId={v.branch_id ?? null}
                 onConfirm={issueBadgeAndCheckIn}
-                disabled={update.isPending || v.approval === "pending"}
+                disabled={update.isPending}
               />
             )}
-            {canStaffEdit && v.status === "checked_in" && (
+            {canCheckOutThis && v.status === "checked_in" && (
               <CheckOutButton
                 hasBadge={!!v.badge_number}
                 onConfirm={checkOut}
