@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BRAND } from "@/lib/brand";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,18 +25,22 @@ function LoginPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/app" });
+      if (data.session) navigate({ to: "/dashboard", replace: true });
     });
   }, [navigate]);
 
   const resendVerification = async (target: string) => {
-    const { error } = await supabase.auth.resend({
-      type: "signup",
-      email: target,
-      options: { emailRedirectTo: `${window.location.origin}/app` },
-    });
-    if (error) toast.error(error.message);
-    else toast.success("Verification email resent. Check your inbox.");
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: target,
+        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      });
+      if (error) throw error;
+      toast.success("Verification email resent. Check your inbox.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not resend verification email");
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -46,32 +49,34 @@ function LoginPage() {
     try {
       if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
-            data: { full_name: fullName },
-            emailRedirectTo: `${window.location.origin}/app`,
+            data: { full_name: fullName.trim() },
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
         if (error) throw error;
         if (!data.session) {
-          setPendingVerification(email);
+          setPendingVerification(email.trim());
           toast.success("Account created — check your email to verify.");
         } else {
-          navigate({ to: "/app" });
+          navigate({ to: "/dashboard", replace: true });
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
         if (error) {
-          if (/confirm|verif/i.test(error.message)) {
-            setPendingVerification(email);
-          }
+          if (/confirm|verif/i.test(error.message)) setPendingVerification(email.trim());
           throw error;
         }
-        navigate({ to: "/app" });
+        navigate({ to: "/dashboard", replace: true });
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Authentication failed");
+      const message = err instanceof Error ? err.message : "Authentication failed";
+      toast.error(message === "Failed to fetch" ? "Could not reach the Visitor Flow backend. Please try again after deployment completes." : message);
     } finally {
       setLoading(false);
     }
@@ -132,11 +137,7 @@ function LoginPage() {
               <p className="mt-1 text-amber-800/80 dark:text-amber-200/80">
                 We sent a verification link to <span className="font-medium">{pendingVerification}</span>. Click the link, then sign in.
               </p>
-              <button
-                type="button"
-                className="mt-2 text-xs font-medium text-amber-900 underline dark:text-amber-200"
-                onClick={() => resendVerification(pendingVerification)}
-              >
+              <button type="button" className="mt-2 text-xs font-medium text-amber-900 underline dark:text-amber-200" onClick={() => resendVerification(pendingVerification)}>
                 Resend verification email
               </button>
             </div>
@@ -156,28 +157,14 @@ function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={8}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  onClick={() => setShowPassword((s) => !s)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
+                <Input id="password" type={showPassword ? "text" : "password"} required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="pr-10" />
+                <button type="button" tabIndex={-1} aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {mode === "signin" ? "Sign in" : "Create account"}
+              {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
           </form>
 
