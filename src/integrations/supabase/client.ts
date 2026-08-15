@@ -7,12 +7,16 @@ import {
 } from './config';
 
 function createSupabaseClient() {
-  // Prefer Coolify/Vite values when provided, but keep the known public
-  // Visitor Flow project configuration as a safe browser fallback.
+  // In the browser, route Supabase traffic through the Visitor Flow origin.
+  // This avoids cross-origin/DNS issues and gives us one controlled backend path.
+  const browserProxyUrl =
+    typeof window !== 'undefined' ? `${window.location.origin}/supabase` : undefined;
+
   const SUPABASE_URL =
-    import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+    browserProxyUrl || process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY =
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
     DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -20,7 +24,8 @@ function createSupabaseClient() {
       storage: typeof window !== 'undefined' ? localStorage : undefined,
       persistSession: true,
       autoRefreshToken: true,
-    }
+      detectSessionInUrl: true,
+    },
   });
 }
 
