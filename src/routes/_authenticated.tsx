@@ -32,7 +32,7 @@ function AuthLayout() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (session === null) navigate({ to: "/login" });
+    if (session === null) navigate({ to: "/login", replace: true });
   }, [session, navigate]);
 
   if (session === undefined) {
@@ -57,12 +57,10 @@ function Shell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  useEffect(() => setMobileOpen(false), [pathname]);
 
   const nav = [
-    { to: "/app", label: "Dashboard", icon: LayoutDashboard, show: true },
+    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: true },
     { to: "/app/register", label: "Register visitor", icon: UserPlus, show: me.canRegister || me.canCheckout },
     { to: "/app/visitors", label: "Visitors", icon: Users, show: true },
     { to: "/app/pre-register", label: "Pre-register", icon: CalendarPlus, show: me.canPreRegister },
@@ -74,7 +72,7 @@ function Shell() {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    navigate({ to: "/login" });
+    navigate({ to: "/login", replace: true });
   };
 
   const SidebarContent = (
@@ -90,28 +88,25 @@ function Shell() {
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-        {nav
-          .filter((n) => n.show)
-          .map((item) => {
-            const Icon = item.icon;
-            const active =
-              item.to === "/app" ? pathname === "/app" : pathname.startsWith(item.to);
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </Link>
-            );
-          })}
+        {nav.filter((n) => n.show).map((item) => {
+          const Icon = item.icon;
+          const active = item.to === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.to);
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                active
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="border-t border-sidebar-border p-4">
@@ -126,12 +121,7 @@ function Shell() {
             </div>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          onClick={signOut}
-        >
+        <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground" onClick={signOut}>
           <LogOut className="mr-2 h-4 w-4" /> Sign out
         </Button>
       </div>
@@ -146,18 +136,9 @@ function Shell() {
 
       {mobileOpen && (
         <>
-          <div
-            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-            onClick={() => setMobileOpen(false)}
-            aria-hidden
-          />
+          <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden />
           <aside className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              aria-label="Close menu"
-            >
+            <button type="button" onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground" aria-label="Close menu">
               <X className="h-4 w-4" />
             </button>
             {SidebarContent}
@@ -167,12 +148,7 @@ function Shell() {
 
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border/60 bg-background/90 px-3 py-2 backdrop-blur sm:px-6">
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-border text-muted-foreground hover:bg-muted lg:hidden"
-            aria-label="Open menu"
-          >
+          <button type="button" onClick={() => setMobileOpen(true)} className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-border text-muted-foreground hover:bg-muted lg:hidden" aria-label="Open menu">
             <Menu className="h-4 w-4" />
           </button>
           <div className="flex items-center gap-2 lg:hidden">
