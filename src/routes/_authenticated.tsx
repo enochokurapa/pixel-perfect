@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser, useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
 import { Button } from "@/components/ui/button";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { BranchPicker } from "@/components/branch-picker";
@@ -37,7 +38,7 @@ function AuthLayout() {
   if (session === undefined) {
     return (
       <div className="grid min-h-screen place-items-center bg-background text-muted-foreground">
-        <div className="animate-pulse text-sm">Loading…</div>
+        <div className="animate-pulse text-sm">Loading Visitor Flow…</div>
       </div>
     );
   }
@@ -56,7 +57,6 @@ function Shell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Auto-close the mobile drawer when the route changes
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
@@ -79,13 +79,13 @@ function Shell() {
 
   const SidebarContent = (
     <>
-      <div className="flex h-16 items-center gap-2 px-5 border-b border-sidebar-border">
+      <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-5">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
           <ShieldCheck className="h-4 w-4" />
         </div>
         <div className="min-w-0 leading-tight">
-          <div className="truncate font-display text-sm font-semibold">Sentinel VMS</div>
-          <div className="truncate text-[11px] text-sidebar-foreground/60">Access control</div>
+          <div className="truncate font-display text-sm font-semibold">{BRAND.name}</div>
+          <div className="truncate text-[11px] text-sidebar-foreground/60">{BRAND.shortDescription}</div>
         </div>
       </div>
 
@@ -121,7 +121,7 @@ function Shell() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium">{me.profile?.full_name ?? "—"}</div>
-            <div className="truncate text-[11px] text-sidebar-foreground/60 capitalize">
+            <div className="truncate text-[11px] capitalize text-sidebar-foreground/60">
               {me.roles.join(", ") || "no role"}
             </div>
           </div>
@@ -140,12 +140,10 @@ function Shell() {
 
   return (
     <div className="flex min-h-screen bg-background lg:grid lg:grid-cols-[260px_1fr]">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      <aside className="hidden flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         {SidebarContent}
       </aside>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
         <>
           <div
@@ -181,7 +179,7 @@ function Shell() {
             <div className="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-foreground">
               <ShieldCheck className="h-3.5 w-3.5" />
             </div>
-            <div className="text-sm font-semibold">Sentinel VMS</div>
+            <div className="text-sm font-semibold">{BRAND.name}</div>
           </div>
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <BranchPicker />

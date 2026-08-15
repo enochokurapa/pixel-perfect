@@ -10,6 +10,7 @@ import {
 
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
+import { BRAND } from "@/lib/brand";
 
 function NotFoundComponent() {
   return (
@@ -18,13 +19,13 @@ function NotFoundComponent() {
         <h1 className="font-display text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          This page doesn't exist or you may not have access.
+          This page doesn&apos;t exist or you may not have access.
         </p>
         <Link
           to="/"
           className="mt-6 inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Back to dashboard
+          Back to Visitor Flow
         </Link>
       </div>
     </div>
@@ -55,8 +56,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sentinel VMS — Visitor & Access Management" },
-      { name: "description", content: "Secure visitor registration, check-in, badges, and reporting." },
+      { title: `${BRAND.name} — Visitor Management & Access Control` },
+      { name: "description", content: BRAND.description },
+      { name: "application-name", content: BRAND.name },
+      { name: "author", content: BRAND.company },
+      // Visitor Flow is an operational application, not a public marketing site.
+      { name: "robots", content: "noindex, nofollow, noarchive" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

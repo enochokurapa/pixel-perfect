@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { BRAND } from "@/lib/brand";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,7 @@ import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Sign in — Sentinel VMS" }] }),
+  head: () => ({ meta: [{ title: `Sign in — ${BRAND.name}` }] }),
   component: LoginPage,
 });
 
@@ -53,7 +54,6 @@ function LoginPage() {
           },
         });
         if (error) throw error;
-        // If email confirmation is required, no session is returned
         if (!data.session) {
           setPendingVerification(email);
           toast.success("Account created — check your email to verify.");
@@ -77,9 +77,6 @@ function LoginPage() {
     }
   };
 
-
-
-
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <aside className="relative hidden flex-col justify-between bg-sidebar p-12 text-sidebar-foreground lg:flex">
@@ -87,29 +84,44 @@ function LoginPage() {
           <div className="grid h-10 w-10 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
             <ShieldCheck className="h-5 w-5" />
           </div>
-          <span className="font-display text-lg font-semibold">Sentinel VMS</span>
+          <div>
+            <span className="block font-display text-lg font-semibold">{BRAND.name}</span>
+            <span className="block text-[11px] text-sidebar-foreground/60">by OwlTech Solutions</span>
+          </div>
         </div>
         <div className="space-y-4">
           <h1 className="font-display text-4xl font-semibold leading-tight">
-            Every visitor.<br />Every asset.<br />Fully accounted for.
+            Welcome visitors faster.<br />Know who is on site.<br />Keep every visit accountable.
           </h1>
           <p className="max-w-md text-sm text-sidebar-foreground/70">
-            Register, check-in, and audit visitor activity across your premises with role-based controls,
-            badge tracking, blacklists, and real-time dashboards.
+            Visitor Flow manages registration, pre-registration, check-in, badges, access controls, blacklists,
+            multi-branch activity and real-time visitor reporting from one secure workspace.
           </p>
         </div>
-        <p className="text-xs text-sidebar-foreground/50">Secured by role-based access control.</p>
+        <p className="text-xs text-sidebar-foreground/50">Secure visitor management and access control.</p>
       </aside>
 
       <main className="flex items-center justify-center bg-background px-6 py-12">
         <div className="w-full max-w-sm space-y-6">
+          <div className="lg:hidden">
+            <div className="mb-6 flex items-center gap-2">
+              <div className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="font-display text-base font-semibold">{BRAND.name}</div>
+                <div className="text-[11px] text-muted-foreground">{BRAND.shortDescription}</div>
+              </div>
+            </div>
+          </div>
+
           <div>
             <h2 className="font-display text-2xl font-semibold">
-              {mode === "signin" ? "Sign in to your account" : "Create your account"}
+              {mode === "signin" ? "Sign in to Visitor Flow" : "Create your account"}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {mode === "signin"
-                ? "Enter your credentials to access the dashboard."
+                ? "Enter your credentials to access the visitor management dashboard."
                 : "New users start with Host access; an admin can elevate roles."}
             </p>
           </div>
@@ -177,7 +189,7 @@ function LoginPage() {
           </p>
 
           <p className="text-center text-xs text-muted-foreground">
-            <Link to="/" className="hover:underline">← Back home</Link>
+            <Link to="/" className="hover:underline">← Back to Visitor Flow</Link>
           </p>
         </div>
       </main>
