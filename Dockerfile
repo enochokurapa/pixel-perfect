@@ -1,13 +1,15 @@
 # syntax=docker/dockerfile:1
 
-# Use the glibc-based Node image for dependency installation/building.
-# The previous Alpine/Bun builder intermittently failed while extracting
-# @cloudflare/workerd-linux-64 on Coolify.
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
-# The browser has safe public Supabase fallbacks in source, so the build does
-# not require Supabase secrets or build-time ARG values.
+# Public Supabase values are compiled into the Vite browser bundle.
+# In Coolify mark ONLY these VITE_ variables as Build Variables.
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
+
 COPY package.json ./
 RUN npm install --include=dev --legacy-peer-deps --no-audit --no-fund
 
