@@ -1,20 +1,18 @@
 # syntax=docker/dockerfile:1
 
-FROM oven/bun:1-alpine AS builder
+# Use the glibc-based Node image for dependency installation/building.
+# The previous Alpine/Bun builder intermittently failed while extracting
+# @cloudflare/workerd-linux-64 on Coolify.
+FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
-# Public Supabase values are required by Vite while it compiles the browser bundle.
-# Coolify provides these as build variables.
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_KEY
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
-    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
-
-COPY package.json bun.lock bunfig.toml ./
-RUN bun install --frozen-lockfile
+# The browser has safe public Supabase fallbacks in source, so the build does
+# not require Supabase secrets or build-time ARG values.
+COPY package.json ./
+RUN npm install --include=dev --legacy-peer-deps --no-audit --no-fund
 
 COPY . .
-RUN bun run build
+RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
